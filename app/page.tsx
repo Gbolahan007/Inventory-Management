@@ -29,22 +29,32 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useSales } from "./components/queryhooks/useSales";
+import { FormatCurrency, useFormatCurrency } from "./hooks/useFormatCurrency";
+import { useTotalInventory } from "./components/queryhooks/useTotalInventory";
 
 // Mock data for the dashboard
-const salesData = [
-  { month: "Jan", sales: 45000 },
-  { month: "Feb", sales: 52000 },
-  { month: "Mar", sales: 48000 },
-  { month: "Apr", sales: 61000 },
-  { month: "May", sales: 55000 },
-  { month: "Jun", sales: 67000 },
-  { month: "Jul", sales: 72000 },
-  { month: "Aug", sales: 69000 },
-  { month: "Sep", sales: 75000 },
-  { month: "Oct", sales: 78000 },
-  { month: "Nov", sales: 82000 },
-  { month: "Dec", sales: 89000 },
-];
+// const salesData = [
+//   { month: "Jan", sales: 45000 },
+//   { month: "Feb", sales: 52000 },
+//   { month: "Mar", sales: 48000 },
+//   { month: "Apr", sales: 61000 },
+//   { month: "May", sales: 55000 },
+//   { month: "Jun", sales: 67000 },
+//   { month: "Jul", sales: 72000 },
+//   { month: "Aug", sales: 69000 },
+//   { month: "Sep", sales: 75000 },
+//   { month: "Oct", sales: 78000 },
+//   { month: "Nov", sales: 82000 },
+//   { month: "Dec", sales: 89000 },
+// ];
+export interface Sale {
+  id: number;
+  created_at: string;
+  total_amount: number;
+  payment_method: "cash" | "transfer" | "pos";
+  sale_date: string;
+}
 
 const topSellingItems = [
   { id: 1, name: "Wireless Headphones", sold: 245, revenue: "$12,250" },
@@ -106,6 +116,29 @@ const chartConfig = {
 };
 
 export default function Dashboard() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0); // 00:00:00
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999); // 23:59:59
+
+  const { salesData }: { salesData?: Sale[] } = useSales(start, end);
+  const { totalInventory } = useTotalInventory();
+  const todaySales = (salesData ?? []).reduce(
+    (total, sale) => total + sale.total_amount,
+    0
+  );
+
+  const inventory = (totalInventory ?? []).reduce(
+    (total, item) => total + Number(item.current_stock),
+    0
+  );
+
+  const totaProfit = (totalInventory ?? []).reduce(
+    (total, item) => total + item.profit,
+    0
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full ">
@@ -115,9 +148,6 @@ export default function Dashboard() {
             <div className="hidden sm:block">
               <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                    Sales Dashboard
-                  </h1>
                   <p className="text-sm sm:text-base text-muted-foreground mt-1">
                     Welcome back! Here&apos;s what&apos;s happening with your
                     store today.
@@ -158,7 +188,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl sm:text-3xl font-bold text-foreground mb-1">
-                    $2,847
+                    {FormatCurrency(todaySales)}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-primary font-semibold bg-primary/10 px-2 py-1 rounded-full">
@@ -181,7 +211,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl sm:text-3xl font-bold text-foreground mb-1">
-                    1,247
+                    {salesData?.length}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-primary font-semibold bg-primary/10 px-2 py-1 rounded-full">
@@ -204,7 +234,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl sm:text-3xl font-bold text-foreground mb-1">
-                    8,542
+                    {inventory}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-destructive font-semibold bg-destructive/10 px-2 py-1 rounded-full">
@@ -227,7 +257,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="text-xl sm:text-3xl font-bold text-foreground mb-1">
-                    $45,231
+                    {FormatCurrency(totaProfit)}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-primary font-semibold bg-primary/10 px-2 py-1 rounded-full">

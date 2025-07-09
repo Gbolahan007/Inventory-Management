@@ -8,6 +8,7 @@ import { Header } from "@/app/components/Header";
 import { Sidebar } from "@/app/components/Sidebar";
 import StoreProvider from "./contexts/Storeprovider";
 import ThemeWrapper from "./components/utils/Themewrapper";
+import ReactQueryProvider from "./components/ReactQueryProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -35,22 +36,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <StoreProvider>
-          <ThemeWrapper>
-            <div className="flex h-screen ">
-              <div className="">
-                <Sidebar />
+        <ReactQueryProvider>
+          <StoreProvider>
+            <ThemeWrapper>
+              <div className="flex h-screen ">
+                <div className="">
+                  <Sidebar />
+                </div>
+                {/* Main Content Area */}
+                <div className="flex flex-col min-h-0 flex-1 ">
+                  <Header />
+                  <main className="flex-1 overflow-auto bg-muted">
+                    {children}
+                  </main>
+                </div>
               </div>
-              {/* Main Content Area */}
-              <div className="flex flex-col min-h-0 flex-1 ">
-                <Header />
-                <main className="flex-1 overflow-auto bg-muted">
-                  {children}
-                </main>
-              </div>
-            </div>
-          </ThemeWrapper>
-        </StoreProvider>
+            </ThemeWrapper>
+          </StoreProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );
