@@ -57,3 +57,15 @@ export async function getTotalInventory() {
   }
   return data;
 }
+
+export async function getTopsellingProducts() {
+  const { data, error } = await supabase
+    .from("sale_items")
+    .select("product_id, quantity, total_price, products(name)");
+
+  if (error) {
+    console.error(error);
+    throw new Error("Sales could not be loaded");
+  }
+  return data;
+}
