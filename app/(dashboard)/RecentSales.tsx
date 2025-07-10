@@ -1,46 +1,24 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
+import { useRecentSales } from "../components/queryhooks/useRecentSales";
+import { FormatCurrency } from "../hooks/useFormatCurrency";
+import { formatDistanceToNow } from "date-fns";
 
-const recentSales = [
-  {
-    id: "#12345",
-    customer: "John Doe",
-    amount: "$299.00",
-    status: "Completed",
-    time: "2 min ago",
-  },
-  {
-    id: "#12346",
-    customer: "Jane Smith",
-    amount: "$159.00",
-    status: "Processing",
-    time: "5 min ago",
-  },
-  {
-    id: "#12347",
-    customer: "Mike Johnson",
-    amount: "$89.00",
-    status: "Completed",
-    time: "8 min ago",
-  },
-  {
-    id: "#12348",
-    customer: "Sarah Wilson",
-    amount: "$199.00",
-    status: "Completed",
-    time: "12 min ago",
-  },
-  {
-    id: "#12349",
-    customer: "Tom Brown",
-    amount: "$349.00",
-    status: "Pending",
-    time: "15 min ago",
-  },
-];
+// Define the sale type
+type RecentSale = {
+  id: string;
+  total_amount: number;
+  payment_method: string;
+  created_at: string;
+  status?: "Completed" | "Processing" | "Pending";
+};
 
 export function RecentSales() {
+  const { recentSales }: { recentSales?: RecentSale[] } = useRecentSales();
+
   return (
     <Card className="lg:col-span-1">
       <CardHeader>
@@ -51,17 +29,21 @@ export function RecentSales() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3 sm:space-y-4">
-          {recentSales.slice(0, 4).map((sale) => (
+          {(recentSales ?? []).slice(0, 4).map((sale) => (
             <div key={sale.id} className="flex items-center justify-between">
               <div className="space-y-1 min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium leading-none truncate text-foreground">
-                  {sale.customer}
+                  {sale.payment_method}
                 </p>
-                <p className="text-xs text-muted-foreground">{sale.time}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(sale.created_at), {
+                    addSuffix: true,
+                  })}
+                </p>
               </div>
               <div className="text-right ml-2">
                 <div className="text-xs sm:text-sm font-medium text-primary">
-                  {sale.amount}
+                  {FormatCurrency(sale.total_amount)}
                 </div>
                 <Badge
                   variant={
@@ -73,7 +55,7 @@ export function RecentSales() {
                   }
                   className="text-xs mt-1"
                 >
-                  {sale.status}
+                  {sale.status ?? "completed"}
                 </Badge>
               </div>
             </div>

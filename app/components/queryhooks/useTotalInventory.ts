@@ -1,4 +1,3 @@
-// useSales.ts
 import { getTotalInventory } from "@/app/_lib/data-service";
 import { useQuery } from "@tanstack/react-query";
 

@@ -45,11 +45,20 @@ export async function getTodaysSales(start: Date, end: Date): Promise<Sale[]> {
   }
   return data as Sale[];
 }
+export async function getRecentSales() {
+  const { data, error } = await supabase.from("sales").select("*");
+
+  if (error) {
+    console.error(error);
+    throw new Error("Sales could not be loaded");
+  }
+  return data as Sale[];
+}
 
 export async function getTotalInventory() {
   const { data, error } = await supabase
     .from("products")
-    .select("current_stock, profit");
+    .select("current_stock, profit,low_stock,name");
 
   if (error) {
     console.error(error);

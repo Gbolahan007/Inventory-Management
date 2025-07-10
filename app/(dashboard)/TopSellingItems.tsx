@@ -16,7 +16,7 @@ type ItemStat = {
 function getItemStats(items: SaleItem[]): ItemStat[] {
   const stats: Record<string, ItemStat> = {};
   items?.forEach((item) => {
-    const name = item.products.name;
+    const name = item.products?.name;
     if (!stats[name]) {
       stats[name] = {
         name,
