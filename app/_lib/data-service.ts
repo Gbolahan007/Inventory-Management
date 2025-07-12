@@ -19,6 +19,17 @@ type Sale = {
   };
 };
 
+export async function getProducts() {
+  const { data, error } = await supabase.from("products").select("*");
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not fetch products");
+  }
+
+  return data ?? [];
+}
+
 export async function getAllSales() {
   const { data, error } = await supabase
     .from("sales")

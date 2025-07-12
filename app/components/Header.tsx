@@ -29,7 +29,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4 shadow-sm">
+    <header className="bg-card border-b  border-border px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between w-full">
         {/* Left section - Toggle & Title */}
         <div className="flex items-center space-x-4">

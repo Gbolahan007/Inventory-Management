@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Your original colors converted to HSL format for shadcn compatibility */
     --background: 0 0% 100%; /* #ffffff */
     --foreground: 220 26% 14%; /* #111827 */
     --card: 0 0% 100%; /* #ffffff */

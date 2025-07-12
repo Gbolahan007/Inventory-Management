@@ -19,8 +19,6 @@ export function LowStockAlert() {
   const displayedItems = showAll ? lowStockItems : lowStockItems.slice(0, 4);
   const hasMoreItems = lowStockItems.length > 4;
 
-  console.log(lowStockItems);
-
   return (
     <Card className="lg:col-span-1 border-destructive/20">
       <CardHeader>

@@ -39,12 +39,12 @@ export default function RootLayout({
         <ReactQueryProvider>
           <StoreProvider>
             <ThemeWrapper>
-              <div className="flex h-screen ">
-                <div className="">
+              <div className="flex h-screen   ">
+                <div>
                   <Sidebar />
                 </div>
                 {/* Main Content Area */}
-                <div className="flex flex-col min-h-0 flex-1 ">
+                <div className="flex flex-col overflow-x-hidden min-h-0 flex-1 ">
                   <Header />
                   <main className="flex-1 overflow-auto bg-muted">
                     {children}
