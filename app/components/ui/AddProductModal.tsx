@@ -3,6 +3,9 @@
 import { createProduct } from "@/app/_lib/actions";
 import { X } from "lucide-react";
 import { useState } from "react";
+import AddProductsSubmitButton from "./AddProductsSubmitButton";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 interface AddProductFormProps {
   isOpen: boolean;
@@ -22,11 +25,13 @@ const PRODUCT_CATEGORIES = {
   life: "beer",
   hero: "beer",
   budweiser: "beer",
+
   orijin: "alcoholic",
   smirnoff_ice: "alcoholic",
   campari: "alcoholic",
   baileys: "alcoholic",
   red_label: "premium",
+
   coca_cola: "beverages",
   fanta: "beverages",
   sprite: "beverages",
@@ -35,6 +40,8 @@ const PRODUCT_CATEGORIES = {
   bigi_cola: "beverages",
   mirinda: "beverages",
   rc: "beverages",
+  water: "beverages",
+
   fearless: "beverages",
   monster: "beverages",
   climax: "beverages",
@@ -50,18 +57,11 @@ export default function AddProductModal({
   isDarkMode = false,
 }: AddProductFormProps) {
   const [selectedCategory, setSelectedCategory] = useState("");
-  //   const [productId, setProductId] = useState(0);
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
+  const router = useRouter();
 
   const profit = sellingPrice - costPrice;
-
-  //   useEffect(() => {
-  //     if (isOpen) {
-  //       const id = Date.now() + Math.floor(Math.random() * 1000);
-  //       setProductId(id);
-  //     }
-  //   }, [isOpen]);
 
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const productValue = e.target.value;
@@ -69,6 +69,17 @@ export default function AddProductModal({
       PRODUCT_CATEGORIES[productValue as keyof typeof PRODUCT_CATEGORIES];
     setSelectedCategory(category || "");
   };
+
+  async function handleCreateProduct(formdata: FormData) {
+    try {
+      await createProduct(formdata);
+      onClose();
+      toast.success("new Products added");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to create product:", error);
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -111,9 +122,8 @@ export default function AddProductModal({
           </button>
         </div>
 
-        <form action={createProduct} className="space-y-6">
+        <form action={handleCreateProduct} className="space-y-6">
           {/* Hidden Inputs */}
-          {/* <input type="hidden" name="id" value={productId} /> */}
           <input type="hidden" name="category" value={selectedCategory} />
           <input type="hidden" name="profit" value={profit} />
 
@@ -167,9 +177,8 @@ export default function AddProductModal({
                     <option value="sprite">Sprite</option>
                     <option value="7up">7Up</option>
                     <option value="bigi_apple">Bigi Apple</option>
-                    <option value="bigi_cola">Bigi Cola</option>
-                    <option value="mirinda">Mirinda</option>
-                    <option value="rc">RC Cola</option>
+                    <option value="coca_cola">Coca-Cola</option>
+                    <option value="water">Water</option>
                   </optgroup>
                   <optgroup label="⚡ Energy Drinks">
                     <option value="fearless">Fearless</option>
@@ -354,16 +363,9 @@ export default function AddProductModal({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className={`px-6 py-3 rounded-lg font-medium hover:scale-105 disabled:opacity-50 ${
-                isDarkMode
-                  ? "bg-slate-600 hover:bg-slate-700 text-slate-100"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
-            >
+            <AddProductsSubmitButton isDarkMode={isDarkMode}>
               Add Product
-            </button>
+            </AddProductsSubmitButton>
           </div>
         </form>
       </div>

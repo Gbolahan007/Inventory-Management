@@ -32,7 +32,6 @@ export default function Inventory() {
     isLoading: boolean;
     error: boolean;
   };
-  console.log(products);
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
 
   // ✅ Modal state

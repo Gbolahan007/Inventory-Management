@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "./index.css";
+import { Toaster } from "react-hot-toast";
 
 import { Header } from "@/app/components/Header";
 import { Sidebar } from "@/app/components/Sidebar";
@@ -47,6 +48,7 @@ export default function RootLayout({
                 <div className="flex flex-col overflow-x-hidden min-h-0 flex-1 ">
                   <Header />
                   <main className="flex-1 overflow-auto bg-muted">
+                    <Toaster position="top-center" />
                     {children}
                   </main>
                 </div>
