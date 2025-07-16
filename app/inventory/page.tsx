@@ -58,6 +58,7 @@ export default function Inventory() {
         />
       ),
     },
+
     {
       field: "cost_price",
       headerName: "Cost Price",

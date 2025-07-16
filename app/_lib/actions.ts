@@ -8,11 +8,10 @@ export async function createProduct(formdata) {
   const name = formdata.get("name");
   const cost_price = Number(formdata.get("cost_price"));
   const selling_price = Number(formdata.get("selling_price"));
-  const current_stock = Number(formdata.get("current_stock")); // Changed to Number
+  const current_stock = Number(formdata.get("current_stock"));
   const low_stock = Number(formdata.get("low_stock"));
   const category = formdata.get("category");
   const profit = Number(formdata.get("profit"));
-  console.log(current_stock);
 
   try {
     // Check if product with this name already exists
@@ -31,7 +30,6 @@ export async function createProduct(formdata) {
       const updatedStock = Number(
         existingProduct.current_stock + current_stock
       );
-      console.log(updatedStock);
 
       const { error: updateError } = await supabase
         .from("products")
@@ -49,10 +47,6 @@ export async function createProduct(formdata) {
         console.error("Supabase update error:", updateError);
         throw new Error("Product stock could not be updated");
       }
-
-      console.log(
-        `Product "${name}" stock updated. New stock: ${updatedStock}`
-      );
     } else {
       const newProduct = {
         name,
@@ -80,4 +74,46 @@ export async function createProduct(formdata) {
   } catch (error) {
     throw error;
   }
+}
+
+export async function createSale(saleData: {
+  sale_number: string;
+  total_amount: number;
+  payment_method: string;
+  sale_date: string;
+}) {
+  const { data, error } = await supabase
+    .from("sales")
+    .insert(saleData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not create sale");
+  }
+  return data;
+}
+
+export async function createSaleItems(saleItems: any[]) {
+  const { data, error } = await supabase.from("sale_items").insert(saleItems);
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not create sale items");
+  }
+  return data;
+}
+
+export async function updateProductStock(productId: string, newStock: number) {
+  const { data, error } = await supabase
+    .from("products")
+    .update({ current_stock: newStock })
+    .eq("id", productId);
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not update product stock");
+  }
+  return data;
 }
