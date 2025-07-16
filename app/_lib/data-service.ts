@@ -61,6 +61,20 @@ export async function getTodaysSales(start: Date, end: Date): Promise<Sale[]> {
   }
   return data as Sale[];
 }
+
+export async function getTodaysProfit(start: Date, end: Date): Promise<Sale[]> {
+  const { data, error } = await supabase
+    .from("sale_items")
+    .select("profit_amount")
+    .gte("created_at", start.toISOString())
+    .lte("created_at", end.toISOString());
+
+  if (error) {
+    console.error(error);
+    throw new Error("Sales could not be loaded");
+  }
+  return data as Sale[];
+}
 export async function getRecentSales() {
   const { data, error } = await supabase.from("sales").select("*");
 

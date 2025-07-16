@@ -15,7 +15,8 @@ export function LowStockAlert() {
   const [showAll, setShowAll] = useState(false);
 
   const lowStockItems =
-    totalInventory?.filter((item) => item.low_stock > item.current_stock) || [];
+    totalInventory?.filter((item) => item.low_stock >= item.current_stock) ||
+    [];
   const displayedItems = showAll ? lowStockItems : lowStockItems.slice(0, 4);
   const hasMoreItems = lowStockItems.length > 4;
 

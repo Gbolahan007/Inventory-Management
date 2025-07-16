@@ -12,6 +12,7 @@ import { RecentSales } from "./(dashboard)/RecentSales";
 import { LowStockAlert } from "./(dashboard)/LowStockAlert";
 import { QuickActions } from "./(dashboard)/QuickActions";
 import { SalesChart } from "./(dashboard)/SalesChart";
+import { useTodaysProfit } from "./components/queryhooks/useTodaysProfit";
 
 export interface Sale {
   id: number;
@@ -26,7 +27,7 @@ export type SaleItem = {
     name: string;
   };
   total_price: number;
-  quantity: string;
+  quantity: number;
 };
 
 export default function Dashboard() {
@@ -39,7 +40,9 @@ export default function Dashboard() {
   const { totalInventory } = useTotalInventory();
   const { monthlySales } = useAllSales();
   const { topSellingProducts } = useTopSellingProducts();
+  const { salesProfit } = useTodaysProfit(start, end);
 
+  console.log(salesData);
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full">
@@ -78,7 +81,8 @@ export default function Dashboard() {
 
             {/* Key Metrics Grid */}
             <MetricsGrid
-              salesData={salesData}
+              salesData={salesData ?? []}
+              salesProfit={salesProfit}
               totalInventory={totalInventory}
             />
 

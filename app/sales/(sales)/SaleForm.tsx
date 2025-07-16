@@ -24,7 +24,6 @@ interface SaleFormProps {
 }
 
 export default function SaleForm({
-  products,
   selectedProduct,
   quantity,
   customSellingPrice,

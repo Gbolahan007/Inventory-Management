@@ -16,7 +16,7 @@ interface RecentSalesTableProps {
 }
 
 export function RecentSalesTable({ sales, isDarkMode }: RecentSalesTableProps) {
-  const salesColumns: GridColDef<Sale>[] = [
+  const salesColumns: GridColDef[] = [
     {
       field: "id",
       headerName: "Sale ID",
@@ -74,7 +74,7 @@ export function RecentSalesTable({ sales, isDarkMode }: RecentSalesTableProps) {
     ...sale,
     id: sale.id || index + 1,
   }));
-
+  console.log(processedSales);
   return (
     <Card
       className={
@@ -94,7 +94,7 @@ export function RecentSalesTable({ sales, isDarkMode }: RecentSalesTableProps) {
       <CardContent>
         <div style={{ height: 400, width: "100%" }}>
           <DataGrid
-            rows={processedSales.slice(0, 10)}
+            rows={processedSales}
             columns={salesColumns}
             getRowId={(row) => row.id}
             className="bg-card shadow rounded-lg border border-border text-foreground"

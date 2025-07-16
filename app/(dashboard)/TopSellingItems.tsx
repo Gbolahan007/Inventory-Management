@@ -9,7 +9,7 @@ interface TopSellingItemsProps {
 
 type ItemStat = {
   name: string;
-  quantity: string | number;
+  quantity: number;
   revenue: number;
 };
 
@@ -27,7 +27,7 @@ function getItemStats(items: SaleItem[]): ItemStat[] {
     stats[name].quantity += item.quantity;
     stats[name].revenue += item.total_price;
   });
-  return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
+  return Object.values(stats).sort((a, b) => b.quantity - a.quantity);
 }
 
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {

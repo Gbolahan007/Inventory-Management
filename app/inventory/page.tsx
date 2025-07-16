@@ -27,11 +27,7 @@ interface Product {
 
 // ✅ Main Inventory Page
 export default function Inventory() {
-  const { products, isLoading, error } = useProducts() as {
-    products: Product[];
-    isLoading: boolean;
-    error: boolean;
-  };
+  const { products, isLoading, error } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
 
   // ✅ Modal state
@@ -67,8 +63,8 @@ export default function Inventory() {
       renderCell: (params) => {
         const value = Number(params.row?.cost_price);
         return isNaN(value) || value === 0
-          ? "$0.00"
-          : `${FormatCurrency(value.toFixed(2))}`;
+          ? FormatCurrency(0)
+          : FormatCurrency(value);
       },
     },
     {
@@ -79,8 +75,8 @@ export default function Inventory() {
       renderCell: (params) => {
         const value = Number(params.row?.selling_price);
         return isNaN(value) || value === 0
-          ? "$0.00"
-          : `${FormatCurrency(value.toFixed(2))}`;
+          ? FormatCurrency(0)
+          : FormatCurrency(value);
       },
     },
     {
@@ -92,9 +88,7 @@ export default function Inventory() {
         const value = Number(params.row?.profit);
         return (
           <span className="text-green-600 dark:text-green-400 font-medium">
-            {isNaN(value) || value === 0
-              ? "$0.00"
-              : `${FormatCurrency(value.toFixed(2))}`}
+            {isNaN(value) || value === 0 ? "$0.00" : `${FormatCurrency(value)}`}
           </span>
         );
       },

@@ -2,13 +2,28 @@
 import type { SaleItem } from "./types";
 import type { UseMutationResult } from "@tanstack/react-query";
 
+interface CreateSaleVariables {
+  items: SaleItem[];
+  total: number;
+  paymentMethod: string;
+}
+
+interface CreateSaleResponse {
+  saleId: string;
+  message: string;
+}
+
 interface SaleSummaryAndActionsProps {
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   handleFinalizeSale: () => Promise<void>;
   cartTotal: number;
   cartItems: SaleItem[];
-  createSaleMutation: UseMutationResult<any, Error, any, unknown>; // Adjust 'any' to your actual mutation types
+  createSaleMutation: UseMutationResult<
+    CreateSaleResponse,
+    Error,
+    CreateSaleVariables
+  >;
   isDarkMode: boolean;
 }
 
@@ -22,7 +37,7 @@ export default function SaleSummaryAndActions({
   isDarkMode,
 }: SaleSummaryAndActionsProps) {
   return (
-    <div className="space-y-3  ">
+    <div className="space-y-3">
       <label
         className={`block text-sm font-semibold ${
           isDarkMode ? "text-slate-300" : "text-gray-700"
@@ -30,11 +45,11 @@ export default function SaleSummaryAndActions({
       >
         Payment Method
       </label>
-      <div className=" flex gap-4">
+      <div className="flex gap-4">
         <select
           value={paymentMethod}
           onChange={(e) => setPaymentMethod(e.target.value)}
-          className={` px-4 py-3 rounded-lg  border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+          className={`px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
             isDarkMode
               ? "bg-slate-700 border-slate-600 text-slate-100"
               : "bg-gray-50 border-gray-300 text-gray-900"

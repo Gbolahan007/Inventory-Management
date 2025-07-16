@@ -20,7 +20,7 @@ export function ProductInventoryTable({
   products,
   isDarkMode,
 }: ProductInventoryTableProps) {
-  const productColumns: GridColDef<Product>[] = [
+  const productColumns: GridColDef[] = [
     { field: "id", headerName: "ID", width: 90 },
     { field: "name", headerName: "Product Name", width: 200 },
     {
@@ -112,7 +112,7 @@ export function ProductInventoryTable({
       <CardContent>
         <div style={{ height: 400, width: "100%" }}>
           <DataGrid
-            rows={processedProducts.slice(0, 10)}
+            rows={processedProducts}
             columns={productColumns}
             getRowId={(row) => row.id}
             className="bg-card shadow rounded-lg border border-border text-foreground"

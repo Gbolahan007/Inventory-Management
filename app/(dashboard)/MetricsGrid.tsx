@@ -6,21 +6,27 @@ import type { Sale } from "../page";
 interface MetricsGridProps {
   salesData?: Sale[];
   totalInventory?: any[];
+  salesProfit: [];
 }
 
-export function MetricsGrid({ salesData, totalInventory }: MetricsGridProps) {
+export function MetricsGrid({
+  salesData,
+  totalInventory,
+  salesProfit,
+}: MetricsGridProps) {
+  console.log(salesData);
   const todaySales = (salesData ?? []).reduce(
     (total, sale) => total + sale.total_amount,
     0
   );
-
+  console.log(salesProfit);
   const inventory = (totalInventory ?? []).reduce(
     (total, item) => total + Number(item.current_stock),
     0
   );
 
-  const totalProfit = (totalInventory ?? []).reduce(
-    (total, item) => total + item.profit,
+  const totalProfit = (salesProfit ?? []).reduce(
+    (total, item) => total + item.profit_amount,
     0
   );
 

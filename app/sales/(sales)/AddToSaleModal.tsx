@@ -196,7 +196,6 @@ export default function AddToSaleModal({
         onSuccess: () => {
           setCartItems([]);
           onClose();
-          toast.success("Sale completed successfully!");
         },
         onError: (error) => {
           toast.error("Failed to complete sale");
