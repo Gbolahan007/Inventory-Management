@@ -1,4 +1,5 @@
 "use client";
+import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
 import type { SaleItem } from "./types";
 import type { UseMutationResult } from "@tanstack/react-query";
 
@@ -75,8 +76,8 @@ export default function SaleSummaryAndActions({
         >
           {createSaleMutation.isPending
             ? "Processing..."
-            : `Complete Sale (₦${cartTotal.toFixed(
-                2
+            : `Complete Sale (${FormatCurrency(
+                cartTotal
               )}) - ${paymentMethod.toUpperCase()}`}
         </button>
       </div>

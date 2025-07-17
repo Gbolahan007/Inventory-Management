@@ -74,7 +74,6 @@ export function RecentSalesTable({ sales, isDarkMode }: RecentSalesTableProps) {
     ...sale,
     id: sale.id || index + 1,
   }));
-  console.log(processedSales);
   return (
     <Card
       className={

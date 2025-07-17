@@ -2,17 +2,23 @@
 import { useState } from "react";
 import { Trash2, Plus, Minus, X } from "lucide-react";
 import type { SaleItem, Product } from "./types";
+import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
+import { type UseMutationResult } from "@tanstack/react-query";
 
 interface ShoppingCartDisplayProps {
   cartItems: SaleItem[];
   removeFromCart: (index: number) => void;
   updateCartItemQuantity: (index: number, newQuantity: number) => void;
   cartTotal: number;
-  cartTotalProfit: number;
+  cartTotalProfit: number; // Not directly used in this component's UI, but kept for completeness
   isDarkMode: boolean;
-  products: Product[] | undefined;
-  isOpen?: boolean;
-  onClose?: () => void; // Made optional again
+  products: Product[] | undefined; // Passed for stock checking
+  paymentMethod: string;
+  setPaymentMethod: (method: string) => void;
+  handleFinalizeSale: () => void;
+  createSaleMutation: UseMutationResult<any, Error, any, unknown>;
+  isOpen: boolean; // Controlled by parent for mobile view
+  onClose: () => void; // Controlled by parent for mobile view
 }
 
 export default function ShoppingCartDisplay({
@@ -20,57 +26,65 @@ export default function ShoppingCartDisplay({
   removeFromCart,
   updateCartItemQuantity,
   cartTotal,
+  cartTotalProfit, // Kept for completeness, not used in UI
   isDarkMode,
-  isOpen = true,
+  products, // Used for stock checking inside updateCartItemQuantity
+  paymentMethod,
+  setPaymentMethod,
+  handleFinalizeSale,
+  createSaleMutation,
+  isOpen,
   onClose,
 }: ShoppingCartDisplayProps) {
-  // Internal state for mobile modal
-  const [isMobileModalOpen, setIsMobileModalOpen] = useState(isOpen);
+  const isFinalizing = createSaleMutation.isPending;
 
-  // Handle mobile modal close
-  const handleMobileClose = () => {
-    setIsMobileModalOpen(false);
-    if (onClose) onClose();
-  };
+  // Helper function to update quantity with stock check
+  const handleUpdateQuantity = (index: number, newQuantity: number) => {
+    const item = cartItems[index];
+    const product = products?.find((p) => p.id === item.product_id);
 
-  // Handle backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleMobileClose();
+    if (product) {
+      // Calculate current stock available after considering other items in cart
+      const currentProductInCartQuantity = cartItems
+        .filter(
+          (cartItem, i) => i !== index && cartItem.product_id === product.id
+        )
+        .reduce((sum, cartItem) => sum + cartItem.quantity, 0);
+
+      if (currentProductInCartQuantity + newQuantity > product.current_stock) {
+        // Use a custom modal or toast for error, as alert() is not allowed
+        // For now, using toast as per previous implementation
+        console.error("Not enough stock available for this update.");
+        return;
+      }
     }
+    updateCartItemQuantity(index, newQuantity);
   };
 
   return (
     <>
-      {/* Mobile: Full-screen overlay */}
+      {/* Mobile View: Full-screen slide-in cart */}
       <div
-        className={`
-        md:hidden fixed inset-0 z-50 transition-transform duration-300 ease-in-out
-        ${isMobileModalOpen ? "translate-x-0" : "translate-x-full"}
-      `}
+        className={`md:hidden fixed inset-0 z-50 transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
       >
-        {/* Backdrop */}
         <div
           className={`absolute inset-0 ${
             isDarkMode ? "bg-black/50" : "bg-black/30"
           }`}
-          onClick={handleBackdropClick}
+          onClick={onClose}
         />
-
-        {/* Cart Panel */}
         <div
-          className={`
-          absolute right-0 top-0 h-full w-full max-w-sm
-          ${isDarkMode ? "bg-slate-800" : "bg-white"}
-          shadow-xl
-        `}
+          className={`absolute right-0 top-0 h-full w-full max-w-sm ${
+            isDarkMode ? "bg-slate-800" : "bg-white"
+          } shadow-xl flex flex-col`}
         >
-          {/* Header */}
+          {/* Header for Mobile Cart */}
           <div
-            className={`
-            flex items-center justify-between p-4 border-b
-            ${isDarkMode ? "border-slate-700" : "border-gray-200"}
-          `}
+            className={`flex items-center justify-between p-4 border-b ${
+              isDarkMode ? "border-slate-700" : "border-gray-200"
+            }`}
           >
             <h3
               className={`text-lg font-semibold ${
@@ -80,10 +94,8 @@ export default function ShoppingCartDisplay({
               Shopping Cart
             </h3>
             <button
-              onClick={handleMobileClose}
-              className={`p-2 rounded-full hover:bg-opacity-10 hover:bg-gray-500 transition-colors`}
-              type="button"
-              aria-label="Close cart"
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
             >
               <X
                 className={`w-5 h-5 ${
@@ -92,8 +104,7 @@ export default function ShoppingCartDisplay({
               />
             </button>
           </div>
-
-          {/* Cart Content */}
+          {/* Content for Mobile Cart */}
           <div className="flex-1 overflow-y-auto p-4">
             {cartItems.length === 0 ? (
               <p
@@ -127,13 +138,10 @@ export default function ShoppingCartDisplay({
                       <button
                         onClick={() => removeFromCart(index)}
                         className="text-red-500 hover:text-red-700 p-1 transition-colors"
-                        type="button"
-                        aria-label="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span
@@ -141,20 +149,18 @@ export default function ShoppingCartDisplay({
                             isDarkMode ? "text-slate-300" : "text-gray-600"
                           }`}
                         >
-                          ₦{item.unit_price.toFixed(2)} each
+                          {FormatCurrency(item.unit_price)} each
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
-                              updateCartItemQuantity(index, item.quantity - 1)
+                              handleUpdateQuantity(index, item.quantity - 1)
                             }
                             className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                               isDarkMode
                                 ? "bg-slate-600 hover:bg-slate-500 text-slate-200"
                                 : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                             }`}
-                            type="button"
-                            aria-label="Decrease quantity"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
@@ -167,15 +173,13 @@ export default function ShoppingCartDisplay({
                           </span>
                           <button
                             onClick={() =>
-                              updateCartItemQuantity(index, item.quantity + 1)
+                              handleUpdateQuantity(index, item.quantity + 1)
                             }
                             className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                               isDarkMode
                                 ? "bg-slate-600 hover:bg-slate-500 text-slate-200"
                                 : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                             }`}
-                            type="button"
-                            aria-label="Increase quantity"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -186,107 +190,105 @@ export default function ShoppingCartDisplay({
                           isDarkMode ? "text-slate-100" : "text-gray-900"
                         }`}
                       >
-                        Total: ₦{item.total_price.toFixed(2)}
+                        Total: {FormatCurrency(item.total_price)}
                       </div>
                     </div>
                   </div>
                 ))}
-
-                {/* Cart Summary */}
-                <div
-                  className={`p-3 rounded-lg border-2 ${
-                    isDarkMode
-                      ? "bg-slate-700 border-slate-600"
-                      : "bg-gray-50 border-gray-200"
-                  }`}
-                >
-                  <div className="flex justify-between mb-3">
-                    <span
-                      className={`text-sm ${
-                        isDarkMode ? "text-slate-300" : "text-gray-600"
-                      }`}
-                    >
-                      Subtotal:
-                    </span>
-                    <span
-                      className={`font-medium text-sm ${
-                        isDarkMode ? "text-slate-100" : "text-gray-900"
-                      }`}
-                    >
-                      ₦{cartTotal.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {/* Payment Method */}
-                  <div className="space-y-2 mb-4">
-                    <label
-                      className={`block text-sm font-medium ${
-                        isDarkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
-                    >
-                      Payment Method
-                    </label>
-                    <select
-                      className={`w-full px-3 py-2.5 rounded-lg border text-sm appearance-none ${
-                        isDarkMode
-                          ? "bg-slate-600 border-slate-500 text-slate-100 focus:border-slate-400"
-                          : "bg-white border-gray-300 text-gray-900 focus:border-blue-500"
-                      } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-                        isDarkMode
-                          ? "focus:ring-slate-400"
-                          : "focus:ring-blue-500"
-                      }`}
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="transfer">Bank Transfer</option>
-                    </select>
-                  </div>
-
-                  {/* Checkout Button */}
-                  <button
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
-                      isDarkMode
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    disabled={cartItems.length === 0}
-                  >
-                    Proceed to Checkout
-                  </button>
-                </div>
               </div>
             )}
+          </div>
+          {/* Summary and Actions for Mobile Cart */}
+          <div
+            className={`p-4 border-t ${
+              isDarkMode ? "border-slate-700" : "border-gray-200"
+            }`}
+          >
+            <div className="flex justify-between mb-3">
+              <span
+                className={`text-sm ${
+                  isDarkMode ? "text-slate-300" : "text-gray-600"
+                }`}
+              >
+                Subtotal:
+              </span>
+              <span
+                className={`font-medium text-sm ${
+                  isDarkMode ? "text-slate-100" : "text-gray-900"
+                }`}
+              >
+                {FormatCurrency(cartTotal)}
+              </span>
+            </div>
+            <div className="space-y-2 mb-4">
+              <label
+                htmlFor="payment-method-mobile"
+                className={`block text-sm font-medium ${
+                  isDarkMode ? "text-slate-300" : "text-gray-700"
+                }`}
+              >
+                Payment Method
+              </label>
+              <select
+                id="payment-method-mobile"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className={`w-full px-3 py-2.5 rounded-lg border text-sm appearance-none ${
+                  isDarkMode
+                    ? "bg-slate-600 border-slate-500 text-slate-100 focus:border-slate-400"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
+                  isDarkMode ? "focus:ring-slate-400" : "focus:ring-blue-500"
+                }`}
+              >
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="transfer">Bank Transfer</option>
+              </select>
+            </div>
+            <button
+              onClick={handleFinalizeSale}
+              disabled={cartItems.length === 0 || isFinalizing}
+              className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors ${
+                isDarkMode
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isFinalizing ? "Finalizing..." : "Proceed to Checkout"}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Desktop: Sidebar */}
+      {/* Desktop View: Integrated into the main modal's right column */}
       <div
-        className={`
-        hidden md:block w-full min-w-0
-        ${isDarkMode ? "bg-slate-750" : "bg-gray-50"}
-        md:max-w-md md:mx-auto lg:max-w-96
-      `}
+        className={`hidden md:flex flex-col w-full md:w-1/2 p-6 md:p-8 border-l ${
+          isDarkMode
+            ? "bg-slate-750 border-slate-700"
+            : "bg-gray-50 border-gray-200"
+        }`}
       >
-        <div className="p-3 md:p-4 lg:p-6">
-          <h3
-            className={`text-lg font-semibold mb-4 ${
-              isDarkMode ? "text-slate-100" : "text-gray-900"
+        <h3
+          className={`text-lg font-semibold mb-4 ${
+            isDarkMode ? "text-slate-100" : "text-gray-900"
+          }`}
+        >
+          Shopping Cart
+        </h3>
+        {cartItems.length === 0 ? (
+          <p
+            className={`text-center py-8 ${
+              isDarkMode ? "text-slate-400" : "text-gray-500"
             }`}
           >
-            Shopping Cart
-          </h3>
-          {cartItems.length === 0 ? (
-            <p
-              className={`text-center py-8 ${
-                isDarkMode ? "text-slate-400" : "text-gray-500"
-              }`}
-            >
-              Cart is empty
-            </p>
-          ) : (
-            <div className="space-y-2 md:space-y-3 lg:space-y-4">
+            Cart is empty
+          </p>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto space-y-2 md:space-y-3 lg:space-y-4 pr-2">
+              {" "}
+              {/* Added pr-2 for scrollbar */}
               {cartItems.map((item, index) => (
                 <div
                   key={index}
@@ -309,33 +311,28 @@ export default function ShoppingCartDisplay({
                     <button
                       onClick={() => removeFromCart(index)}
                       className="text-red-500 hover:text-red-700 p-1 flex-shrink-0 transition-colors"
-                      type="button"
-                      aria-label="Remove item"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-
                   <div className="flex items-center justify-between mb-2">
                     <span
                       className={`text-sm ${
                         isDarkMode ? "text-slate-300" : "text-gray-600"
                       }`}
                     >
-                      ₦{item.unit_price.toFixed(2)} each
+                      {FormatCurrency(item.unit_price)} each
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() =>
-                          updateCartItemQuantity(index, item.quantity - 1)
+                          handleUpdateQuantity(index, item.quantity - 1)
                         }
                         className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
                           isDarkMode
                             ? "bg-slate-600 hover:bg-slate-500 text-slate-200"
                             : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                         }`}
-                        type="button"
-                        aria-label="Decrease quantity"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
@@ -348,15 +345,13 @@ export default function ShoppingCartDisplay({
                       </span>
                       <button
                         onClick={() =>
-                          updateCartItemQuantity(index, item.quantity + 1)
+                          handleUpdateQuantity(index, item.quantity + 1)
                         }
                         className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
                           isDarkMode
                             ? "bg-slate-600 hover:bg-slate-500 text-slate-200"
                             : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                         }`}
-                        type="button"
-                        aria-label="Increase quantity"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
@@ -367,79 +362,13 @@ export default function ShoppingCartDisplay({
                       isDarkMode ? "text-slate-100" : "text-gray-900"
                     }`}
                   >
-                    Total: ₦{item.total_price.toFixed(2)}
+                    Total: {FormatCurrency(item.total_price)}
                   </div>
                 </div>
               ))}
-
-              {/* Cart Summary */}
-              <div
-                className={`p-2 md:p-3 lg:p-4 rounded-lg border-2 ${
-                  isDarkMode
-                    ? "bg-slate-700 border-slate-600"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span
-                      className={`text-xs md:text-sm lg:text-base ${
-                        isDarkMode ? "text-slate-300" : "text-gray-600"
-                      }`}
-                    >
-                      Subtotal:
-                    </span>
-                    <span
-                      className={`font-medium text-xs md:text-sm lg:text-base ${
-                        isDarkMode ? "text-slate-100" : "text-gray-900"
-                      }`}
-                    >
-                      ₦{cartTotal.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {/* Payment Method */}
-                  <div className="space-y-2 pt-2">
-                    <label
-                      className={`block text-xs md:text-sm font-medium ${
-                        isDarkMode ? "text-slate-300" : "text-gray-700"
-                      }`}
-                    >
-                      Payment Method
-                    </label>
-                    <select
-                      className={`w-full px-2 md:px-3 py-2 rounded-lg border text-xs md:text-sm appearance-none ${
-                        isDarkMode
-                          ? "bg-slate-600 border-slate-500 text-slate-100 focus:border-slate-400"
-                          : "bg-white border-gray-300 text-gray-900 focus:border-blue-500"
-                      } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-                        isDarkMode
-                          ? "focus:ring-slate-400"
-                          : "focus:ring-blue-500"
-                      }`}
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="transfer">Bank Transfer</option>
-                    </select>
-                  </div>
-
-                  {/* Checkout Button */}
-                  <button
-                    className={`w-full mt-3 md:mt-4 py-2 md:py-3 px-3 md:px-4 rounded-lg font-medium text-xs md:text-sm transition-colors ${
-                      isDarkMode
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    disabled={cartItems.length === 0}
-                  >
-                    Proceed to Checkout
-                  </button>
-                </div>
-              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </>
   );

@@ -21,7 +21,6 @@ export default function SalesPage() {
   const { recentSales = [], isLoading: salesLoading } = useRecentSales();
   const { stats, isLoading: statsLoading } = useStats();
 
-  console.log(recentSales);
   const handleAddSale = () => {
     setIsAddSaleOpen(true);
   };

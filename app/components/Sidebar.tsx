@@ -1,7 +1,7 @@
 "use client";
 
 import type { RootState } from "@/app/store";
-import { BarChart3, Bell, Boxes, Home } from "lucide-react";
+import { BarChart3, Bell, Boxes, FileText, Home } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,7 +12,7 @@ const navigation = [
   // { name: "Users", href: "/users", icon: Users },
   { name: "Inventory", href: "/inventory", icon: Boxes },
   { name: "sales", href: "/sales", icon: BarChart3 },
-  // { name: "Reports", href: "/reports", icon: FileText },
+  { name: "Reports", href: "/reports", icon: FileText },
   { name: "Notifications", href: "/notifications", icon: Bell },
   // { name: "Settings", href: "/settings", icon: Settings },
 ];

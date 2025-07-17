@@ -1,16 +1,16 @@
 "use client";
 
 import type React from "react";
-
 import { X, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useProducts } from "@/app/components/queryhooks/useProducts";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
+import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
 import type { SaleItem, Product } from "./types";
 import SaleForm from "./SaleForm";
-import SaleSummaryAndActions from "./SaleSummaryAndActions";
 import ShoppingCartDisplay from "./ShoppingCartDisplay";
+import { type UseMutationResult } from "@tanstack/react-query";
 
 interface AddToSaleModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export default function AddToSaleModal({
   const [customSellingPrice, setCustomSellingPrice] = useState(0);
   const { products } = useProducts();
   const [cartItems, setCartItems] = useState<SaleItem[]>([]);
-  const [showCart, setShowCart] = useState(false);
+  const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const createSaleMutation = useCreateSale();
 
@@ -55,7 +55,6 @@ export default function AddToSaleModal({
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const productName = e.target.value;
     setSelectedProduct(productName);
-    // Pre-fill the selling price when a product is selected
     if (productName) {
       const product = products?.find((p) => p.name === productName);
       setCustomSellingPrice(product?.selling_price || 0);
@@ -66,16 +65,11 @@ export default function AddToSaleModal({
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-
-    // Allow empty string (when user deletes all content)
     if (value === "") {
-      setQuantity(0); // or you could use a string state instead
+      setQuantity(0);
       return;
     }
-
     const numValue = Number(value);
-
-    // Only update if it's a valid positive number
     if (!isNaN(numValue) && numValue >= 0) {
       setQuantity(numValue);
     }
@@ -92,7 +86,6 @@ export default function AddToSaleModal({
       return;
     }
 
-    // Check if there's enough stock (considering what's already in cart)
     const existingCartQuantity = cartItems
       .filter((item) => item.product_id === selectedProductData.id)
       .reduce((sum, item) => sum + item.quantity, 0);
@@ -113,7 +106,6 @@ export default function AddToSaleModal({
       profit_amount: profitAmount,
     };
 
-    // Check if item already exists in cart
     const existingItemIndex = cartItems.findIndex(
       (item) =>
         item.product_id === newItem.product_id &&
@@ -121,7 +113,6 @@ export default function AddToSaleModal({
     );
 
     if (existingItemIndex >= 0) {
-      // Update existing item
       const updatedCart = [...cartItems];
       const existingItem = updatedCart[existingItemIndex];
       updatedCart[existingItemIndex] = {
@@ -133,12 +124,10 @@ export default function AddToSaleModal({
       };
       setCartItems(updatedCart);
     } else {
-      // Add new item
       setCartItems([...cartItems, newItem]);
     }
 
     toast.success(`${newItem.name} added to cart!`);
-    // Reset form
     setSelectedProduct("");
     setQuantity(1);
     setCustomSellingPrice(0);
@@ -161,9 +150,17 @@ export default function AddToSaleModal({
     const item = cartItems[index];
     const product = products?.find((p) => p.id === item.product_id);
 
-    if (product && newQuantity > product.current_stock) {
-      toast.error("Not enough stock available");
-      return;
+    if (product) {
+      const currentProductInCartQuantity = cartItems
+        .filter(
+          (cartItem, i) => i !== index && cartItem.product_id === product.id
+        )
+        .reduce((sum, cartItem) => sum + cartItem.quantity, 0);
+
+      if (currentProductInCartQuantity + newQuantity > product.current_stock) {
+        toast.error("Not enough stock available");
+        return;
+      }
     }
 
     const updatedCart = [...cartItems];
@@ -196,6 +193,7 @@ export default function AddToSaleModal({
         onSuccess: () => {
           setCartItems([]);
           onClose();
+          setIsCartOpenMobile(false);
         },
         onError: (error) => {
           toast.error("Failed to complete sale");
@@ -232,61 +230,67 @@ export default function AddToSaleModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       <div
-        className={`relative w-full max-w-6xl mx-auto my-8 rounded-xl shadow-2xl transition-all ${
+        className={`relative w-full max-w-6xl mx-auto my-4 sm:my-8 rounded-lg sm:rounded-xl shadow-2xl transition-all ${
           isDarkMode
             ? "bg-slate-800 text-slate-100 border border-slate-700"
             : "bg-white text-gray-900 border border-gray-200"
         }`}
       >
+        {/* Modal Header */}
         <div
-          className={`flex items-center justify-between p-6 border-b ${
+          className={`flex items-center gap-2 justify-between  mt-5 p-3 sm:p-6 border-b ${
             isDarkMode ? "border-slate-700" : "border-gray-200"
           }`}
         >
           <h2
-            className={`text-2xl font-bold ${
+            className={`text-lg sm:text-xl md:text-2xl font-bold ${
               isDarkMode ? "text-slate-100" : "text-gray-900"
             }`}
           >
             Add New Sale
           </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Shopping Cart button for mobile */}
             <button
               type="button"
-              onClick={() => setShowCart(!showCart)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
+              onClick={() => setIsCartOpenMobile(true)}
+              className={`md:hidden flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium ${
                 isDarkMode
                   ? "bg-blue-600 hover:bg-blue-700 text-white"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
             >
-              <ShoppingCart className="w-4 h-4" />
-              Cart ({cartItems.length})
+              <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Cart</span> ({cartItems.length}
+              )
             </button>
+            {/* Close button */}
             <button
               type="button"
               onClick={onClose}
-              className={`p-2 rounded-full hover:scale-110 ${
+              className={`p-1.5 sm:p-2 rounded-full hover:scale-110 ${
                 isDarkMode
                   ? "hover:bg-slate-700 text-slate-400 hover:text-slate-200"
                   : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
               }`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
-        <div className="flex">
-          {/* Main form section */}
+
+        {/* Modal Content - Two columns on desktop, single column on mobile */}
+        <div className="flex flex-col md:flex-row h-[calc(100vh-12rem)] sm:h-[calc(100vh-20rem)] max-h-[500px] sm:max-h-[600px]">
+          {/* Left Column: Sale Form */}
           <div
-            className={`flex-1 ${showCart ? "border-r" : ""} ${
-              isDarkMode ? "border-slate-700" : "border-gray-200"
+            className={`flex-1 p-3 sm:p-6 overflow-y-auto ${
+              isDarkMode ? "bg-slate-800" : "bg-white"
             }`}
           >
             <SaleForm
@@ -308,61 +312,129 @@ export default function AddToSaleModal({
               categoryDisplayNames={categoryDisplayNames}
               isDarkMode={isDarkMode}
             />
-            {/* Corrected: Added SaleSummaryAndActions here */}
-            <div className="p-6 pt-0">
-              {" "}
-              {/* Added padding top 0 to avoid double padding */}
-              <SaleSummaryAndActions
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                handleFinalizeSale={handleFinalizeSale}
-                cartTotal={cartTotal}
-                cartItems={cartItems}
-                createSaleMutation={createSaleMutation}
-                isDarkMode={isDarkMode}
-              />
-            </div>
           </div>
-          {/* Cart section */}
-          {showCart && (
-            <ShoppingCartDisplay
-              cartItems={cartItems}
-              removeFromCart={removeFromCart}
-              updateCartItemQuantity={updateCartItemQuantity}
-              cartTotal={cartTotal}
-              cartTotalProfit={cartTotalProfit}
-              isDarkMode={isDarkMode}
-              products={products} // Pass products for stock check in quantity update
-            />
-          )}
+
+          {/* Right Column: Shopping Cart Display (Desktop) */}
+          <ShoppingCartDisplay
+            cartItems={cartItems}
+            removeFromCart={removeFromCart}
+            updateCartItemQuantity={updateCartItemQuantity}
+            cartTotal={cartTotal}
+            cartTotalProfit={cartTotalProfit}
+            isDarkMode={isDarkMode}
+            products={products}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
+            handleFinalizeSale={handleFinalizeSale}
+            createSaleMutation={createSaleMutation}
+            isOpen={isCartOpenMobile}
+            onClose={() => setIsCartOpenMobile(false)}
+          />
         </div>
-        {/* Footer */}
+
+        {/* Modal Footer with Cart Summary and Actions */}
         <div
-          className={`flex justify-between items-center px-6 py-4 border-t ${
+          className={`flex flex-col sm:flex-row justify-between items-start sm:items-center px-3 sm:px-6 py-3 sm:py-4 border-t gap-3 sm:gap-4 ${
             isDarkMode ? "border-slate-700" : "border-gray-200"
           }`}
         >
-          <div
-            className={`text-sm ${
-              isDarkMode ? "text-slate-300" : "text-gray-600"
-            }`}
-          >
+          {/* Cart Summary Section */}
+          <div className="flex-1 w-full sm:w-auto">
             {cartItems.length > 0 && (
-              <span>Cart Total: ₦{cartTotal.toFixed(2)}</span>
+              <div className="space-y-1.5 sm:space-y-2">
+                {/* Cart Items Count and Total */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6 gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span
+                      className={`text-xs sm:text-sm font-medium ${
+                        isDarkMode ? "text-slate-300" : "text-gray-600"
+                      }`}
+                    >
+                      {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}{" "}
+                      in cart
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span
+                      className={`text-xs sm:text-sm ${
+                        isDarkMode ? "text-slate-300" : "text-gray-600"
+                      }`}
+                    >
+                      Total:
+                    </span>
+                    <span
+                      className={`text-base sm:text-lg font-bold ${
+                        isDarkMode ? "text-slate-100" : "text-gray-900"
+                      }`}
+                    >
+                      {FormatCurrency(cartTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div className="flex flex-col sm:flex-row sm:items-center  gap-1.5 sm:gap-2">
+                  <label
+                    htmlFor="payment-method-footer"
+                    className={`text-xs sm:text-sm font-medium ${
+                      isDarkMode ? "text-slate-300" : "text-gray-700"
+                    }`}
+                  >
+                    Payment Method:
+                  </label>
+                  <select
+                    id="payment-method-footer"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg border text-xs sm:text-sm appearance-none w-full sm:w-auto ${
+                      isDarkMode
+                        ? "bg-slate-600 border-slate-500 text-slate-100 focus:border-slate-400"
+                        : "bg-white border-gray-300 text-gray-900 focus:border-blue-500"
+                    } focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
+                      isDarkMode
+                        ? "focus:ring-slate-400"
+                        : "focus:ring-blue-500"
+                    }`}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="transfer">Bank Transfer</option>
+                  </select>
+                </div>
+              </div>
             )}
           </div>
-          <div className="flex gap-3">
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className={`px-6 py-3 rounded-lg font-medium hover:scale-105 ${
+              className={`flex-1 sm:flex-none px-3 sm:px-6 py-2 sm:py-3 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium hover:scale-105 transition-transform ${
                 isDarkMode
                   ? "border border-slate-600 text-slate-300 hover:bg-slate-700"
                   : "border border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
             >
-              Cancel
+              Close
             </button>
+
+            {cartItems.length > 0 && (
+              <button
+                onClick={handleFinalizeSale}
+                disabled={createSaleMutation.isPending}
+                className={`flex-1 sm:flex-none px-3 sm:px-6 py-2 sm:py-3 rounded-md sm:rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                  isDarkMode
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {createSaleMutation.isPending
+                  ? "Finalizing..."
+                  : "Finalize Sale"}
+              </button>
+            )}
           </div>
         </div>
       </div>
