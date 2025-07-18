@@ -11,6 +11,7 @@ import { useProducts } from "../components/queryhooks/useProducts";
 import AddProductModal from "../components/ui/AddProductModal";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
+import { checkDomainOfScale } from "recharts/types/util/ChartUtils";
 
 // ✅ Define product type
 interface Product {
@@ -158,8 +159,9 @@ export default function Inventory() {
     );
   }
 
+  const filteredProducts = products.filter((item) => item.current_stock !== 0);
   // ✅ Generate unique IDs for rows that don't have them
-  const processedProducts = products.map((product, index) => ({
+  const processedProducts = filteredProducts.map((product, index) => ({
     ...product,
     id: product.id || index + 1,
   }));

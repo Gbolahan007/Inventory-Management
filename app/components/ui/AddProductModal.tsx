@@ -42,13 +42,13 @@ const PRODUCT_CATEGORIES = {
   rc: "beverages",
   water: "beverages",
 
-  fearless: "beverages",
-  monster: "beverages",
-  climax: "beverages",
-  bullet: "beverages",
-  predator: "beverages",
-  red_bull: "beverages",
-  power_horse: "beverages",
+  fearless: "energy",
+  monster: "energy",
+  climax: "energy",
+  bullet: "energy",
+  predator: "energy",
+  red_bull: "energy",
+  power_horse: "energy",
 };
 
 export default function AddProductModal({
@@ -69,7 +69,6 @@ export default function AddProductModal({
       PRODUCT_CATEGORIES[productValue as keyof typeof PRODUCT_CATEGORIES];
     setSelectedCategory(category || "");
   };
-
   async function handleCreateProduct(formdata: FormData) {
     try {
       await createProduct(formdata);
@@ -217,6 +216,7 @@ export default function AddProductModal({
                   <option value="alcoholic">Alcoholic</option>
                   <option value="beer">Beer</option>
                   <option value="premium">Premium</option>
+                  <option value="energy">energy</option>
                 </select>
               </div>
             </div>

@@ -100,7 +100,7 @@ export async function getTotalInventory() {
 export async function getTopsellingProducts() {
   const { data, error } = await supabase
     .from("sale_items")
-    .select("product_id, quantity, total_price, products(name)");
+    .select("product_id, quantity, total_price, products(name),sale_id");
 
   if (error) {
     console.error(error);
@@ -122,7 +122,9 @@ export async function getStats() {
     .eq("low_stock", true);
 
   // Get total products
-  const { data: productsData } = await supabase.from("products").select("id");
+  const { data: productsData } = await supabase
+    .from("products")
+    .select("id, current_stock");
 
   const totalRevenue =
     salesData?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0;
@@ -131,7 +133,8 @@ export async function getStats() {
     totalSales: salesData?.length || 0,
     totalRevenue,
     lowStockItems: lowStockData?.length || 0,
-    totalProducts: productsData?.length || 0,
+    totalProducts:
+      productsData?.filter((item) => item.current_stock !== 0).length || 0,
   };
 }
 // Function to generate sale number

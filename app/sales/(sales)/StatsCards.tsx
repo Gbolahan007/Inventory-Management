@@ -21,7 +21,6 @@ export function StatsCards({ stats, isDarkMode }: StatsCardsProps) {
   const descriptionClass = `text-xs ${
     isDarkMode ? "text-gray-400" : "text-gray-500"
   }`;
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <Card className={cardClass}>

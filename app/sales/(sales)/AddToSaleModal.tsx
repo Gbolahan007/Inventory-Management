@@ -1,16 +1,15 @@
 "use client";
 
+import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
+import { useProducts } from "@/app/components/queryhooks/useProducts";
+import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
+import { ShoppingCart, X } from "lucide-react";
 import type React from "react";
-import { X, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { useProducts } from "@/app/components/queryhooks/useProducts";
-import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
-import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
-import type { SaleItem, Product } from "./types";
 import SaleForm from "./SaleForm";
 import ShoppingCartDisplay from "./ShoppingCartDisplay";
-import { type UseMutationResult } from "@tanstack/react-query";
+import type { Product, SaleItem } from "./types";
 
 interface AddToSaleModalProps {
   isOpen: boolean;
@@ -223,7 +222,7 @@ export default function AddToSaleModal({
       beer: { label: "Beers", emoji: "🍺" },
       premium: { label: "Alcoholic Drinks", emoji: "🍸" },
       energy: { label: "Energy Drinks", emoji: "⚡" },
-      soft_drinks: { label: "Soft Drinks", emoji: "🥤" },
+      alcoholic: { label: "Alcoholic Drinks", emoji: "🍸" },
       other: { label: "Other", emoji: "📦" },
     };
 
@@ -244,7 +243,7 @@ export default function AddToSaleModal({
       >
         {/* Modal Header */}
         <div
-          className={`flex items-center gap-2 justify-between  mt-5 p-3 sm:p-6 border-b ${
+          className={`flex items-center gap-2 justify-between O mt-5 p-3 sm:p-6 border-b ${
             isDarkMode ? "border-slate-700" : "border-gray-200"
           }`}
         >

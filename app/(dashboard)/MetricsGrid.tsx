@@ -14,12 +14,10 @@ export function MetricsGrid({
   totalInventory,
   salesProfit,
 }: MetricsGridProps) {
-  console.log(salesData);
   const todaySales = (salesData ?? []).reduce(
     (total, sale) => total + sale.total_amount,
     0
   );
-  console.log(salesProfit);
   const inventory = (totalInventory ?? []).reduce(
     (total, item) => total + Number(item.current_stock),
     0

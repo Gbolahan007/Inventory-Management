@@ -168,23 +168,6 @@ export function RecentSales() {
             ))
           )}
         </div>
-
-        {/* Summary */}
-        {filteredSales.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-muted">
-            <div className="flex justify-between items-center text-xs sm:text-sm">
-              <span className="text-muted-foreground">Total Sales:</span>
-              <span className="font-medium">
-                {FormatCurrency(
-                  filteredSales.reduce(
-                    (sum, sale) => sum + sale.total_amount,
-                    0
-                  )
-                )}
-              </span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

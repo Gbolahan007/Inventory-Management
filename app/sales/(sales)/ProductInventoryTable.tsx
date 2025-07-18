@@ -20,6 +20,7 @@ export function ProductInventoryTable({
   products,
   isDarkMode,
 }: ProductInventoryTableProps) {
+  console.log(products);
   const productColumns: GridColDef[] = [
     { field: "id", headerName: "ID", width: 90 },
     { field: "name", headerName: "Product Name", width: 200 },

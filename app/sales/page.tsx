@@ -11,6 +11,7 @@ import { POSHeader } from "./(sales)/POSHeader";
 import { ProductInventoryTable } from "./(sales)/ProductInventoryTable";
 import { RecentSalesTable } from "./(sales)/RecentSalesTable";
 import { StatsCards } from "./(sales)/StatsCards";
+import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
 
 export default function SalesPage() {
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
@@ -20,6 +21,7 @@ export default function SalesPage() {
   const { products = [], isLoading: productsLoading } = useProducts();
   const { recentSales = [], isLoading: salesLoading } = useRecentSales();
   const { stats, isLoading: statsLoading } = useStats();
+  const { topSellingProducts: salesItems } = useTopSellingProducts();
 
   const handleAddSale = () => {
     setIsAddSaleOpen(true);
@@ -41,7 +43,11 @@ export default function SalesPage() {
         <StatsCards stats={stats} isDarkMode={isDarkMode} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentSalesTable sales={recentSales} isDarkMode={isDarkMode} />
+          <RecentSalesTable
+            sales={recentSales}
+            salesItems={salesItems}
+            isDarkMode={isDarkMode}
+          />
           <ProductInventoryTable products={products} isDarkMode={isDarkMode} />
         </div>
       </div>
