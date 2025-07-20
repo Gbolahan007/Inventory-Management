@@ -20,7 +20,6 @@ export function ProductInventoryTable({
   products,
   isDarkMode,
 }: ProductInventoryTableProps) {
-  console.log(products);
   const productColumns: GridColDef[] = [
     { field: "id", headerName: "ID", width: 90 },
     { field: "name", headerName: "Product Name", width: 200 },
@@ -61,7 +60,7 @@ export function ProductInventoryTable({
       type: "number",
       renderCell: (params) => {
         const stock = Number(params.value);
-        const isLowStock = params.row.low_stock;
+        const isLowStock = params.row.low_stock > params.row.current_stock;
         return (
           <div
             className={`font-medium ${
@@ -81,18 +80,44 @@ export function ProductInventoryTable({
       field: "status",
       headerName: "Status",
       width: 120,
-      renderCell: (params) => (
-        <Badge variant={params.row.low_stock ? "destructive" : "default"}>
-          {params.row.low_stock ? "Low Stock" : "In Stock"}
-        </Badge>
-      ),
+      renderCell: (params) => {
+        const isLowStock = params.row.low_stock > params.row.current_stock;
+
+        if (isLowStock) {
+          // Low Stock: Red background
+          return (
+            <div
+              className={`px-2 py-1 rounded-full  flex items-center justify-center mt-3 text-xs font-medium ${
+                isDarkMode ? "bg-red-600 text-white" : "bg-red-600 text-white"
+              }`}
+            >
+              Low Stock
+            </div>
+          );
+        } else {
+          // In Stock: Green background
+          return (
+            <div
+              className={`px-2 py-1 rounded-full text-center flex items-center justify-center mt-3 text-xs font-medium ${
+                isDarkMode
+                  ? "bg-green-600 text-white"
+                  : "bg-green-600 text-white"
+              }`}
+            >
+              In Stock
+            </div>
+          );
+        }
+      },
     },
   ];
 
-  const processedProducts = products.map((product, index) => ({
-    ...product,
-    id: product.id || index + 1,
-  }));
+  const processedProducts = products
+    .filter((items) => items.current_stock !== 0)
+    .map((product, index) => ({
+      ...product,
+      id: product.id || index + 1,
+    }));
 
   return (
     <Card

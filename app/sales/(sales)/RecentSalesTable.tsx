@@ -69,7 +69,6 @@ export function RecentSalesTable({
     setIsModalOpen(false);
     setSelectedSale(null);
   };
-
   const modalStyle = {
     position: "absolute" as "absolute",
     top: "50%",

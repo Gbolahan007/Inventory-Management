@@ -5,9 +5,17 @@ import type { Stats } from "./types";
 interface StatsCardsProps {
   stats: Stats | undefined;
   isDarkMode: boolean;
+  salesItems: [];
 }
 
-export function StatsCards({ stats, isDarkMode }: StatsCardsProps) {
+export function StatsCards({ stats, isDarkMode, salesItems }: StatsCardsProps) {
+  const totalrevenue = salesItems.reduce(
+    (cur, item) => cur + item.total_price,
+    0
+  );
+  const profit = salesItems.reduce((cur, item) => cur + item.total_cost, 0);
+
+  const netProfit = totalrevenue - profit;
   const cardClass = isDarkMode
     ? "bg-gray-800 border-gray-700"
     : "bg-white border-gray-200";
@@ -41,7 +49,7 @@ export function StatsCards({ stats, isDarkMode }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className={valueClass}>
-            ₦{(stats?.totalRevenue || 0).toLocaleString()}
+            ₦{(totalrevenue || 0).toLocaleString()}
           </div>
           <p className={descriptionClass}>Total earnings</p>
         </CardContent>
@@ -60,14 +68,13 @@ export function StatsCards({ stats, isDarkMode }: StatsCardsProps) {
 
       <Card className={cardClass}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className={titleClass}>Low Stock</CardTitle>
+          <CardTitle className={titleClass}>Net Profit</CardTitle>
           <TrendingUp className={iconClass} />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">
-            {stats?.lowStockItems || 0}
+          <div className="text-2xl font-bold text-green-600">
+            ₦{netProfit.toLocaleString() || 0}
           </div>
-          <p className={descriptionClass}>Items need restock</p>
         </CardContent>
       </Card>
     </div>

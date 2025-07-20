@@ -204,9 +204,9 @@ export default function AddToSaleModal({
       console.error("Sale error:", error);
     }
   };
-
+  const filteredProducts = products?.filter((item) => item.current_stock !== 0);
   // Group products by category for better organization
-  const groupedProducts = products?.reduce((groups, product) => {
+  const groupedProducts = filteredProducts?.reduce((groups, product) => {
     const category = product.category || "Other";
     if (!groups[category]) {
       groups[category] = [];

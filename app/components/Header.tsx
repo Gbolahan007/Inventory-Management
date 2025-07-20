@@ -52,7 +52,7 @@ export function Header() {
           <div className="md:hidden lg:block">
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <p className="text-sm text-secondary hidden sm:block">
-              Welcome back, John!
+              Welcome back, Lawal!
             </p>
           </div>
         </div>

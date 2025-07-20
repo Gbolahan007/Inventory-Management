@@ -98,14 +98,38 @@ export async function getTotalInventory() {
 }
 
 export async function getTopsellingProducts() {
-  const { data, error } = await supabase
-    .from("sale_items")
-    .select("product_id, quantity, total_price, products(name),sale_id");
+  const { data, error } = await supabase.from("sale_items").select(`
+    product_id,
+    quantity,
+    total_price,
+    total_cost,
+    sale_id,
+    products (
+      name,
+      category
+    )
+  `);
 
   if (error) {
     console.error(error);
     throw new Error("Sales could not be loaded");
   }
+  return data;
+}
+export async function getSaleItemsWithCategories() {
+  const { data, error } = await supabase.from("sale_items").select(`
+            *,
+            products!inner(
+                name,
+                category
+            )
+        `);
+
+  if (error) {
+    console.error("Error fetching sale items with categories:", error);
+    return null;
+  }
+
   return data;
 }
 
@@ -125,7 +149,6 @@ export async function getStats() {
   const { data: productsData } = await supabase
     .from("products")
     .select("id, current_stock");
-
   const totalRevenue =
     salesData?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0;
 

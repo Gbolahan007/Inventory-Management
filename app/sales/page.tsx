@@ -40,7 +40,11 @@ export default function SalesPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <POSHeader isDarkMode={isDarkMode} onAddSale={handleAddSale} />
 
-        <StatsCards stats={stats} isDarkMode={isDarkMode} />
+        <StatsCards
+          stats={stats}
+          salesItems={salesItems}
+          isDarkMode={isDarkMode}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RecentSalesTable

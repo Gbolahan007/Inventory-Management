@@ -113,13 +113,13 @@ export function Sidebar() {
             }`}
           >
             <div className="w-9 h-9 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-white font-semibold text-sm">JD</span>
+              <span className="text-white font-semibold text-sm">LQ</span>
             </div>
 
             {(!isSidebarCollapsed || window.innerWidth < 768) && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">
-                  John Doe
+                  Lawal Quam
                 </p>
                 <p className="text-xs text-secondary truncate">
                   john@example.com
@@ -130,8 +130,8 @@ export function Sidebar() {
             {/* Tooltip for collapsed state - only on desktop */}
             {isSidebarCollapsed && (
               <div className="absolute left-full ml-2 px-3 py-2 bg-foreground text-background text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                <div className="font-medium">John Doe</div>
-                <div className="opacity-75">john@example.com</div>
+                <div className="font-medium">Lawal Quam</div>
+                <div className="opacity-75">lawaljr97@gmail.com</div>
               </div>
             )}
           </div>
