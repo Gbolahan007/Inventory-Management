@@ -18,11 +18,28 @@ type Sale = {
     };
   };
 };
+
+// Define SaleItem interface
+interface SaleItem {
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+}
+
 interface SaleData {
   total_amount: number;
   payment_method: string;
   items: SaleItem[];
 }
+
+// Define ProfitData type for getTodaysProfit function
+type ProfitData = {
+  profit_amount: number;
+};
 
 export async function getProducts() {
   const { data, error } = await supabase.from("products").select("*");
@@ -62,7 +79,10 @@ export async function getTodaysSales(start: Date, end: Date): Promise<Sale[]> {
   return data as Sale[];
 }
 
-export async function getTodaysProfit(start: Date, end: Date): Promise<Sale[]> {
+export async function getTodaysProfit(
+  start: Date,
+  end: Date
+): Promise<ProfitData[]> {
   const { data, error } = await supabase
     .from("sale_items")
     .select("profit_amount")
@@ -73,8 +93,9 @@ export async function getTodaysProfit(start: Date, end: Date): Promise<Sale[]> {
     console.error(error);
     throw new Error("Sales could not be loaded");
   }
-  return data as Sale[];
+  return data as ProfitData[];
 }
+
 export async function getRecentSales() {
   const { data, error } = await supabase.from("sales").select("*");
 
@@ -104,6 +125,8 @@ export async function getTopsellingProducts() {
     total_price,
     total_cost,
     sale_id,
+    created_at,
+    profit_amount,
     products (
       name,
       category
@@ -116,6 +139,7 @@ export async function getTopsellingProducts() {
   }
   return data;
 }
+
 export async function getSaleItemsWithCategories() {
   const { data, error } = await supabase.from("sale_items").select(`
             *,
@@ -160,6 +184,7 @@ export async function getStats() {
       productsData?.filter((item) => item.current_stock !== 0).length || 0,
   };
 }
+
 // Function to generate sale number
 function generateSaleNumber(): number {
   const now = new Date();

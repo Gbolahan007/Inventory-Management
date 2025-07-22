@@ -35,7 +35,7 @@ export function RecentSales() {
     // Parse dates and sort by most recent first
     const salesWithParsedDates = recentSales?.map((sale) => ({
       ...sale,
-      parsedDate: parseISO(sale.created_at),
+      parsedDate: parseISO(sale?.created_at),
     }));
 
     // Sort by date (most recent first)

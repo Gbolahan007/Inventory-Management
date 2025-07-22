@@ -11,7 +11,6 @@ import { useProducts } from "../components/queryhooks/useProducts";
 import AddProductModal from "../components/ui/AddProductModal";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
-import { checkDomainOfScale } from "recharts/types/util/ChartUtils";
 
 // ✅ Define product type
 interface Product {
@@ -207,7 +206,6 @@ export default function Inventory() {
         pageSizeOptions={[5, 10, 25]}
         disableRowSelectionOnClick
         sx={{
-          // ✅ DEBUG: Use very obvious colors first
           "& .MuiDataGrid-columnHeaders": {
             backgroundColor: debugStyles.backgroundColor,
             color: debugStyles.color,

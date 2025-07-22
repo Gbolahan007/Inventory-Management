@@ -4,13 +4,32 @@ import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { redirect } from "next/navigation";
 
-export async function createProduct(formdata) {
-  const name = formdata.get("name");
+// Define types for better type safety
+interface SaleData {
+  sale_number: string;
+  total_amount: number;
+  payment_method: string;
+  sale_date: string;
+}
+
+interface SaleItem {
+  sale_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+}
+
+export async function createProduct(formdata: FormData) {
+  const name = formdata.get("name") as string;
   const cost_price = Number(formdata.get("cost_price"));
   const selling_price = Number(formdata.get("selling_price"));
   const current_stock = Number(formdata.get("current_stock"));
   const low_stock = Number(formdata.get("low_stock"));
-  const category = formdata.get("category");
+  const category = formdata.get("category") as string;
   const profit = Number(formdata.get("profit"));
 
   try {
@@ -25,6 +44,7 @@ export async function createProduct(formdata) {
       console.error("Supabase select error:", selectError);
       throw new Error("Error checking existing product");
     }
+
     if (existingProduct) {
       // Product exists - update stock by adding new stock to existing
       const updatedStock = Number(
@@ -76,12 +96,7 @@ export async function createProduct(formdata) {
   }
 }
 
-export async function createSale(saleData: {
-  sale_number: string;
-  total_amount: number;
-  payment_method: string;
-  sale_date: string;
-}) {
+export async function createSale(saleData: SaleData) {
   const { data, error } = await supabase
     .from("sales")
     .insert(saleData)
@@ -95,7 +110,7 @@ export async function createSale(saleData: {
   return data;
 }
 
-export async function createSaleItems(saleItems: any[]) {
+export async function createSaleItems(saleItems: SaleItem[]) {
   const { data, error } = await supabase.from("sale_items").insert(saleItems);
 
   if (error) {

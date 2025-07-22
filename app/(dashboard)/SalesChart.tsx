@@ -10,22 +10,50 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  Cell,
-  LabelList,
 } from "recharts";
 import { groupSalesByMonth } from "../_lib/groupSalesPerMonth";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
 
+// Define proper types
+interface Sale {
+  id: string;
+  total_amount: number;
+  sale_date: string;
+  // Add other sale properties as needed
+}
+
 interface SalesChartProps {
-  monthlySales?: any[];
+  monthlySales?: Sale[];
+}
+
+interface TooltipPayload {
+  value: number;
+  payload: ChartDataPoint;
+  dataKey: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+interface CustomLabelProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number;
 }
 
 // Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-card border border-border rounded-lg shadow-lg p-4 backdrop-blur-sm">
@@ -44,8 +72,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // Custom label component for bars
-const CustomLabel = (props: any) => {
-  const { x, y, width, height, value } = props;
+const CustomLabel = (props: CustomLabelProps) => {
+  const { x = 0, y = 0, width = 0, value = 0 } = props;
   return (
     <g>
       <text
@@ -62,18 +90,17 @@ const CustomLabel = (props: any) => {
   );
 };
 
-const chartConfig = {
-  sales: {
-    label: "Sales",
-    color: "hsl(var(--primary))",
-  },
-};
+// Define chart data structure
+interface ChartDataPoint {
+  month: string;
+  sales: number;
+}
 
-export function SalesChart({ monthlySales }: SalesChartProps) {
-  const chartData = groupSalesByMonth(monthlySales);
+export function SalesChart({ monthlySales = [] }: SalesChartProps) {
+  const chartData: ChartDataPoint[] = groupSalesByMonth(monthlySales);
 
   // Create color array for gradient effect
-  const getBarColor = (index: number, total: number) => {
+  const getBarColor = (index: number, total: number): string => {
     const intensity = 0.3 + (index / total) * 0.7;
     return `hsl(var(--primary) / ${intensity})`;
   };
@@ -97,10 +124,7 @@ export function SalesChart({ monthlySales }: SalesChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={chartConfig}
-          className="h-[300px] sm:h-[350px] lg:h-[450px]"
-        >
+        <ChartContainer className="h-[300px] sm:h-[350px] lg:h-[450px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
@@ -162,7 +186,7 @@ export function SalesChart({ monthlySales }: SalesChartProps) {
                 }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `₦${value / 1000}k`}
+                tickFormatter={(value: number) => `₦${value / 1000}k`}
                 className="sm:text-xs"
               />
               <Tooltip

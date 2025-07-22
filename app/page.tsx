@@ -42,7 +42,6 @@ export default function Dashboard() {
   const { topSellingProducts } = useTopSellingProducts();
   const { salesProfit } = useTodaysProfit(start, end);
 
-  console.log(salesData);
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full">

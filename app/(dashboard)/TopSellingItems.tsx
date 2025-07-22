@@ -2,32 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
 import type { SaleItem } from "../page";
+import { getItemStats } from "../components/utils/getItemStats";
 
 interface TopSellingItemsProps {
   topSellingProducts?: SaleItem[];
-}
-
-type ItemStat = {
-  name: string;
-  quantity: number;
-  revenue: number;
-};
-
-function getItemStats(items: SaleItem[]): ItemStat[] {
-  const stats: Record<string, ItemStat> = {};
-  items?.forEach((item) => {
-    const name = item.products?.name;
-    if (!stats[name]) {
-      stats[name] = {
-        name,
-        quantity: 0,
-        revenue: 0,
-      };
-    }
-    stats[name].quantity += item.quantity;
-    stats[name].revenue += item.total_price;
-  });
-  return Object.values(stats).sort((a, b) => b.quantity - a.quantity);
 }
 
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {
