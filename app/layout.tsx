@@ -1,12 +1,10 @@
+// app/layout.tsx
 import type React from "react";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "./index.css";
 import { Toaster } from "react-hot-toast";
-
-import { Header } from "@/app/components/Header";
-import { Sidebar } from "@/app/components/Sidebar";
 import StoreProvider from "./contexts/Storeprovider";
 import ThemeWrapper from "./components/utils/Themewrapper";
 import ReactQueryProvider from "./components/ReactQueryProvider";
@@ -40,19 +38,8 @@ export default function RootLayout({
         <ReactQueryProvider>
           <StoreProvider>
             <ThemeWrapper>
-              <div className="flex h-screen   ">
-                <div>
-                  <Sidebar />
-                </div>
-                {/* Main Content Area */}
-                <div className="flex flex-col overflow-x-hidden min-h-0 flex-1 ">
-                  <Header />
-                  <main className="flex-1 overflow-auto bg-muted">
-                    <Toaster position="top-center" />
-                    {children}
-                  </main>
-                </div>
-              </div>
+              <Toaster position="top-center" />
+              {children}
             </ThemeWrapper>
           </StoreProvider>
         </ReactQueryProvider>

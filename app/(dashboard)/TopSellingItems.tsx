@@ -1,11 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
-import { FormatCurrency } from "../hooks/useFormatCurrency";
-import type { SaleItem } from "../page";
 import { getItemStats } from "../components/utils/getItemStats";
+import { FormatCurrency } from "../hooks/useFormatCurrency";
+
+type TopSellingProduct = {
+  product_id: string;
+  quantity: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+  sale_id?: string;
+  created_at?: string;
+  products: { name: string; category?: string }[];
+};
 
 interface TopSellingItemsProps {
-  topSellingProducts?: SaleItem[];
+  topSellingProducts?: TopSellingProduct[];
 }
 
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {

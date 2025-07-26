@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   Card,
   CardContent,
@@ -20,19 +22,26 @@ import type { Sale } from "./types";
 import { getDataGridStyles } from "./getDataGridStyles";
 import { compareDesc, parseISO } from "date-fns";
 
-interface SaleItem {
-  product_id: number;
-  products: {
-    name: string;
-  };
+type SaleItem = {
+  id?: string;
+  sale_id?: string | number;
+  product_id: string;
   quantity: number;
-  sale_id: number;
+  unit_price?: number;
+  unit_cost?: number;
   total_price: number;
-}
+  total_cost: number;
+  profit_amount: number;
+  created_at?: string;
+  products?: {
+    name: string;
+    category?: string;
+  };
+};
 
 interface RecentSalesTableProps {
   sales: Sale[];
-  salesItems: SaleItem[];
+  salesItems?: SaleItem[];
   isDarkMode: boolean;
 }
 
@@ -48,13 +57,20 @@ export function RecentSalesTable({
     if (!sales?.length) return [];
 
     const r = [...sales].sort((a, b) =>
-      compareDesc(parseISO(a.created_at), parseISO(b.created_at))
+      compareDesc(
+        parseISO(a.created_at || a.sale_date),
+        parseISO(b.created_at || b.sale_date)
+      )
     );
-    return Object.values(r);
+    return r;
   }
 
-  const getSaleItems = (saleId: number): SaleItem[] => {
-    return salesItems?.filter((item) => item.sale_id === saleId);
+  const getSaleItems = (saleId: string | number): SaleItem[] => {
+    return (
+      salesItems?.filter(
+        (item) => item.sale_id === saleId || item.sale_id === saleId.toString()
+      ) || []
+    );
   };
 
   const handleRowClick = (params: any) => {
@@ -70,7 +86,7 @@ export function RecentSalesTable({
     setSelectedSale(null);
   };
   const modalStyle = {
-    position: "absolute" as "absolute",
+    position: "absolute" as const,
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
@@ -249,7 +265,7 @@ export function RecentSalesTable({
                     variant="body1"
                     sx={{ color: isDarkMode ? "#f8fafc" : "#111827" }}
                   >
-                    {selectedSale.sale_number}
+                    {selectedSale.sale_number || "N/A"}
                   </Typography>
                 </div>
                 <div>
@@ -310,9 +326,9 @@ export function RecentSalesTable({
 
               {saleItems?.length > 0 ? (
                 <div className="space-y-2 mb-4">
-                  {saleItems?.map((item, index) => (
+                  {saleItems.map((item, index) => (
                     <div
-                      key={index}
+                      key={item.id || index}
                       className={`p-3 rounded-lg ${
                         isDarkMode ? "bg-gray-700" : "bg-gray-50"
                       }`}
@@ -326,7 +342,7 @@ export function RecentSalesTable({
                               fontWeight: 500,
                             }}
                           >
-                            {item.products.name}
+                            {item.products?.name || "Unknown Product"}
                           </Typography>
                           <Typography
                             variant="body2"

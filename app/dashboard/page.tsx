@@ -2,33 +2,17 @@
 
 import { Calendar } from "lucide-react";
 
-import { useSales } from "./components/queryhooks/useSales";
-import { useAllSales } from "./components/queryhooks/useAllSales";
-import { useTotalInventory } from "./components/queryhooks/useTotalInventory";
-import { useTopSellingProducts } from "./components/queryhooks/useTopSellingProducts";
-import { MetricsGrid } from "./(dashboard)/MetricsGrid";
-import { TopSellingItems } from "./(dashboard)/TopSellingItems";
-import { RecentSales } from "./(dashboard)/RecentSales";
-import { LowStockAlert } from "./(dashboard)/LowStockAlert";
-import { QuickActions } from "./(dashboard)/QuickActions";
-import { SalesChart } from "./(dashboard)/SalesChart";
-import { useTodaysProfit } from "./components/queryhooks/useTodaysProfit";
-
-export interface Sale {
-  id: number;
-  created_at: string;
-  total_amount: number;
-  payment_method: "cash" | "transfer" | "pos";
-  sale_date: string;
-}
-
-export type SaleItem = {
-  products: {
-    name: string;
-  };
-  total_price: number;
-  quantity: number;
-};
+import { useSales } from "../components/queryhooks/useSales";
+import { useAllSales } from "../components/queryhooks/useAllSales";
+import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
+import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
+import { MetricsGrid } from "../(dashboard)/MetricsGrid";
+import { TopSellingItems } from "../(dashboard)/TopSellingItems";
+import { RecentSales } from "../(dashboard)/RecentSales";
+import { LowStockAlert } from "../(dashboard)/LowStockAlert";
+import { QuickActions } from "../(dashboard)/QuickActions";
+import { SalesChart } from "../(dashboard)/SalesChart";
+import { useTodaysProfit } from "../components/queryhooks/useTodaysProfit";
 
 export default function Dashboard() {
   const start = new Date();

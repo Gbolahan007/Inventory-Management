@@ -1,34 +1,5 @@
 import { supabase } from "@/app/_lib/supabase";
-
-// Define the shape of the returned data
-type Sale = {
-  id: string;
-  quantity_sold: number;
-  total_revenue: number;
-  profits: number;
-  total_cost: number;
-  created_at: string;
-  inventory: {
-    id: string;
-    subcategories: {
-      name: string;
-      categories: {
-        name: string;
-      };
-    };
-  };
-};
-
-// Define SaleItem interface
-interface SaleItem {
-  product_id: string;
-  quantity: number;
-  unit_price: number;
-  unit_cost: number;
-  total_price: number;
-  total_cost: number;
-  profit_amount: number;
-}
+import { Sale, SaleItem } from "../reports/page";
 
 interface SaleData {
   total_amount: number;
@@ -36,7 +7,6 @@ interface SaleData {
   items: SaleItem[];
 }
 
-// Define ProfitData type for getTodaysProfit function
 type ProfitData = {
   profit_amount: number;
 };
@@ -76,7 +46,7 @@ export async function getTodaysSales(start: Date, end: Date): Promise<Sale[]> {
     console.error(error);
     throw new Error("Sales could not be loaded");
   }
-  return data as Sale[];
+  return data;
 }
 
 export async function getTodaysProfit(
@@ -93,7 +63,7 @@ export async function getTodaysProfit(
     console.error(error);
     throw new Error("Sales could not be loaded");
   }
-  return data as ProfitData[];
+  return data;
 }
 
 export async function getRecentSales() {
@@ -103,7 +73,7 @@ export async function getRecentSales() {
     console.error(error);
     throw new Error("Sales could not be loaded");
   }
-  return data as Sale[];
+  return data;
 }
 
 export async function getTotalInventory() {

@@ -5,9 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { Chip } from "@mui/material";
+import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { getDataGridStyles } from "./getDataGridStyles";
 import type { Product } from "./types";
 

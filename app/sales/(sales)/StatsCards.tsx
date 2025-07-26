@@ -2,18 +2,37 @@ import { ShoppingCart, DollarSign, Package, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Stats } from "./types";
 
+type SaleItem = {
+  id?: string;
+  sale_id?: string;
+  product_id: string;
+  quantity: number;
+  unit_price?: number;
+  unit_cost?: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+  created_at?: string;
+  products?: {
+    name: string;
+    category?: string;
+  }[];
+};
+
 interface StatsCardsProps {
   stats: Stats | undefined;
   isDarkMode: boolean;
-  salesItems: [];
+  salesItems?: SaleItem[];
 }
-
 export function StatsCards({ stats, isDarkMode, salesItems }: StatsCardsProps) {
-  const totalrevenue = salesItems.reduce(
+  const totalrevenue = (salesItems ?? []).reduce(
     (cur, item) => cur + item.total_price,
     0
   );
-  const profit = salesItems.reduce((cur, item) => cur + item.total_cost, 0);
+  const profit = (salesItems ?? []).reduce(
+    (cur, item) => cur + item.total_cost,
+    0
+  );
 
   const netProfit = totalrevenue - profit;
   const cardClass = isDarkMode

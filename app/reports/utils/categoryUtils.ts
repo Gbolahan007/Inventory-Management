@@ -1,8 +1,9 @@
-// utils/categoryUtils.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export function getTopSellingCategories(
-  saleItemsData: SaleItemWithProduct[],
+  saleItemsData,
   sortBy: "quantity" | "revenue" | "profit" | "transactions" = "quantity"
-): CategoryAggregate[] {
+) {
   if (!saleItemsData || !Array.isArray(saleItemsData)) return [];
 
   const categoryStats: Record<string, any> = {};

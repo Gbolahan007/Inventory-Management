@@ -15,9 +15,7 @@ export function groupSalesByDate(sales: Sale[]): Record<string, number> {
 export function groupProfitByDate(profit) {
   return profit.reduce((acc, profit) => {
     const profitdate = profit.date?.split("T")[0];
-    console.log(profitdate);
     acc[profitdate] = (acc[profitdate] || 0) + profit.profit;
     return acc;
-    console.log(acc);
   }, {} as Record<string, number>);
 }

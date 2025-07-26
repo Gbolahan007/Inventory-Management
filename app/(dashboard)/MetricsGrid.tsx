@@ -1,12 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { DollarSign, ShoppingCart, Package, TrendingUp } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
-import type { Sale } from "../page";
+import { Sale } from "../reports/page";
+
+type ProfitData = {
+  profit_amount: number;
+};
 
 interface MetricsGridProps {
   salesData?: Sale[];
   totalInventory?: any[];
-  salesProfit: [];
+  salesProfit: ProfitData[] | undefined;
 }
 
 export function MetricsGrid({
