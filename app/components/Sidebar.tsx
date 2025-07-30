@@ -8,12 +8,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { setIsCollapsed } from "../state/global";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/dashboard", icon: Home },
   // { name: "Users", href: "/users", icon: Users },
-  { name: "Inventory", href: "/inventory", icon: Boxes },
-  { name: "sales", href: "/sales", icon: BarChart3 },
-  { name: "Reports", href: "/reports", icon: FileText },
-  { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Inventory", href: "/dashboard/inventory", icon: Boxes },
+  { name: "sales", href: "/dashboard/sales", icon: BarChart3 },
+  { name: "Reports", href: "/dashboard/reports", icon: FileText },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   // { name: "Settings", href: "/settings", icon: Settings },
 ];
 

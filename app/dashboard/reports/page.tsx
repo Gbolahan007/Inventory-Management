@@ -26,9 +26,6 @@ import {
 } from "recharts";
 
 // Data hooks ---------------------------------------------------------------
-import { useRecentSales } from "../components/queryhooks/useRecentSales";
-import { useSaleItemsWithCategories } from "../components/queryhooks/useSaleItemsWithCategories";
-import { useStats } from "../components/queryhooks/useStats";
 
 // Utils -------------------------------------------------------------------
 import { getTopSellingCategories } from "./utils/categoryUtils"; // SaleItemWithProduct[] -> aggregates
@@ -36,8 +33,12 @@ import {
   groupProfitByDate,
   groupSalesByDate,
 } from "./utils/groupedSalesByDate"; // Sale[] -> {date: total}
-import { getItemStats } from "../components/utils/getItemStats"; // SaleItems[] -> ItemStat[]
-import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
+
+import { useStats } from "@/app/components/queryhooks/useStats";
+import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
+import { useSaleItemsWithCategories } from "@/app/components/queryhooks/useSaleItemsWithCategories";
+import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
+import { getItemStats } from "@/app/components/utils/getItemStats";
 
 // -------------------------------------------------------------------------
 // Types (using your actual type definitions)

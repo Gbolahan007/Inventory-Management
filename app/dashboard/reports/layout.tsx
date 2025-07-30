@@ -1,16 +1,8 @@
 "use client";
 
+import { Calendar, TrendingUp } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import {
-  Calendar,
-  TrendingUp,
-  Package,
-  DollarSign,
-  AlertTriangle,
-} from "lucide-react";
-import { useSelector } from "react-redux";
-import { RootState } from "../store";
 
 // Time range options
 const timeRanges = [
@@ -59,9 +51,6 @@ export default function ReportsLayout({ children }: ReportsLayoutProps) {
   const [selectedTimeRange, setSelectedTimeRange] = useState("month");
   const router = useRouter();
   const pathname = usePathname();
-
-  // Theme state - replace this with your actual Redux selector
-  // const isDarkMode = useSelector((state: RootState) => state.global.theme);
 
   const handleTabChange = (path: string) => {
     router.push(path);

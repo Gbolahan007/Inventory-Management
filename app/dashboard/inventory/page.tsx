@@ -6,11 +6,11 @@ import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import HeaderInventory from "../components/HeaderInventory";
-import { useProducts } from "../components/queryhooks/useProducts";
-import AddProductModal from "../components/ui/AddProductModal";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-import { FormatCurrency } from "../hooks/useFormatCurrency";
+import HeaderInventory from "../../components/HeaderInventory";
+import { useProducts } from "../../components/queryhooks/useProducts";
+import AddProductModal from "../../components/ui/AddProductModal";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { FormatCurrency } from "../../hooks/useFormatCurrency";
 
 // ✅ Define product type
 interface Product {

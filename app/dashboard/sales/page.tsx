@@ -2,16 +2,16 @@
 import type { RootState } from "@/app/store";
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import { useProducts } from "../components/queryhooks/useProducts"; // Assuming these hooks are outside the sales folder
-import { useRecentSales } from "../components/queryhooks/useRecentSales";
-import { useStats } from "../components/queryhooks/useStats";
 import AddToSaleModal from "./(sales)/AddToSaleModal";
 import { LoadingSpinner } from "./(sales)/LoadingSpinner";
 import { POSHeader } from "./(sales)/POSHeader";
 import { ProductInventoryTable } from "./(sales)/ProductInventoryTable";
 import { RecentSalesTable } from "./(sales)/RecentSalesTable";
 import { StatsCards } from "./(sales)/StatsCards";
-import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
+import { useProducts } from "@/app/components/queryhooks/useProducts";
+import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
+import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
+import { useStats } from "@/app/components/queryhooks/useStats";
 
 export default function SalesPage() {
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);

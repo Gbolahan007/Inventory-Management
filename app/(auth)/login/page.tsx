@@ -1,18 +1,35 @@
 "use client";
 
-import type React from "react";
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import Image from "next/image";
 import nature from "@/app/public/nature.jpg";
-import { handleSubmit } from "../action";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
+import { handleLogin } from "../action";
+import { useFormStatus } from "react-dom";
+import { Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = async (formData: FormData) => {
+    const result = await handleLogin(formData);
+
+    if (result?.error) {
+      toast.error(result.error, {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#ef4444",
+          color: "white",
+          fontWeight: "500",
+        },
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
@@ -36,7 +53,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form action={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-gray-300 text-sm">
@@ -84,17 +101,26 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Login Button */}
-            <Button
-              type="submit"
-              className="w-full bg-white text-black hover:bg-gray-200 font-medium py-2.5 rounded-full transition-colors"
-            >
-              Login
-              {/* {isLoading ? "Logging in..." : "Log In"} */}
-            </Button>
+            {/* Submit Button with useFormStatus */}
+            <LoginButton />
           </form>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function LoginButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      disabled={pending}
+      className="w-full bg-white text-black hover:bg-gray-200 font-medium py-2.5 rounded-full transition-colors flex items-center justify-center gap-2"
+    >
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+      {pending ? "Logging in..." : "Login"}
+    </Button>
   );
 }
