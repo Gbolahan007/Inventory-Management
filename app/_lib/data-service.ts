@@ -1,5 +1,5 @@
 import { supabase } from "@/app/_lib/supabase";
-import { Sale, SaleItem } from "../reports/page";
+import { Sale, SaleItem } from "../dashboard/reports/page";
 
 interface SaleData {
   total_amount: number;
@@ -18,7 +18,6 @@ export async function getProducts() {
     console.error(error);
     throw new Error("Could not fetch products");
   }
-
   return data ?? [];
 }
 
@@ -256,4 +255,14 @@ export async function createSales(saleData: SaleData) {
     console.error("Transaction failed:", error);
     throw error;
   }
+}
+
+export async function getUserData() {
+  const { data, error } = await supabase.from("users").select("*");
+
+  if (error) {
+    console.error(error);
+    throw new Error("user could not be loaded");
+  }
+  return data;
 }

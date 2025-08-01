@@ -1,9 +1,11 @@
-import { supabase } from "@/app/_lib/supabase";
+"use server";
+
+import { supabaseAdmin } from "@/app/_lib/supabase-admin";
 
 export async function addUser(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const role = formData.get("role") as "admin" | "sales";
+  const role = formData.get("role") as "admin" | "salesrep";
 
   // Validate input
   if (!email || !password || !role) {
@@ -11,7 +13,7 @@ export async function addUser(formData: FormData) {
   }
 
   try {
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from("users")
       .select("*", { count: "exact", head: true })
       .eq("role", role);
@@ -21,13 +23,14 @@ export async function addUser(formData: FormData) {
     if (count && count >= maxLimit) {
       return { error: `Cannot create more than ${maxLimit} ${role}s.` };
     }
-
-    const { data, error } = await supabase.auth.admin.createUser({
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
+      email_confirm: true,
     });
 
     if (error) {
+      console.log(error);
       return { error: error.message };
     }
 
@@ -38,7 +41,7 @@ export async function addUser(formData: FormData) {
     }
 
     // Insert user into users table
-    const { error: insertError } = await supabase.from("users").insert({
+    const { error: insertError } = await supabaseAdmin.from("users").insert({
       id: userId,
       email,
       role,
@@ -46,7 +49,7 @@ export async function addUser(formData: FormData) {
 
     if (insertError) {
       // If inserting to users table fails, we should clean up the auth user
-      await supabase.auth.admin.deleteUser(userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
       return { error: `Failed to create user profile: ${insertError.message}` };
     }
 

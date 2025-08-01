@@ -12,8 +12,11 @@ import {
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setIsCollapsed, setIsDarkMode } from "../state/global";
+import { useAuth } from "../(auth)/hooks/useAuth";
 
 export function Header() {
+  const { user, userRole } = useAuth();
+  console.log(userRole);
   const isSidebarCollapsed = useSelector(
     (state: RootState) => state.global.isCollapsed
   );
@@ -29,7 +32,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-card border-b  border-border px-6 py-4 shadow-sm">
+    <header className="bg-card border-b border-border px-6 py-4 shadow-sm">
       <div className="flex items-center justify-between w-full">
         {/* Left section - Toggle & Title */}
         <div className="flex items-center space-x-4">
@@ -52,7 +55,11 @@ export function Header() {
           <div className="md:hidden lg:block">
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <p className="text-sm text-secondary hidden sm:block">
-              Welcome back, Lawal!
+              Welcome back,{" "}
+              <span className="font-medium">
+                {userRole ? userRole.toUpperCase() : user?.email ?? "Guest"}
+              </span>
+              !
             </p>
           </div>
         </div>

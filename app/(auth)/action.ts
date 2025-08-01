@@ -1,6 +1,7 @@
 "use server";
 
-import { supabase } from "../_lib/supabase";
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function handleLogin(formData: FormData) {
@@ -12,6 +13,8 @@ export async function handleLogin(formData: FormData) {
   }
 
   try {
+    const supabase = createServerActionClient({ cookies });
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -40,5 +43,6 @@ export async function handleLogin(formData: FormData) {
     return { error: "An unexpected error occurred. Please try again." };
   }
 
+  // Redirect after successful login
   redirect("/dashboard");
 }
