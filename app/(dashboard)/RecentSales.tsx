@@ -33,10 +33,12 @@ export function RecentSales() {
     if (!recentSales) return [];
 
     // Parse dates and sort by most recent first
-    const salesWithParsedDates = recentSales?.map((sale) => ({
-      ...sale,
-      parsedDate: parseISO(sale?.created_at),
-    }));
+    const salesWithParsedDates = recentSales
+      .filter((sale) => !!sale.created_at)
+      .map((sale) => ({
+        ...sale,
+        parsedDate: parseISO(sale.created_at),
+      }));
 
     // Sort by date (most recent first)
     const sortedSales = salesWithParsedDates.sort((a, b) =>

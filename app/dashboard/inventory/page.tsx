@@ -4,13 +4,15 @@ import type { RootState } from "@/app/store";
 import { Chip } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import HeaderInventory from "../../components/HeaderInventory";
 import { useProducts } from "../../components/queryhooks/useProducts";
 import AddProductModal from "../../components/ui/AddProductModal";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../../hooks/useFormatCurrency";
+import { useAuth } from "@/app/(auth)/hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 // ✅ Define product type
 interface Product {
@@ -29,9 +31,74 @@ interface Product {
 export default function Inventory() {
   const { products, isLoading, error } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
+  const router = useRouter();
+  const { user, userRole, loading, hasPermission } = useAuth();
 
   // ✅ Modal state
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // ✅ Enhanced auth effect with better role-based routing
+  useEffect(() => {
+    console.log("🔍 Inventory Auth Check:", {
+      loading,
+      user: !!user,
+      userRole,
+      hasAdminPermission: hasPermission("admin"),
+    });
+
+    // Don't do anything while still loading auth state
+    if (loading) {
+      return;
+    }
+
+    // If no user is authenticated, redirect to login
+    if (!user) {
+      console.log("❌ No user found, redirecting to login");
+      setIsRedirecting(true);
+      router.push("/login");
+      return;
+    }
+
+    // If user is authenticated but role is salesrep, redirect to sales dashboard
+    if (userRole === "salesrep") {
+      console.log("🔄 Salesrep detected, redirecting to sales dashboard");
+      setIsRedirecting(true);
+      router.push("/dashboard/sales");
+      return;
+    }
+
+    // If user doesn't have admin permission (and is not a salesrep), redirect to login
+    if (!hasPermission("admin") && userRole !== null) {
+      console.log("❌ No admin permission, redirecting to login");
+      setIsRedirecting(true);
+      router.push("/login");
+      return;
+    }
+
+    // If we get here, user has proper access
+    console.log("✅ User has admin access to inventory");
+    setIsRedirecting(false);
+  }, [loading, user, userRole, router, hasPermission]);
+
+  // ✅ Show loading state while checking auth or redirecting
+  if (loading || isRedirecting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">
+            {loading ? "Loading dashboard..." : "Redirecting..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Additional safety check - don't render if user doesn't have admin access
+  if (!user || (userRole !== null && !hasPermission("admin"))) {
+    return null; // This should not be reached due to the redirect above, but good safety measure
+  }
 
   const columns: GridColDef<Product>[] = [
     { field: "id", headerName: "ID", width: 90 },
@@ -150,10 +217,14 @@ export default function Inventory() {
       </div>
     );
   }
+
   if (error || !products) {
     return (
-      <div className="text-center text-red-500 dark:text-red-400 py-4">
-        Failed to fetch products
+      <div className="flex flex-col">
+        <HeaderInventory name="Inventory" />
+        <div className="text-center text-red-500 dark:text-red-400 py-4">
+          Failed to fetch products
+        </div>
       </div>
     );
   }
@@ -175,8 +246,11 @@ export default function Inventory() {
 
   return (
     <div className="flex flex-col">
+      {/* ✅ Header */}
+      <HeaderInventory name="Inventory" />
+
       {/* ✅ Add Product Button */}
-      <div className="flex justify-end mb-4 p-3 ">
+      <div className="flex justify-end mb-4 p-3">
         <button
           onClick={() => setIsAddProductModalOpen(true)}
           className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${

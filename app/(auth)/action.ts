@@ -22,7 +22,7 @@ export async function handleLogin(formData: FormData) {
 
     if (error) {
       console.error("Login error:", error.message);
-      // Return specific error messages based on error type
+
       if (error.message.includes("Invalid login credentials")) {
         return { error: "Invalid email or password" };
       } else if (error.message.includes("Email not confirmed")) {

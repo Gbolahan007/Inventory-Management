@@ -1,73 +1,25 @@
 "use client";
 
 import { Calendar } from "lucide-react";
-
-import { useSales } from "../components/queryhooks/useSales";
-import { useAllSales } from "../components/queryhooks/useAllSales";
-import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
-import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
-import { MetricsGrid } from "../(dashboard)/MetricsGrid";
-import { TopSellingItems } from "../(dashboard)/TopSellingItems";
-import { RecentSales } from "../(dashboard)/RecentSales";
-import { LowStockAlert } from "../(dashboard)/LowStockAlert";
-import { QuickActions } from "../(dashboard)/QuickActions";
-import { SalesChart } from "../(dashboard)/SalesChart";
-import { useTodaysProfit } from "../components/queryhooks/useTodaysProfit";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+
+import { LowStockAlert } from "../(dashboard)/LowStockAlert";
+import { MetricsGrid } from "../(dashboard)/MetricsGrid";
+import { QuickActions } from "../(dashboard)/QuickActions";
+import { RecentSales } from "../(dashboard)/RecentSales";
+import { SalesChart } from "../(dashboard)/SalesChart";
+import { TopSellingItems } from "../(dashboard)/TopSellingItems";
+import { useAllSales } from "../components/queryhooks/useAllSales";
+import { useSales } from "../components/queryhooks/useSales";
+import { useTodaysProfit } from "../components/queryhooks/useTodaysProfit";
+import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
+import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
 import { useAuth } from "../(auth)/hooks/useAuth";
 
 export default function Dashboard() {
   const router = useRouter();
   const { user, userRole, loading, hasPermission } = useAuth();
-
-  // Check permissions and redirect if necessary
-  useEffect(() => {
-    if (!loading) {
-      // If user is not authenticated, you might want to redirect to login
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // If user is a salesrep (not admin), redirect to sales page
-      if (userRole === "salesrep") {
-        router.push("/sales");
-        return;
-      }
-
-      if (!hasPermission("admin")) {
-        console.log(
-          "🔄 User doesn't have admin permission, redirecting to /sales"
-        );
-        router.push("/sales");
-        return;
-      }
-    }
-  }, [user, userRole, loading, router, hasPermission]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render dashboard if user is not admin or if still loading/redirecting
-  if (!user || userRole === "salesrep" || !hasPermission("admin")) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-sm text-muted-foreground">Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
 
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -80,12 +32,58 @@ export default function Dashboard() {
   const { topSellingProducts } = useTopSellingProducts();
   const { salesProfit } = useTodaysProfit(start, end);
 
+  useEffect(() => {
+    if (!loading) {
+      // If not authenticated, redirect to login
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      // If salesrep, redirect to their specific dashboard
+      if (userRole === "salesrep") {
+        router.push("/dashboard/sales");
+        return;
+      }
+
+      // If not admin, redirect to unauthorized page or login
+      if (!hasPermission("admin")) {
+        router.push("/login");
+        return;
+      }
+    }
+  }, [loading, user, userRole, router, hasPermission]);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while redirecting
+  if (!user || !hasPermission("admin")) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background ">
+    <div className="min-h-screen bg-background">
       <div className="w-full">
         <div className="p-3 sm:p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-            {/* Desktop Header */}
+            {/* Header */}
             <div className="hidden sm:block">
               <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <div>
@@ -116,17 +114,17 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Key Metrics Grid */}
+            {/* Metrics */}
             <MetricsGrid
               salesData={salesData ?? []}
               salesProfit={salesProfit}
               totalInventory={totalInventory}
             />
 
-            {/* Sales Overview Chart */}
+            {/* Sales Chart */}
             <SalesChart monthlySales={monthlySales} />
 
-            {/* Bottom Section */}
+            {/* Bottom Widgets */}
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
               <TopSellingItems topSellingProducts={topSellingProducts} />
               <RecentSales />

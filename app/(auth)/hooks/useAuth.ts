@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/app/_lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-// Define allowed roles
 type UserRole = "admin" | "salesrep" | null;
-
-// Create a single instance that will be reused
-const supabase = createSupabaseClient();
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,6 +13,9 @@ export const useAuth = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Use client-side Supabase client
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     console.log("🔍 useAuth: Starting auth initialization...");
@@ -109,31 +108,61 @@ export const useAuth = () => {
     }
 
     try {
+      console.log("🔍 Fetching user role for ID:", userId);
+
+      // Try to get the current user to ensure we have a valid session
+      const {
+        data: { user: currentUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("❌ Auth error when fetching user:", userError);
+        setError(`Auth error: ${userError.message}`);
+        return;
+      }
+
+      if (!currentUser || currentUser.id !== userId) {
+        console.warn("⚠️ User ID mismatch or no current user");
+        setError("User authentication mismatch");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("users")
         .select("role, name, email")
         .eq("id", userId)
         .single();
 
-      console.log("Fetched user data:", data);
-      console.log("Error (if any):", error);
+      console.log("📊 Fetched user data:", data);
+      console.log("❌ Database error (if any):", error);
 
       if (error) {
         console.error("Database error:", error);
-        setError(`Fetch error: ${error.message}`);
+        // Check if it's a RLS policy issue
+        if (
+          error.code === "PGRST116" ||
+          error.message.includes("row-level security")
+        ) {
+          console.error("🔒 This looks like a Row Level Security policy issue");
+          setError("Access denied: Check database permissions");
+        } else {
+          setError(`Database error: ${error.message}`);
+        }
         setUserRole(null);
         return;
       }
 
       if (!data) {
         console.warn("No user profile found in database");
-        setError("No user profile found");
+        setError("No user profile found in database");
         setUserRole(null);
         return;
       }
 
       setUserRole(data.role);
       setError(null);
+      console.log("✅ User role set:", data.role);
     } catch (err: any) {
       console.error("Unexpected fetch error:", err);
       setUserRole(null);
