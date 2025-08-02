@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use client";
 
 import { createSupabaseClient } from "@/app/_lib/supabase";
@@ -8,33 +10,27 @@ import { useEffect, useState } from "react";
 type UserRole = "admin" | "salesrep" | null;
 
 export const useAuth = () => {
+  // State variables for user, role, loading status, and errors
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Use client-side Supabase client
+  // Get the client-side Supabase instance
   const supabase = createSupabaseClient();
 
   useEffect(() => {
-    console.log("🔍 useAuth: Starting auth initialization...");
     let mounted = true;
 
+    // Initializes authentication state on mount
     const initializeAuth = async () => {
       try {
-        // First, try to get the current session
+        // Get the current session from Supabase
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
-
-        console.log("📋 Initial session check:", {
-          hasSession: !!session,
-          sessionError: sessionError?.message,
-          userId: session?.user?.id,
-          email: session?.user?.email,
-        });
 
         if (sessionError) {
           console.error("❌ Session error:", sessionError);
@@ -46,16 +42,13 @@ export const useAuth = () => {
         }
 
         if (session?.user && mounted) {
-          console.log("✅ User authenticated:", session.user.email);
           setUser(session.user);
           await fetchUserRole(session.user.id);
-        } else {
-          if (mounted) {
-            console.log("❌ No user session found");
-            setUser(null);
-            setUserRole(null);
-            setLoading(false);
-          }
+        } else if (mounted) {
+          console.log("❌ No user session found");
+          setUser(null);
+          setUserRole(null);
+          setLoading(false);
         }
       } catch (error: any) {
         console.error("💥 Error in initializeAuth:", error);
@@ -66,12 +59,10 @@ export const useAuth = () => {
       }
     };
 
-    // Set up auth state listener
+    // Listen to auth state changes (e.g., login, logout)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔄 Auth state changed:", event, session?.user?.id);
-
       if (!mounted) return;
 
       try {
@@ -79,7 +70,6 @@ export const useAuth = () => {
           setUser(session.user);
           await fetchUserRole(session.user.id);
         } else {
-          console.log("❌ No user session in state change");
           setUser(null);
           setUserRole(null);
         }
@@ -91,16 +81,17 @@ export const useAuth = () => {
       }
     });
 
-    // Initialize auth after setting up the listener
+    // Initialize auth on mount
     initializeAuth();
 
+    // Cleanup subscription on unmount
     return () => {
-      console.log("🧹 Cleaning up auth subscription");
       mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
+  // Fetch user role from your database
   const fetchUserRole = async (userId: string) => {
     if (!userId) {
       console.warn("No user ID provided");
@@ -108,43 +99,34 @@ export const useAuth = () => {
     }
 
     try {
-      console.log("🔍 Fetching user role for ID:", userId);
-
-      // Try to get the current user to ensure we have a valid session
+      // Validate user identity
       const {
         data: { user: currentUser },
         error: userError,
       } = await supabase.auth.getUser();
 
       if (userError) {
-        console.error("❌ Auth error when fetching user:", userError);
         setError(`Auth error: ${userError.message}`);
         return;
       }
 
       if (!currentUser || currentUser.id !== userId) {
-        console.warn("⚠️ User ID mismatch or no current user");
         setError("User authentication mismatch");
         return;
       }
 
+      // Query user role from `users` table
       const { data, error } = await supabase
         .from("users")
         .select("role, name, email")
         .eq("id", userId)
         .single();
 
-      console.log("📊 Fetched user data:", data);
-      console.log("❌ Database error (if any):", error);
-
       if (error) {
-        console.error("Database error:", error);
-        // Check if it's a RLS policy issue
         if (
           error.code === "PGRST116" ||
           error.message.includes("row-level security")
         ) {
-          console.error("🔒 This looks like a Row Level Security policy issue");
           setError("Access denied: Check database permissions");
         } else {
           setError(`Database error: ${error.message}`);
@@ -154,15 +136,14 @@ export const useAuth = () => {
       }
 
       if (!data) {
-        console.warn("No user profile found in database");
         setError("No user profile found in database");
         setUserRole(null);
         return;
       }
 
+      // Set role in local state
       setUserRole(data.role);
       setError(null);
-      console.log("✅ User role set:", data.role);
     } catch (err: any) {
       console.error("Unexpected fetch error:", err);
       setUserRole(null);
@@ -170,13 +151,12 @@ export const useAuth = () => {
     }
   };
 
+  // Signs the user out and clears local state
   const signOut = async () => {
     try {
-      console.log("🚪 Signing out user...");
       const { error } = await supabase.auth.signOut();
 
       if (error) {
-        console.error("❌ Sign out error:", error);
         setError(`Sign out failed: ${error.message}`);
         return;
       }
@@ -185,30 +165,20 @@ export const useAuth = () => {
       setUserRole(null);
       setError(null);
       console.log("✅ Successfully signed out");
-      router.push("/login");
+      router.push("/login"); // Navigate to login page
     } catch (error: any) {
       console.error("💥 Error signing out:", error);
       setError(`Sign out error: ${error.message}`);
     }
   };
 
+  // Check if user has the required role
   const hasPermission = (requiredRole: UserRole) => {
-    console.log("🔐 Checking permission:", { userRole, requiredRole });
-
     if (!userRole) return false;
     if (userRole === "admin") return true;
     if (userRole === "salesrep" && requiredRole === "salesrep") return true;
     return false;
   };
-
-  console.log("🎯 useAuth current state:", {
-    hasUser: !!user,
-    userEmail: user?.email,
-    userRole,
-    loading,
-    error,
-    timestamp: new Date().toISOString(),
-  });
 
   return {
     user,

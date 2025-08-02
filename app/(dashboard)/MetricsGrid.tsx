@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { DollarSign, ShoppingCart, Package, TrendingUp } from "lucide-react";
-import { MetricCard } from "./MetricCard";
+import { DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
-import { Sale } from "../reports/page";
+import { MetricCard } from "./MetricCard";
+import { Sale } from "../dashboard/reports/page";
 
 type ProfitData = {
   profit_amount: number;

@@ -40,13 +40,6 @@ export default function Inventory() {
 
   // ✅ Enhanced auth effect with better role-based routing
   useEffect(() => {
-    console.log("🔍 Inventory Auth Check:", {
-      loading,
-      user: !!user,
-      userRole,
-      hasAdminPermission: hasPermission("admin"),
-    });
-
     // Don't do anything while still loading auth state
     if (loading) {
       return;
@@ -54,7 +47,6 @@ export default function Inventory() {
 
     // If no user is authenticated, redirect to login
     if (!user) {
-      console.log("❌ No user found, redirecting to login");
       setIsRedirecting(true);
       router.push("/login");
       return;
@@ -62,7 +54,6 @@ export default function Inventory() {
 
     // If user is authenticated but role is salesrep, redirect to sales dashboard
     if (userRole === "salesrep") {
-      console.log("🔄 Salesrep detected, redirecting to sales dashboard");
       setIsRedirecting(true);
       router.push("/dashboard/sales");
       return;
@@ -70,14 +61,12 @@ export default function Inventory() {
 
     // If user doesn't have admin permission (and is not a salesrep), redirect to login
     if (!hasPermission("admin") && userRole !== null) {
-      console.log("❌ No admin permission, redirecting to login");
       setIsRedirecting(true);
       router.push("/login");
       return;
     }
 
     // If we get here, user has proper access
-    console.log("✅ User has admin access to inventory");
     setIsRedirecting(false);
   }, [loading, user, userRole, router, hasPermission]);
 

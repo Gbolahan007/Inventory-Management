@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { setIsCollapsed } from "../state/global";
+import { useAuth } from "../(auth)/hooks/useAuth";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -23,6 +24,7 @@ export function Sidebar() {
   );
   const pathname = usePathname();
   const dispatch = useDispatch();
+  const { user, userRole } = useAuth();
 
   return (
     <>
@@ -112,25 +114,25 @@ export function Sidebar() {
             }`}
           >
             <div className="w-9 h-9 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-white font-semibold text-sm">LQ</span>
+              <span className="text-white font-semibold text-sm">
+                {userRole?.split("")[0].toUpperCase()}
+              </span>
             </div>
 
             {(!isSidebarCollapsed || window.innerWidth < 768) && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">
-                  Lawal Quam
+                  {userRole}
                 </p>
-                <p className="text-xs text-secondary truncate">
-                  john@example.com
-                </p>
+                <p className="text-xs text-secondary truncate">{user?.email}</p>
               </div>
             )}
 
             {/* Tooltip for collapsed state - only on desktop */}
             {isSidebarCollapsed && (
               <div className="absolute left-full ml-2 px-3 py-2 bg-foreground text-background text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 hidden md:block">
-                <div className="font-medium">Lawal Quam</div>
-                <div className="opacity-75">lawaljr97@gmail.com</div>
+                <div className="font-medium"> {userRole}</div>
+                <div className="opacity-75">{user?.email}</div>
               </div>
             )}
           </div>

@@ -345,7 +345,6 @@ export default function ReportsDashboard(): React.JSX.Element {
     useRecentSales();
   const { saleItemsWithCategories = [] } = useSaleItemsWithCategories();
   const { topSellingProducts: salesItems = [] } = useTopSellingProducts();
-
   const profitDate = salesItems.map((item) => ({
     date: item.created_at,
     profit: item.profit_amount,
@@ -452,10 +451,17 @@ export default function ReportsDashboard(): React.JSX.Element {
     : EMPTY_EXTENDED_STATS;
 
   // Approx net profit using profitMargin (if you prefer real calc, pass cost data)
-  const netProfit = s.profitMargin
-    ? (s.totalRevenue ?? 0) * (s.profitMargin / 100)
-    : 0;
 
+  const totals = salesItems.reduce(
+    (acc, item) => {
+      acc.totalPrice += item.total_price;
+      acc.totalCost += item.total_cost;
+      return acc;
+    },
+    { totalPrice: 0, totalCost: 0 }
+  );
+
+  const netProfit = totals.totalPrice - totals.totalCost;
   // Choose dataKey for Top Products chart ----------------------------------
   const productMetricKey =
     productMetric === "quantity" ? "quantity" : "revenue";
@@ -484,7 +490,7 @@ export default function ReportsDashboard(): React.JSX.Element {
           trend={s.productGrowth ?? 0}
         />
         <MetricCard
-          title="Net Profit"
+          title="Total Profit"
           value={netProfit.toLocaleString()}
           icon={TrendingUp}
           trend={s.profitGrowth ?? 0}
