@@ -1,7 +1,3 @@
-interface HeaderProps {
-  name: string;
-}
-
 export default function HeaderInventory({ name }: { name: string }) {
   return (
     <div

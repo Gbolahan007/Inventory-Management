@@ -1,24 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use client";
-import { useState } from "react";
-import { Trash2, Plus, Minus, X } from "lucide-react";
-import type { SaleItem, Product } from "./types";
 import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
 import { type UseMutationResult } from "@tanstack/react-query";
+import { Minus, Plus, Trash2, X } from "lucide-react";
+import type { Product, SaleItem } from "./types";
 
 interface ShoppingCartDisplayProps {
   cartItems: SaleItem[];
   removeFromCart: (index: number) => void;
   updateCartItemQuantity: (index: number, newQuantity: number) => void;
   cartTotal: number;
-  cartTotalProfit: number; // Not directly used in this component's UI, but kept for completeness
+  cartTotalProfit: number;
   isDarkMode: boolean;
-  products: Product[] | undefined; // Passed for stock checking
+  products: Product[] | undefined;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   handleFinalizeSale: () => void;
   createSaleMutation: UseMutationResult<any, Error, any, unknown>;
-  isOpen: boolean; // Controlled by parent for mobile view
-  onClose: () => void; // Controlled by parent for mobile view
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function ShoppingCartDisplay({
@@ -26,7 +27,6 @@ export default function ShoppingCartDisplay({
   removeFromCart,
   updateCartItemQuantity,
   cartTotal,
-  cartTotalProfit, // Kept for completeness, not used in UI
   isDarkMode,
   products, // Used for stock checking inside updateCartItemQuantity
   paymentMethod,
