@@ -2,24 +2,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
 import { getItemStats } from "../components/utils/getItemStats";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
+import { SaleItem } from "../dashboard/reports/page";
 
-type TopSellingProduct = {
+export type TopSellingProduct = {
+  id: string;
   product_id: string;
+  name?: string;
   quantity: number;
-  total_price: number;
-  total_cost: number;
-  profit_amount: number;
-  sale_id?: string;
-  created_at?: string;
-  products: { name: string; category?: string }[];
+  revenue: number;
 };
+
+export function mapTopSellingProductToSaleItem(
+  topProduct: TopSellingProduct
+): SaleItem {
+  const unitPrice =
+    topProduct.quantity > 0 ? topProduct.revenue / topProduct.quantity : 0;
+
+  return {
+    product_id: topProduct.product_id,
+    name: topProduct.name || `Product ${topProduct.id}`,
+    quantity: topProduct.quantity,
+    unit_price: unitPrice,
+    unit_cost: 0, // Set actual cost if available
+    total_price: topProduct.revenue,
+    total_cost: 0, // Calculate: unit_cost * quantity
+    profit_amount: topProduct.revenue, // Calculate: total_price - total_cost
+  };
+}
 
 interface TopSellingItemsProps {
   topSellingProducts?: TopSellingProduct[];
 }
 
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {
-  const itemStats = getItemStats(topSellingProducts || []);
+  // Convert TopSellingProduct[] to SaleItem[] before passing to getItemStats
+  const saleItems =
+    topSellingProducts?.map(mapTopSellingProductToSaleItem) || [];
+  const itemStats = getItemStats(saleItems);
 
   return (
     <Card className="lg:col-span-1">
