@@ -22,8 +22,7 @@ interface DeleteProductModalProps {
   product: Product | null;
   isDarkMode: boolean;
 }
-
-const DeleteProductModal: React.FC<DeleteProductModalProps> = ({
+const DeleteProductInverntoryModal: React.FC<DeleteProductModalProps> = ({
   isOpen,
   onClose,
   onDelete,
@@ -232,4 +231,4 @@ const DeleteProductModal: React.FC<DeleteProductModalProps> = ({
   );
 };
 
-export default DeleteProductModal;
+export default DeleteProductInverntoryModal;

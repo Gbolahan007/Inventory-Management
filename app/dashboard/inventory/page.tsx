@@ -10,13 +10,13 @@ import HeaderInventory from "../../components/HeaderInventory";
 import { useProducts } from "../../components/queryhooks/useProducts";
 import AddProductModal from "../../components/ui/AddProductModal";
 
+import { useAuth } from "@/app/(auth)/hooks/useAuth";
+import { useDeleteProduct } from "@/app/components/queryhooks/useDeleteproduct";
+import DeleteProductInverntoryModal from "@/app/components/ui/DeleteProductInverntoryModal";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../../hooks/useFormatCurrency";
-import { useAuth } from "@/app/(auth)/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useDeleteProduct } from "@/app/components/queryhooks/useDeleteproduct";
-import toast from "react-hot-toast";
-import DeleteProductModal from "@/app/components/ui/DeleteProductmodal";
 
 // ✅ Define product type
 interface Product {
@@ -416,7 +416,7 @@ export default function Inventory() {
       />
 
       {/* ✅ Delete Product Modal */}
-      <DeleteProductModal
+      <DeleteProductInverntoryModal
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
         onDelete={handleDeleteProduct}
