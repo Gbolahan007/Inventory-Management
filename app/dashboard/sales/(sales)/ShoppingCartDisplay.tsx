@@ -28,7 +28,7 @@ export default function ShoppingCartDisplay({
   updateCartItemQuantity,
   cartTotal,
   isDarkMode,
-  products, // Used for stock checking inside updateCartItemQuantity
+  products,
   paymentMethod,
   setPaymentMethod,
   handleFinalizeSale,
