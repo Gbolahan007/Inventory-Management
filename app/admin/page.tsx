@@ -33,13 +33,21 @@ import { useState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { addUser } from "./action";
 
-// ✅ Auth imports
+// ✅ Enhanced Auth imports
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
-  // ✅ Auth state and routing
-  const { user: authUser, userRole, loading, hasPermission } = useAuth();
+  // ✅ Enhanced auth state and routing
+  const {
+    user: authUser,
+    userRole,
+    loading: authLoading,
+    hasPermission,
+    error: authError,
+    isInitialized,
+    refreshAuth,
+  } = useAuth();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -50,18 +58,30 @@ export default function AdminDashboard() {
   } | null>(null);
   const { user } = useUserData();
 
-  // ✅ Auth protection effect
+  // ✅ Enhanced auth protection effect
   useEffect(() => {
     console.log("🔍 Admin Dashboard Auth Check:", {
-      loading,
+      authLoading,
+      isInitialized,
       user: !!authUser,
       userRole,
       hasAdminPermission: hasPermission("admin"),
+      authError,
     });
 
     // Don't do anything while still loading auth state
-    if (loading) {
+    if (authLoading || !isInitialized) {
       return;
+    }
+
+    // Handle auth errors - try to refresh once
+    if (authError) {
+      console.error("Auth error in admin dashboard:", authError);
+      if (authError.includes("timeout") || authError.includes("expired")) {
+        console.log("🔄 Attempting to refresh auth due to error");
+        refreshAuth();
+        return;
+      }
     }
 
     // If no user is authenticated, redirect to login
@@ -91,17 +111,33 @@ export default function AdminDashboard() {
     // If we get here, user has proper access
     console.log("✅ User has admin access to admin dashboard");
     setIsRedirecting(false);
-  }, [loading, authUser, userRole, router, hasPermission]);
+  }, [
+    authLoading,
+    isInitialized,
+    authUser,
+    userRole,
+    router,
+    hasPermission,
+    authError,
+    refreshAuth,
+  ]);
 
   // ✅ Show loading state while checking auth or redirecting
-  if (loading || isRedirecting) {
+  if (authLoading || !isInitialized || isRedirecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           <p className="text-sm text-muted-foreground">
-            {loading ? "Loading dashboard..." : "Redirecting..."}
+            {authLoading || !isInitialized
+              ? "Loading dashboard..."
+              : "Redirecting..."}
           </p>
+          {authError && (
+            <p className="text-xs text-red-500 max-w-md text-center">
+              {authError}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -109,7 +145,7 @@ export default function AdminDashboard() {
 
   // ✅ Additional safety check - don't render if user doesn't have admin access
   if (!authUser || (userRole !== null && !hasPermission("admin"))) {
-    return null; // This should not be reached due to the redirect above, but good safety measure
+    return null;
   }
 
   // Role-specific limits
@@ -247,7 +283,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Main Content - Same pattern as your sales page */}
+        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add User Form */}
           <Card>

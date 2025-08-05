@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 interface SaleData {
   total_amount: number;
   payment_method: string;
-  items: any[]; // Use your SaleItem type
+  items: any[];
 }
 
 export function useCreateSale() {

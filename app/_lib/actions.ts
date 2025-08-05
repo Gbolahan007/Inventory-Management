@@ -31,7 +31,7 @@ export async function createProduct(formdata: FormData) {
   const low_stock = Number(formdata.get("low_stock"));
   const category = formdata.get("category") as string;
   const profit = Number(formdata.get("profit"));
-
+  console.log(formdata);
   try {
     // Check if product with this name already exists
     const { data: existingProduct, error: selectError } = await supabase
@@ -60,6 +60,7 @@ export async function createProduct(formdata: FormData) {
           low_stock,
           category,
           profit,
+          created_at: new Date().toISOString(),
         })
         .eq("name", name);
 
@@ -77,8 +78,9 @@ export async function createProduct(formdata: FormData) {
         category,
         profit,
         quantity: 1,
+        created_at: new Date().toISOString(),
       };
-
+      console.log(newProduct);
       const { error: insertError } = await supabase
         .from("products")
         .insert(newProduct);
@@ -88,9 +90,9 @@ export async function createProduct(formdata: FormData) {
       }
     }
 
-    revalidatePath("/inventory");
+    revalidatePath("/dashboard/inventory");
     revalidatePath("/");
-    redirect("/inventory");
+    redirect("/dashboard/inventory");
   } catch (error) {
     throw error;
   }

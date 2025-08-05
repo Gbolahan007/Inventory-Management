@@ -22,6 +22,7 @@ import type { Sale } from "./types";
 import { getDataGridStyles } from "./getDataGridStyles";
 import { compareDesc, parseISO } from "date-fns";
 
+// Type definition for a sale item
 type SaleItem = {
   id?: string;
   sale_id?: string | number;
@@ -39,6 +40,7 @@ type SaleItem = {
   };
 };
 
+// Component props interface
 interface RecentSalesTableProps {
   sales: Sale[];
   salesItems?: SaleItem[];
@@ -50,12 +52,13 @@ export function RecentSalesTable({
   salesItems,
   isDarkMode,
 }: RecentSalesTableProps) {
+  // State to manage selected sale and modal visibility
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Sorts sales by descending date
   function getFilteredSales(sales?: Sale[]): Sale[] {
     if (!sales?.length) return [];
-
     const r = [...sales].sort((a, b) =>
       compareDesc(
         parseISO(a.created_at || a.sale_date),
@@ -65,6 +68,7 @@ export function RecentSalesTable({
     return r;
   }
 
+  // Filters sale items by sale ID
   const getSaleItems = (saleId: string | number): SaleItem[] => {
     return (
       salesItems?.filter(
@@ -73,6 +77,16 @@ export function RecentSalesTable({
     );
   };
 
+  // Prepare sales data for DataGrid, ensuring each row has an ID
+  const processedSales = getFilteredSales(sales).map((sale, index) => ({
+    ...sale,
+    id: sale.id || index + 1,
+  }));
+
+  // Get items for the currently selected sale
+  const saleItems = selectedSale ? getSaleItems(selectedSale.id) : [];
+
+  // Handle row click in DataGrid
   const handleRowClick = (params: any) => {
     const sale = sales.find((s) => s.id === params.row.id);
     if (sale) {
@@ -81,10 +95,13 @@ export function RecentSalesTable({
     }
   };
 
+  // Close the modal and reset state
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSale(null);
   };
+
+  // Modal styling (light or dark mode aware)
   const modalStyle = {
     position: "absolute" as const,
     top: "50%",
@@ -102,6 +119,7 @@ export function RecentSalesTable({
     borderRadius: 2,
   };
 
+  // DataGrid columns configuration
   const salesColumns: GridColDef[] = [
     {
       field: "id",
@@ -156,15 +174,9 @@ export function RecentSalesTable({
     },
   ];
 
-  const processedSales = getFilteredSales(sales).map((sale, index) => ({
-    ...sale,
-    id: sale.id || index + 1,
-  }));
-
-  const saleItems = selectedSale ? getSaleItems(selectedSale.id) : [];
-
   return (
     <>
+      {/* Card containing the sales DataGrid */}
       <Card
         className={
           isDarkMode
@@ -213,6 +225,7 @@ export function RecentSalesTable({
         </CardContent>
       </Card>
 
+      {/* Modal to display sale details */}
       <Modal
         open={isModalOpen}
         onClose={handleCloseModal}
@@ -239,6 +252,7 @@ export function RecentSalesTable({
 
           {selectedSale && (
             <div>
+              {/* Summary info */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <Typography
@@ -247,10 +261,7 @@ export function RecentSalesTable({
                   >
                     Sale ID
                   </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ color: isDarkMode ? "#f8fafc" : "#111827" }}
-                  >
+                  <Typography variant="body1">
                     #{selectedSale.id.toString().slice(-6)}
                   </Typography>
                 </div>
@@ -261,10 +272,7 @@ export function RecentSalesTable({
                   >
                     Sale Number
                   </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ color: isDarkMode ? "#f8fafc" : "#111827" }}
-                  >
+                  <Typography variant="body1">
                     {selectedSale.sale_number || "N/A"}
                   </Typography>
                 </div>
@@ -275,10 +283,7 @@ export function RecentSalesTable({
                   >
                     Date
                   </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ color: isDarkMode ? "#f8fafc" : "#111827" }}
-                  >
+                  <Typography variant="body1">
                     {new Date(selectedSale.sale_date).toLocaleDateString(
                       "en-US",
                       {
@@ -317,10 +322,8 @@ export function RecentSalesTable({
                 sx={{ bgcolor: isDarkMode ? "#374151" : "#e5e7eb", my: 2 }}
               />
 
-              <Typography
-                variant="h6"
-                sx={{ color: isDarkMode ? "#f8fafc" : "#111827", mb: 2 }}
-              >
+              {/* Sale Items */}
+              <Typography variant="h6" sx={{ mb: 2 }}>
                 Items Purchased
               </Typography>
 
@@ -335,29 +338,14 @@ export function RecentSalesTable({
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: isDarkMode ? "#f8fafc" : "#111827",
-                              fontWeight: 500,
-                            }}
-                          >
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
                             {item.products?.name || "Unknown Product"}
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{ color: isDarkMode ? "#9ca3af" : "#6b7280" }}
-                          >
+                          <Typography variant="body2">
                             Quantity: {item.quantity}
                           </Typography>
                         </div>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: isDarkMode ? "#f8fafc" : "#111827",
-                            fontWeight: 500,
-                          }}
-                        >
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
                           ₦{item.total_price.toLocaleString()}
                         </Typography>
                       </div>
@@ -365,10 +353,7 @@ export function RecentSalesTable({
                   ))}
                 </div>
               ) : (
-                <Typography
-                  variant="body2"
-                  sx={{ color: isDarkMode ? "#9ca3af" : "#6b7280", mb: 4 }}
-                >
+                <Typography variant="body2" sx={{ mb: 4 }}>
                   No items found for this sale
                 </Typography>
               )}
@@ -377,13 +362,9 @@ export function RecentSalesTable({
                 sx={{ bgcolor: isDarkMode ? "#374151" : "#e5e7eb", my: 2 }}
               />
 
+              {/* Total amount display */}
               <div className="flex justify-between items-center">
-                <Typography
-                  variant="h6"
-                  sx={{ color: isDarkMode ? "#f8fafc" : "#111827" }}
-                >
-                  Total Amount
-                </Typography>
+                <Typography variant="h6">Total Amount</Typography>
                 <Typography
                   variant="h6"
                   sx={{

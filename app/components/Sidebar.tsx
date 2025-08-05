@@ -30,7 +30,7 @@ export function Sidebar() {
     <>
       {!isSidebarCollapsed && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden "
           onClick={() => {
             dispatch(setIsCollapsed(true));
           }}
@@ -39,11 +39,11 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <div
-        className={`bg-card border-r border-border flex flex-col transition-all duration-300 ease-in-out h-screen b shadow-sm
+        className={`bg-card border-r border-border flex flex-col transition-all duration-300 ease-in-out h-screen shadow-sm
           ${
             isSidebarCollapsed
-              ? "fixed md:relative  -translate-x-full md:translate-x-0 md:w-20 w-64 z-50 md:z-auto"
-              : "fixed md:relative translate-x-0 md:w-64 w-64 z-50 md:z-auto"
+              ? "fixed md:relative -translate-x-full md:translate-x-0 md:w-20 w-64 z-50 md:z-auto"
+              : "fixed md:relative translate-x-0 md:w-64 w-64 z-50 md:z-auto "
           }`}
       >
         {/* Logo/Brand */}

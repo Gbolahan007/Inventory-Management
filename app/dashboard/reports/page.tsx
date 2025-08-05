@@ -30,19 +30,18 @@ import { useAuth } from "@/app/(auth)/hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 // Data hooks ---------------------------------------------------------------
-
-// Utils -------------------------------------------------------------------
-import { getTopSellingCategories } from "./utils/categoryUtils"; // SaleItemWithProduct[] -> aggregates
-import {
-  groupProfitByDate,
-  groupSalesByDate,
-} from "./utils/groupedSalesByDate"; // Sale[] -> {date: total}
-
 import { useStats } from "@/app/components/queryhooks/useStats";
 import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
 import { useSaleItemsWithCategories } from "@/app/components/queryhooks/useSaleItemsWithCategories";
 import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
 import { getItemStats } from "@/app/components/utils/getItemStats";
+
+// Utils -------------------------------------------------------------------
+import { getTopSellingCategories } from "./utils/categoryUtils";
+import {
+  groupProfitByDate,
+  groupSalesByDate,
+} from "./utils/groupedSalesByDate";
 
 // -------------------------------------------------------------------------
 // Types (using your actual type definitions)
@@ -118,9 +117,9 @@ interface ExtendedStats extends Stats {
 }
 
 interface ItemStat {
-  name: string; // product name
-  quantity: number; // units sold
-  revenue: number; // total revenue ₦
+  name: string;
+  quantity: number;
+  revenue: number;
 }
 
 interface CategoryDatum {
@@ -129,7 +128,6 @@ interface CategoryDatum {
   color: string;
 }
 
-// Recharts payload types
 interface RechartsPayloadItem {
   payload: ItemStat;
   value: number;
@@ -170,12 +168,10 @@ const EMPTY_EXTENDED_STATS: ExtendedStats = {
 const fmtCurrency = (n: number | undefined | null) =>
   `₦${(n ?? 0).toLocaleString()}`;
 
-// Type guard to check if stats object has extended properties
 function hasExtendedStatsProperties(stats: Stats): stats is ExtendedStats {
   return typeof stats === "object" && stats !== null;
 }
 
-// Helper function to create extended stats with defaults
 function createExtendedStats(stats: Stats): ExtendedStats {
   return {
     ...stats,
@@ -247,7 +243,7 @@ function MetricCard({
 }
 
 // -------------------------------------------------------------------------
-// Custom tooltip for Top Products bar (shows Units + Revenue)
+// Custom tooltip for Top Products bar
 // -------------------------------------------------------------------------
 export type ProductMetric = "quantity" | "revenue";
 
@@ -291,28 +287,46 @@ function ItemTooltip({ active, payload, label, metric }: ItemTooltipProps) {
 // Main Component
 // -------------------------------------------------------------------------
 export default function ReportsDashboard(): React.JSX.Element {
-  // ✅ Auth state and routing
-  const { user, userRole, loading, hasPermission } = useAuth();
+  // ✅ Auth state and routing with enhanced error handling
+  const {
+    user,
+    userRole,
+    loading: authLoading,
+    hasPermission,
+    error: authError,
+    isInitialized,
+    refreshAuth,
+  } = useAuth();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // ✅ Auth protection effect
+  // ✅ Enhanced auth protection effect
   useEffect(() => {
     console.log("🔍 Reports Auth Check:", {
-      loading,
+      authLoading,
+      isInitialized,
       user: !!user,
       userRole,
       hasAdminPermission: hasPermission("admin"),
+      authError,
     });
 
     // Don't do anything while still loading auth state
-    if (loading) {
+    if (authLoading || !isInitialized) {
       return;
+    }
+
+    // Handle auth errors - try to refresh once
+    if (authError) {
+      console.error("Auth error in reports:", authError);
+      if (authError.includes("timeout") || authError.includes("expired")) {
+        refreshAuth();
+        return;
+      }
     }
 
     // If no user is authenticated, redirect to login
     if (!user) {
-      console.log("❌ No user found, redirecting to login");
       setIsRedirecting(true);
       router.push("/login");
       return;
@@ -320,7 +334,6 @@ export default function ReportsDashboard(): React.JSX.Element {
 
     // If user is authenticated but role is salesrep, redirect to sales dashboard
     if (userRole === "salesrep") {
-      console.log("🔄 Salesrep detected, redirecting to sales dashboard");
       setIsRedirecting(true);
       router.push("/dashboard/sales");
       return;
@@ -328,16 +341,23 @@ export default function ReportsDashboard(): React.JSX.Element {
 
     // If user doesn't have admin permission (and is not a salesrep), redirect to login
     if (!hasPermission("admin") && userRole !== null) {
-      console.log("❌ No admin permission, redirecting to login");
       setIsRedirecting(true);
       router.push("/login");
       return;
     }
 
     // If we get here, user has proper access
-    console.log("✅ User has admin access to reports");
     setIsRedirecting(false);
-  }, [loading, user, userRole, router, hasPermission]);
+  }, [
+    authLoading,
+    isInitialized,
+    user,
+    userRole,
+    router,
+    hasPermission,
+    authError,
+    refreshAuth,
+  ]);
 
   // Data -------------------------------------------------------------------
   const { stats, isLoading: statsLoading } = useStats();
@@ -377,14 +397,13 @@ export default function ReportsDashboard(): React.JSX.Element {
   const chartData = useMemo(() => {
     if (!recentSales || !Array.isArray(recentSales)) return [];
 
-    // Use the sales data directly since it already matches the Sale type
     const grouped = groupSalesByDate(recentSales);
     return Object.entries(grouped)
       .map(([date, total_amount]) => ({ sale_date: date, total_amount }))
       .sort((a, b) => a.sale_date.localeCompare(b.sale_date));
   }, [recentSales]);
 
-  // // Profit Trend data (group profit per day) -------------------------------
+  // Profit Trend data (group profit per day) -------------------------------
   const profitChartData = useMemo(() => {
     const profitBydate = groupProfitByDate(profitDate);
 
@@ -395,6 +414,7 @@ export default function ReportsDashboard(): React.JSX.Element {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [profitDate]);
+
   // Item stats (units + revenue) -------------------------------------------
   const rawItemStats: ItemStat[] = useMemo(() => {
     if (!saleItemsWithCategories) return [];
@@ -416,14 +436,21 @@ export default function ReportsDashboard(): React.JSX.Element {
   }, [rawItemStats, productMetric]);
 
   // ✅ Show loading state while checking auth or redirecting
-  if (loading || isRedirecting) {
+  if (authLoading || !isInitialized || isRedirecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           <p className="text-sm text-muted-foreground">
-            {loading ? "Loading dashboard..." : "Redirecting..."}
+            {authLoading || !isInitialized
+              ? "Loading dashboard..."
+              : "Redirecting..."}
           </p>
+          {authError && (
+            <p className="text-xs text-red-500 max-w-md text-center">
+              {authError}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -431,7 +458,7 @@ export default function ReportsDashboard(): React.JSX.Element {
 
   // ✅ Additional safety check - don't render if user doesn't have admin access
   if (!user || (userRole !== null && !hasPermission("admin"))) {
-    return null; // This should not be reached due to the redirect above, but good safety measure
+    return null;
   }
 
   // Loading dashboard data -------------------------------------------------
@@ -450,8 +477,6 @@ export default function ReportsDashboard(): React.JSX.Element {
       : createExtendedStats(stats)
     : EMPTY_EXTENDED_STATS;
 
-  // Approx net profit using profitMargin (if you prefer real calc, pass cost data)
-
   const totals = salesItems.reduce(
     (acc, item) => {
       acc.totalPrice += item.total_price;
@@ -462,7 +487,6 @@ export default function ReportsDashboard(): React.JSX.Element {
   );
 
   const netProfit = totals.totalPrice - totals.totalCost;
-  // Choose dataKey for Top Products chart ----------------------------------
   const productMetricKey =
     productMetric === "quantity" ? "quantity" : "revenue";
 
@@ -574,7 +598,7 @@ export default function ReportsDashboard(): React.JSX.Element {
         </div>
       </div>
 
-      {/* Top Products + Profit -------------------------------------- */}
+      {/* Top Products + Profit */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Selling Products */}
         <div className="bg-card p-6 rounded-lg border border-border">
@@ -582,7 +606,6 @@ export default function ReportsDashboard(): React.JSX.Element {
             <h3 className="text-lg font-semibold text-card-foreground">
               Top Selling Products
             </h3>
-            {/* Metric selector: Units vs Revenue */}
             <select
               value={productMetric}
               onChange={(e) =>

@@ -2,190 +2,232 @@
 
 "use client";
 
-import { createSupabaseClient } from "@/app/_lib/supabase";
+import { supabase } from "@/app/_lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type UserRole = "admin" | "salesrep" | null;
 
 export const useAuth = () => {
-  // State variables for user, role, loading status, and errors
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  // Get the client-side Supabase instance
-  const supabase = createSupabaseClient();
+  const mountedRef = useRef(true);
+  const initTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const isMounted = () => mountedRef.current;
+
+  // Validate current session and handle expiration
+  const validateSession = useCallback(async (): Promise<User | null> => {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Session validation timeout")), 8000);
+      });
+
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        timeoutPromise,
+      ]);
+
+      const session = sessionResult.data?.session;
+      if (!session?.user) return null;
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (session.expires_at && session.expires_at < currentTime) {
+        const refreshResult = await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Refresh timeout")), 5000)
+          ),
+        ]);
+
+        if (refreshResult.error) return null;
+        return refreshResult.data?.user || null;
+      }
+
+      return session.user;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Fetch user's role from the `users` table
+  const fetchUserRole = useCallback(
+    async (userId: string, retryCount = 0): Promise<UserRole> => {
+      if (!userId || !isMounted()) return null;
+
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Role fetch timeout")), 6000);
+        });
+
+        const { data, error } = await Promise.race([
+          supabase.from("users").select("role").eq("id", userId).single(),
+          timeoutPromise,
+        ]);
+
+        if (error) {
+          if (
+            retryCount === 0 &&
+            (error.code === "PGRST301" ||
+              error.message.includes("timeout") ||
+              error.message.includes("connection"))
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            return fetchUserRole(userId, retryCount + 1);
+          }
+          throw error;
+        }
+
+        if (!data) throw new Error("No user profile found");
+        return data.role as UserRole;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
+  // Initialize authentication logic on mount
+  const initializeAuth = useCallback(async () => {
+    if (!isMounted()) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const validatedUser = await validateSession();
+      if (!isMounted()) return;
+
+      if (validatedUser) {
+        setUser(validatedUser);
+        const role = await fetchUserRole(validatedUser.id);
+        if (!isMounted()) return;
+        setUserRole(role);
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+    } catch (error: any) {
+      if (isMounted()) {
+        setError(`Authentication failed: ${error.message}`);
+        setUser(null);
+        setUserRole(null);
+      }
+    } finally {
+      if (isMounted()) {
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    }
+  }, [validateSession, fetchUserRole]);
+
+  const refreshAuth = useCallback(async () => {
+    if (!isMounted()) return;
+    setIsInitialized(false);
+    await initializeAuth();
+  }, [initializeAuth]);
 
   useEffect(() => {
-    let mounted = true;
-
-    // Initializes authentication state on mount
-    const initializeAuth = async () => {
-      try {
-        // Get the current session from Supabase
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          console.error("❌ Session error:", sessionError);
-          if (mounted) {
-            setError(sessionError.message);
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (session?.user && mounted) {
-          setUser(session.user);
-          await fetchUserRole(session.user.id);
-        } else if (mounted) {
-          console.log("❌ No user session found");
-          setUser(null);
-          setUserRole(null);
-          setLoading(false);
-        }
-      } catch (error: any) {
-        console.error("💥 Error in initializeAuth:", error);
-        if (mounted) {
-          setError(error.message);
-          setLoading(false);
-        }
+    mountedRef.current = true;
+    initTimeoutRef.current = setTimeout(() => {
+      if (loading && !isInitialized && isMounted()) {
+        setLoading(false);
+        setIsInitialized(true);
+        setError("Authentication timeout. Please refresh the page.");
       }
-    };
+    }, 15000);
 
-    // Listen to auth state changes (e.g., login, logout)
+    initializeAuth();
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+      if (!isMounted()) return;
 
-      try {
-        if (session?.user) {
-          setUser(session.user);
-          await fetchUserRole(session.user.id);
-        } else {
-          setUser(null);
-          setUserRole(null);
-        }
-      } catch (error: any) {
-        console.error("💥 Error in auth state change:", error);
-        setError(error.message);
-      } finally {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setUserRole(null);
+        setError(null);
         setLoading(false);
+        return;
       }
+
+      if (session?.user) {
+        setUser(session.user);
+        const role = await fetchUserRole(session.user.id);
+        if (isMounted()) {
+          setUserRole(role);
+        }
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+
+      if (isMounted()) setLoading(false);
     });
 
-    // Initialize auth on mount
-    initializeAuth();
-
-    // Cleanup subscription on unmount
     return () => {
-      mounted = false;
+      mountedRef.current = false;
+      if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
       subscription.unsubscribe();
     };
   }, []);
 
-  // Fetch user role from your database
-  const fetchUserRole = async (userId: string) => {
-    if (!userId) {
-      console.warn("No user ID provided");
-      return;
-    }
+  // Revalidate session periodically (every 5 min)
+  useEffect(() => {
+    if (!isInitialized || !user) return;
 
-    try {
-      // Validate user identity
-      const {
-        data: { user: currentUser },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const interval = setInterval(async () => {
+      if (!isMounted() || !user) return;
 
-      if (userError) {
-        setError(`Auth error: ${userError.message}`);
-        return;
-      }
+      const validatedUser = await validateSession();
+      if (!isMounted()) return;
 
-      if (!currentUser || currentUser.id !== userId) {
-        setError("User authentication mismatch");
-        return;
-      }
-
-      // Query user role from `users` table
-      const { data, error } = await supabase
-        .from("users")
-        .select("role, name, email")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        if (
-          error.code === "PGRST116" ||
-          error.message.includes("row-level security")
-        ) {
-          setError("Access denied: Check database permissions");
-        } else {
-          setError(`Database error: ${error.message}`);
-        }
+      if (!validatedUser) {
+        setUser(null);
         setUserRole(null);
-        return;
+        setError("Session expired. Please login again.");
       }
+    }, 5 * 60 * 1000);
 
-      if (!data) {
-        setError("No user profile found in database");
-        setUserRole(null);
-        return;
+    return () => clearInterval(interval);
+  }, [isInitialized, user, validateSession]);
+
+  // Refresh auth when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user && isInitialized && isMounted()) {
+        refreshAuth();
       }
+    };
 
-      // Set role in local state
-      setUserRole(data.role);
-      setError(null);
-    } catch (err: any) {
-      console.error("Unexpected fetch error:", err);
-      setUserRole(null);
-      setError(`Failed to fetch user role: ${err.message}`);
-    }
-  };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [user, isInitialized, refreshAuth]);
 
-  // Signs the user out and clears local state
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        setError(`Sign out failed: ${error.message}`);
-        return;
-      }
-
-      setUser(null);
-      setUserRole(null);
-      setError(null);
-      console.log("✅ Successfully signed out");
-      router.push("/login"); // Navigate to login page
-    } catch (error: any) {
-      console.error("💥 Error signing out:", error);
-      setError(`Sign out error: ${error.message}`);
-    }
-  };
-
-  // Check if user has the required role
-  const hasPermission = (requiredRole: UserRole) => {
-    if (!userRole) return false;
-    if (userRole === "admin") return true;
-    if (userRole === "salesrep" && requiredRole === "salesrep") return true;
-    return false;
-  };
+  // Check permission for a specific role
+  const hasPermission = useCallback(
+    (requiredRole: UserRole) => {
+      if (!userRole || !isInitialized) return false;
+      if (userRole === "admin") return true;
+      if (userRole === "salesrep" && requiredRole === "salesrep") return true;
+      return false;
+    },
+    [userRole, isInitialized]
+  );
 
   return {
     user,
     userRole,
     loading,
     error,
-    signOut,
+    isInitialized,
     hasPermission,
+    refreshAuth,
   };
 };
