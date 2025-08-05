@@ -6,9 +6,10 @@ export function useProducts() {
     data: products,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["products"],
     queryFn: () => getProducts(),
   });
-  return { products, isLoading, error };
+  return { products, isLoading, error, refetch };
 }

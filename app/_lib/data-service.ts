@@ -20,7 +20,7 @@ export async function getProducts() {
   }
   return data ?? [];
 }
-export async function getDeleteProducts(id: string) {
+export async function getDeleteProducts(id: number) {
   const { data, error } = await supabase.from("products").delete().eq("id", id);
 
   if (error) {

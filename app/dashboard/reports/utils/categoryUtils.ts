@@ -1,7 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+interface Product {
+  name: string;
+  category: string;
+}
+
+interface SaleItem {
+  quantity: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+  products?: Product;
+}
+
 export function getTopSellingCategories(
-  saleItemsData,
+  saleItemsData: SaleItem[],
   sortBy: "quantity" | "revenue" | "profit" | "transactions" = "quantity"
 ) {
   if (!saleItemsData || !Array.isArray(saleItemsData)) return [];
@@ -10,6 +23,7 @@ export function getTopSellingCategories(
 
   saleItemsData.forEach((item) => {
     const category = item.products?.category || "Unknown";
+
     if (!categoryStats[category]) {
       categoryStats[category] = {
         category,
@@ -21,18 +35,21 @@ export function getTopSellingCategories(
         products: new Set<string>(),
       };
     }
+
     categoryStats[category].totalQuantity += item.quantity;
     categoryStats[category].totalRevenue += item.total_price;
     categoryStats[category].totalCost += item.total_cost;
     categoryStats[category].totalProfit += item.profit_amount;
     categoryStats[category].transactionCount += 1;
-    categoryStats[category].products.add(item.products?.name);
+    if (item.products?.name) {
+      categoryStats[category].products.add(item.products.name);
+    }
   });
 
   const processedStats = Object.values(categoryStats).map((stat: any) => ({
     ...stat,
     uniqueProductsCount: stat.products.size,
-    products: undefined,
+    products: undefined, // remove set before returning
   }));
 
   const sorters: Record<string, (a: any, b: any) => number> = {

@@ -4,8 +4,10 @@ import toast from "react-hot-toast";
 
 interface SaleItem {
   product_id: string;
+  name: string;
   quantity: number;
   unit_cost: number;
+  unit_price: number;
   total_cost: number;
   selling_price: number;
   total_price: number;
@@ -29,7 +31,7 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       toast.success("Sale completed successfully!");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Sale error:", error);
       toast.error("Failed to complete sale");
     },

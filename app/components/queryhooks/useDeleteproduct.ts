@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 
 export function useDeleteProduct() {
   const { isPending, mutate } = useMutation({
-    mutationFn: (id) => getDeleteProducts(id),
+    mutationFn: (id: number) => getDeleteProducts(id),
   });
 
   return { isPending, mutate };

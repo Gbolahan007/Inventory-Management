@@ -93,9 +93,7 @@ export type SaleItem = {
   total_price: number;
   total_cost: number;
   profit_amount: number;
-  products?: {
-    name: string;
-  };
+  products?: Partial<Product>;
 };
 
 export type Stats = {
@@ -377,10 +375,7 @@ export default function ReportsDashboard(): React.JSX.Element {
   const topCategories = useMemo(() => {
     if (!saleItemsWithCategories || !Array.isArray(saleItemsWithCategories))
       return [];
-    return getTopSellingCategories(
-      saleItemsWithCategories as SaleItem[],
-      "revenue"
-    );
+    return getTopSellingCategories(saleItemsWithCategories, "revenue");
   }, [saleItemsWithCategories]);
 
   const categoryData: CategoryDatum[] = useMemo(
@@ -454,11 +449,6 @@ export default function ReportsDashboard(): React.JSX.Element {
         </div>
       </div>
     );
-  }
-
-  // ✅ Additional safety check - don't render if user doesn't have admin access
-  if (!user || (userRole !== null && !hasPermission("admin"))) {
-    return null;
   }
 
   // Loading dashboard data -------------------------------------------------

@@ -103,6 +103,7 @@ export default function AddToSaleModal({
       total_price: totalPrice,
       total_cost: unitCost * quantity,
       profit_amount: profitAmount,
+      selling_price: unitPrice,
     };
 
     const existingItemIndex = cartItems.findIndex(

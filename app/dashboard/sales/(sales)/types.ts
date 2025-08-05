@@ -45,6 +45,7 @@ export type SaleItem = {
   total_price: number;
   total_cost: number;
   profit_amount: number;
+  selling_price: number;
   products?: {
     name: string;
   };
