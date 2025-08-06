@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import {
   DollarSign,
   Package,
@@ -24,10 +24,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-// Auth
-import { useAuth } from "@/app/(auth)/hooks/useAuth";
-import { useRouter } from "next/navigation";
 
 // Data hooks ---------------------------------------------------------------
 import { useStats } from "@/app/components/queryhooks/useStats";
@@ -283,78 +279,6 @@ function ItemTooltip({ active, payload, label, metric }: ItemTooltipProps) {
 // Main Component
 // -------------------------------------------------------------------------
 export default function ReportsDashboard(): React.JSX.Element {
-  // ✅ Auth state and routing with enhanced error handling
-  const {
-    user,
-    userRole,
-    loading: authLoading,
-    hasPermission,
-    error: authError,
-    isInitialized,
-    refreshAuth,
-  } = useAuth();
-  const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
-  // ✅ Enhanced auth protection effect
-  useEffect(() => {
-    console.log("🔍 Reports Auth Check:", {
-      authLoading,
-      isInitialized,
-      user: !!user,
-      userRole,
-      hasAdminPermission: hasPermission("admin"),
-      authError,
-    });
-
-    // Don't do anything while still loading auth state
-    if (authLoading || !isInitialized) {
-      return;
-    }
-
-    // Handle auth errors - try to refresh once
-    if (authError) {
-      console.error("Auth error in reports:", authError);
-      if (authError.includes("timeout") || authError.includes("expired")) {
-        refreshAuth();
-        return;
-      }
-    }
-
-    // If no user is authenticated, redirect to login
-    if (!user) {
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If user is authenticated but role is salesrep, redirect to sales dashboard
-    if (userRole === "salesrep") {
-      setIsRedirecting(true);
-      router.push("/dashboard/sales");
-      return;
-    }
-
-    // If user doesn't have admin permission (and is not a salesrep), redirect to login
-    if (!hasPermission("admin") && userRole !== null) {
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If we get here, user has proper access
-    setIsRedirecting(false);
-  }, [
-    authLoading,
-    isInitialized,
-    user,
-    userRole,
-    router,
-    hasPermission,
-    authError,
-    refreshAuth,
-  ]);
-
   // Data -------------------------------------------------------------------
   const { stats, isLoading: statsLoading } = useStats();
   const { recentSales = [] as Sale[], isLoading: salesLoading } =
@@ -427,27 +351,6 @@ export default function ReportsDashboard(): React.JSX.Element {
         : b.revenue - a.revenue
     );
   }, [rawItemStats, productMetric]);
-
-  // ✅ Show loading state while checking auth or redirecting
-  if (authLoading || !isInitialized || isRedirecting) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">
-            {authLoading || !isInitialized
-              ? "Loading dashboard..."
-              : "Redirecting..."}
-          </p>
-          {authError && (
-            <p className="text-xs text-red-500 max-w-md text-center">
-              {authError}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   // Loading dashboard data -------------------------------------------------
   if (statsLoading || salesLoading) {

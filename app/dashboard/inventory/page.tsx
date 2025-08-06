@@ -6,16 +6,14 @@ import type { RootState } from "@/app/store";
 import { Chip, IconButton, Tooltip } from "@mui/material";
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import HeaderInventory from "../../components/HeaderInventory";
 import { useProducts } from "../../components/queryhooks/useProducts";
 import AddProductModal from "../../components/ui/AddProductModal";
 
-import { useAuth } from "@/app/(auth)/hooks/useAuth";
 import { useDeleteProduct } from "@/app/components/queryhooks/useDeleteproduct";
 import DeleteProductInverntoryModal from "@/app/components/ui/DeleteProductInverntoryModal";
-import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../../hooks/useFormatCurrency";
@@ -37,8 +35,6 @@ interface Product {
 export default function Inventory() {
   const { products, isLoading, error, refetch } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
-  const router = useRouter();
-  const { user, userRole, loading, hasPermission, isInitialized } = useAuth();
   const { mutate: deleteProduct, isPending: isDeleting } = useDeleteProduct();
 
   // ✅ Modal states
@@ -46,7 +42,6 @@ export default function Inventory() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProductForDelete, setSelectedProductForDelete] =
     useState<Product | null>(null);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // ✅ Fixed row click handler
   const handleRowClick = (params: any) => {
@@ -55,44 +50,6 @@ export default function Inventory() {
       console.log("Selected product:", product);
     }
   };
-
-  // ✅ Fixed auth effect with proper dependency management
-  useEffect(() => {
-    // Don't do anything while auth is still loading
-    if (loading || !isInitialized) {
-      return;
-    }
-
-    // Now we have complete auth information
-    if (!user) {
-      console.log("No user found, redirecting to login from inventory");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If salesrep, redirect to their specific dashboard
-    if (userRole === "salesrep") {
-      console.log(
-        "Salesrep detected, redirecting to sales dashboard from inventory"
-      );
-      setIsRedirecting(true);
-      router.push("/dashboard/sales");
-      return;
-    }
-
-    // If not admin, redirect to login
-    if (userRole !== "admin" && !hasPermission("admin")) {
-      console.log("Not admin, redirecting to login from inventory");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If we get here, user is authenticated and has proper permissions
-    setIsRedirecting(false);
-    console.log("Inventory access granted for admin user");
-  }, [loading, isInitialized, user, userRole, router, hasPermission]);
 
   // ✅ Handle opening delete modal
   const handleOpenDeleteModal = (product: Product) => {
@@ -123,44 +80,6 @@ export default function Inventory() {
       });
     });
   };
-
-  // ✅ Show loading state while checking auth
-  if (loading || !isInitialized) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Loading inventory...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Show loading state while redirecting
-  if (isRedirecting) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ Final safety check - don't render if no user or wrong permissions
-  if (!user || (userRole !== "admin" && !hasPermission("admin"))) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">
-            Checking permissions...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const columns: GridColDef<Product>[] = [
     { field: "id", headerName: "ID", width: 90 },

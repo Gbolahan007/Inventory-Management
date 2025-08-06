@@ -3,8 +3,7 @@
 "use client";
 
 import { Calendar } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { LowStockAlert } from "../(dashboard)/LowStockAlert";
 import { MetricsGrid } from "../(dashboard)/MetricsGrid";
@@ -17,19 +16,9 @@ import { useSales } from "../components/queryhooks/useSales";
 import { useTodaysProfit } from "../components/queryhooks/useTodaysProfit";
 import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
 import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
-import { useAuth } from "../(auth)/hooks/useAuth";
 
 // Import the TopSellingProduct type
 import type { TopSellingProduct } from "../(dashboard)/TopSellingItems";
-
-const LoadingSpinner = ({ message }: { message: string }) => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      <p className="text-sm text-muted-foreground">{message}</p>
-    </div>
-  </div>
-);
 
 // Header component for better organization
 const DashboardHeader = () => {
@@ -70,10 +59,6 @@ const DashboardHeader = () => {
 };
 
 export default function Dashboard() {
-  const router = useRouter();
-  const { user, userRole, loading, hasPermission, isInitialized } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
   // Memoize date calculations to prevent unnecessary re-renders
   const { start, end } = useMemo(() => {
     const start = new Date();
@@ -110,53 +95,6 @@ export default function Dashboard() {
       };
     });
   }, [rawTopSellingProducts]);
-
-  // Fixed auth effect - only redirect when we have complete auth info
-  useEffect(() => {
-    if (loading || !isInitialized) {
-      return;
-    }
-
-    if (!user) {
-      console.log("No user found, redirecting to login");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    if (userRole === "salesrep") {
-      console.log("Salesrep detected, redirecting to sales dashboard");
-      setIsRedirecting(true);
-      router.push("/dashboard/sales");
-      return;
-    }
-
-    if (userRole !== "admin" && !hasPermission("admin")) {
-      console.log("Not admin, redirecting to login");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If we get here, user is authenticated and has proper permissions
-    setIsRedirecting(false);
-    console.log("Dashboard access granted for admin user");
-  }, [loading, isInitialized, user, userRole, router, hasPermission]);
-
-  // Show loading state while checking auth
-  if (loading || !isInitialized) {
-    return <LoadingSpinner message="Loading dashboard..." />;
-  }
-
-  // Show loading state while redirecting
-  if (isRedirecting) {
-    return <LoadingSpinner message="Redirecting..." />;
-  }
-
-  // Final safety check - don't render if no user or wrong permissions
-  if (!user || (userRole !== "admin" && !hasPermission("admin"))) {
-    return <LoadingSpinner message="Checking permissions..." />;
-  }
 
   return (
     <div className="min-h-screen bg-background">
