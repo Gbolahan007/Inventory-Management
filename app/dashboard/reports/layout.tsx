@@ -18,7 +18,7 @@ const reportTabs = [
     id: "dashboard",
     label: "Dashboard",
     icon: TrendingUp,
-    path: "/reports",
+    path: "/dashboard/reports",
     description: "Overview with key metrics",
   },
   // {

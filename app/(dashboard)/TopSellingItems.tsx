@@ -1,8 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
-import { getItemStats } from "../components/utils/getItemStats";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
-import { SaleItem } from "../dashboard/reports/page";
 
 export type TopSellingProduct = {
   id: string;
@@ -10,6 +8,17 @@ export type TopSellingProduct = {
   name?: string;
   quantity: number;
   revenue: number;
+};
+
+export type SaleItem = {
+  product_id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
 };
 
 export function mapTopSellingProductToSaleItem(
@@ -23,11 +32,19 @@ export function mapTopSellingProductToSaleItem(
     name: topProduct.name || `Product ${topProduct.id}`,
     quantity: topProduct.quantity,
     unit_price: unitPrice,
-    unit_cost: 0, // Set actual cost if available
+    unit_cost: 0,
     total_price: topProduct.revenue,
-    total_cost: 0, // Calculate: unit_cost * quantity
-    profit_amount: topProduct.revenue, // Calculate: total_price - total_cost
+    total_cost: 0,
+    profit_amount: topProduct.revenue,
   };
+}
+
+// Get individual items (no grouping) - sorted by quantity sold
+export function getIndividualItemStats(items?: SaleItem[]): SaleItem[] {
+  if (!items) return [];
+
+  // Sort by quantity sold (descending) or by revenue
+  return [...items].sort((a, b) => b.quantity - a.quantity).slice(0, 11);
 }
 
 interface TopSellingItemsProps {
@@ -35,10 +52,9 @@ interface TopSellingItemsProps {
 }
 
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {
-  // Convert TopSellingProduct[] to SaleItem[] before passing to getItemStats
   const saleItems =
     topSellingProducts?.map(mapTopSellingProductToSaleItem) || [];
-  const itemStats = getItemStats(saleItems);
+  const individualItems = getIndividualItemStats(saleItems);
 
   return (
     <Card className="lg:col-span-1">
@@ -50,18 +66,21 @@ export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-3 sm:space-y-4">
-          {itemStats.map((item) => (
-            <div key={item.name} className="flex items-center justify-between">
+          {individualItems.map((item, index) => (
+            <div
+              key={`${item.product_id}-${index}`}
+              className="flex items-center justify-between"
+            >
               <div className="space-y-1 min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium leading-none truncate text-foreground">
                   {item.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {item.quantity} sold
+                  {item.quantity} units sold
                 </p>
               </div>
               <div className="text-xs sm:text-sm font-medium ml-2 text-primary">
-                {FormatCurrency(item.revenue)}
+                {FormatCurrency(item.total_price)}
               </div>
             </div>
           ))}
