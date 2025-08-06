@@ -46,7 +46,7 @@ export const useAuth = () => {
     []
   );
 
-  // Initialize authentication - simplified version
+  // Initialize authentication - fixed version
   const initializeAuth = useCallback(async () => {
     // Prevent multiple simultaneous initializations
     if (initializingRef.current || !isMounted()) return;
@@ -71,14 +71,20 @@ export const useAuth = () => {
       if (session?.user) {
         setUser(session.user);
 
-        // Fetch user role
+        // Fetch user role and wait for it to complete
         const role = await fetchUserRole(session.user.id);
         if (isMounted()) {
           setUserRole(role);
+          // Only set loading to false after both user and role are set
+          setLoading(false);
+          setIsInitialized(true);
         }
       } else {
         setUser(null);
         setUserRole(null);
+        // Set loading to false even if no user
+        setLoading(false);
+        setIsInitialized(true);
       }
     } catch (error: any) {
       console.error("Auth initialization error:", error);
@@ -86,12 +92,10 @@ export const useAuth = () => {
         setError(error.message || "Authentication failed");
         setUser(null);
         setUserRole(null);
-      }
-    } finally {
-      if (isMounted()) {
         setLoading(false);
         setIsInitialized(true);
       }
+    } finally {
       initializingRef.current = false;
     }
   }, [fetchUserRole]);
@@ -103,11 +107,17 @@ export const useAuth = () => {
 
       console.log("Auth state change:", event);
 
+      // Set loading to true for state changes that require role fetching
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        setLoading(true);
+      }
+
       switch (event) {
         case "SIGNED_OUT":
           setUser(null);
           setUserRole(null);
           setError(null);
+          setLoading(false);
           break;
 
         case "SIGNED_IN":
@@ -117,17 +127,16 @@ export const useAuth = () => {
             const role = await fetchUserRole(session.user.id);
             if (isMounted()) {
               setUserRole(role);
+              setLoading(false);
             }
+          } else {
+            setLoading(false);
           }
           break;
 
         default:
-          // Handle other events if needed
+          // Don't change loading state for other events
           break;
-      }
-
-      if (isMounted()) {
-        setLoading(false);
       }
     },
     [fetchUserRole]
@@ -148,11 +157,12 @@ export const useAuth = () => {
     // Cleanup timeout for initialization
     const initTimeout = setTimeout(() => {
       if (loading && !isInitialized && isMounted()) {
+        console.warn("Auth initialization timeout");
         setLoading(false);
         setIsInitialized(true);
         setError("Authentication timeout. Please refresh the page.");
       }
-    }, 10000); // Reduced to 10 seconds
+    }, 15000); // Increased timeout
 
     return () => {
       mountedRef.current = false;
@@ -172,7 +182,7 @@ export const useAuth = () => {
     [userRole, isInitialized]
   );
 
-  // Manual refresh function (simplified)
+  // Manual refresh function
   const refreshAuth = useCallback(() => {
     if (!isMounted()) return;
     setIsInitialized(false);

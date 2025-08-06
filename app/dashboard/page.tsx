@@ -4,7 +4,7 @@
 
 import { Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { LowStockAlert } from "../(dashboard)/LowStockAlert";
 import { MetricsGrid } from "../(dashboard)/MetricsGrid";
@@ -22,7 +22,6 @@ import { useAuth } from "../(auth)/hooks/useAuth";
 // Import the TopSellingProduct type
 import type { TopSellingProduct } from "../(dashboard)/TopSellingItems";
 
-// Loading component for better UX
 const LoadingSpinner = ({ message }: { message: string }) => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="flex flex-col items-center space-y-4">
@@ -72,7 +71,8 @@ const DashboardHeader = () => {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, userRole, loading, hasPermission } = useAuth();
+  const { user, userRole, loading, hasPermission, isInitialized } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Memoize date calculations to prevent unnecessary re-renders
   const { start, end } = useMemo(() => {
@@ -111,37 +111,51 @@ export default function Dashboard() {
     });
   }, [rawTopSellingProducts]);
 
-  // Check if any data is still loading
+  // Fixed auth effect - only redirect when we have complete auth info
   useEffect(() => {
-    if (!loading) {
-      // If not authenticated, redirect to login
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // If salesrep, redirect to their specific dashboard
-      if (userRole === "salesrep") {
-        router.push("/dashboard/sales");
-        return;
-      }
-
-      // If not admin, redirect to unauthorized page or login
-      if (!hasPermission("admin")) {
-        router.push("/login");
-        return;
-      }
+    if (loading || !isInitialized) {
+      return;
     }
-  }, [loading, user, userRole, router, hasPermission]);
+
+    if (!user) {
+      console.log("No user found, redirecting to login");
+      setIsRedirecting(true);
+      router.push("/login");
+      return;
+    }
+
+    if (userRole === "salesrep") {
+      console.log("Salesrep detected, redirecting to sales dashboard");
+      setIsRedirecting(true);
+      router.push("/dashboard/sales");
+      return;
+    }
+
+    if (userRole !== "admin" && !hasPermission("admin")) {
+      console.log("Not admin, redirecting to login");
+      setIsRedirecting(true);
+      router.push("/login");
+      return;
+    }
+
+    // If we get here, user is authenticated and has proper permissions
+    setIsRedirecting(false);
+    console.log("Dashboard access granted for admin user");
+  }, [loading, isInitialized, user, userRole, router, hasPermission]);
 
   // Show loading state while checking auth
-  if (loading) {
+  if (loading || !isInitialized) {
     return <LoadingSpinner message="Loading dashboard..." />;
   }
 
   // Show loading state while redirecting
-  if (!user || !hasPermission("admin")) {
+  if (isRedirecting) {
     return <LoadingSpinner message="Redirecting..." />;
+  }
+
+  // Final safety check - don't render if no user or wrong permissions
+  if (!user || (userRole !== "admin" && !hasPermission("admin"))) {
+    return <LoadingSpinner message="Checking permissions..." />;
   }
 
   return (
@@ -151,18 +165,6 @@ export default function Dashboard() {
           <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
             {/* Header */}
             <DashboardHeader />
-
-            {/* Show loading skeleton for data if still loading */}
-            {loading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-                  <span className="text-sm text-muted-foreground">
-                    Loading dashboard data...
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* Metrics */}
             <MetricsGrid

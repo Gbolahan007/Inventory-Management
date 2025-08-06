@@ -38,7 +38,7 @@ export default function Inventory() {
   const { products, isLoading, error, refetch } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
   const router = useRouter();
-  const { user, userRole, loading, hasPermission } = useAuth();
+  const { user, userRole, loading, hasPermission, isInitialized } = useAuth();
   const { mutate: deleteProduct, isPending: isDeleting } = useDeleteProduct();
 
   // ✅ Modal states
@@ -56,32 +56,43 @@ export default function Inventory() {
     }
   };
 
-  // ✅ Enhanced auth effect with better role-based routing
+  // ✅ Fixed auth effect with proper dependency management
   useEffect(() => {
-    if (loading) {
+    // Don't do anything while auth is still loading
+    if (loading || !isInitialized) {
       return;
     }
 
+    // Now we have complete auth information
     if (!user) {
+      console.log("No user found, redirecting to login from inventory");
       setIsRedirecting(true);
       router.push("/login");
       return;
     }
 
+    // If salesrep, redirect to their specific dashboard
     if (userRole === "salesrep") {
+      console.log(
+        "Salesrep detected, redirecting to sales dashboard from inventory"
+      );
       setIsRedirecting(true);
       router.push("/dashboard/sales");
       return;
     }
 
-    if (!hasPermission("admin") && userRole !== null) {
+    // If not admin, redirect to login
+    if (userRole !== "admin" && !hasPermission("admin")) {
+      console.log("Not admin, redirecting to login from inventory");
       setIsRedirecting(true);
       router.push("/login");
       return;
     }
 
+    // If we get here, user is authenticated and has proper permissions
     setIsRedirecting(false);
-  }, [loading, user, userRole, router, hasPermission]);
+    console.log("Inventory access granted for admin user");
+  }, [loading, isInitialized, user, userRole, router, hasPermission]);
 
   // ✅ Handle opening delete modal
   const handleOpenDeleteModal = (product: Product) => {
@@ -113,23 +124,42 @@ export default function Inventory() {
     });
   };
 
-  // ✅ Show loading state while checking auth or redirecting
-  if (loading || isRedirecting) {
+  // ✅ Show loading state while checking auth
+  if (loading || !isInitialized) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">
-            {loading ? "Loading dashboard..." : "Redirecting..."}
-          </p>
+          <p className="text-sm text-muted-foreground">Loading inventory...</p>
         </div>
       </div>
     );
   }
 
-  // ✅ Additional safety check
-  if (!user || (userRole !== null && !hasPermission("admin"))) {
-    return null;
+  // ✅ Show loading state while redirecting
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Final safety check - don't render if no user or wrong permissions
+  if (!user || (userRole !== "admin" && !hasPermission("admin"))) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">
+            Checking permissions...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const columns: GridColDef<Product>[] = [
@@ -276,6 +306,7 @@ export default function Inventory() {
   if (isLoading) {
     return (
       <div className="flex flex-col">
+        <HeaderInventory name="Inventory" />
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner />
         </div>
@@ -309,6 +340,8 @@ export default function Inventory() {
 
   return (
     <div className="flex flex-col">
+      <HeaderInventory name="Inventory" />
+
       {/* ✅ Add Product Button */}
       <div className="flex justify-end mb-4 p-5">
         <button
