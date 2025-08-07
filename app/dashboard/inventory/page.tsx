@@ -11,12 +11,12 @@ import { useSelector } from "react-redux";
 import HeaderInventory from "../../components/HeaderInventory";
 import { useProducts } from "../../components/queryhooks/useProducts";
 import AddProductModal from "../../components/ui/AddProductModal";
-
 import { useDeleteProduct } from "@/app/components/queryhooks/useDeleteproduct";
 import DeleteProductInverntoryModal from "@/app/components/ui/DeleteProductInverntoryModal";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../../hooks/useFormatCurrency";
+import { useAuth } from "@/app/(auth)/hooks/useAuth";
 
 // ✅ Define product type
 interface Product {
@@ -31,8 +31,11 @@ interface Product {
   created_at: string;
 }
 
-// ✅ Main Inventory Page
+// ✅ Main Inventory Page - NOW MUCH SIMPLER!
 export default function Inventory() {
+  // Only use useAuth for loading state - middleware handles authentication
+  const { loading } = useAuth();
+
   const { products, isLoading, error, refetch } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
   const { mutate: deleteProduct, isPending: isDeleting } = useDeleteProduct();
@@ -222,6 +225,19 @@ export default function Inventory() {
     },
   ];
 
+  // ✅ Show loading spinner only for auth loading (middleware handles auth checks)
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <HeaderInventory name="Inventory" />
+        <div className="flex items-center justify-center h-96">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show loading for products data
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -233,6 +249,7 @@ export default function Inventory() {
     );
   }
 
+  // ✅ Show error state
   if (error || !products) {
     return (
       <div className="flex flex-col">
@@ -244,6 +261,7 @@ export default function Inventory() {
     );
   }
 
+  // ✅ Process products data
   const filteredProducts = products.filter((item) => item.current_stock !== 0);
   const processedProducts = filteredProducts.map((product, index) => ({
     ...product,
@@ -257,9 +275,13 @@ export default function Inventory() {
     fontSize: "16px",
   };
 
+  // ✅ If we reach here, middleware has already verified:
+  // - User is authenticated
+  // - User has admin permissions
+  // - No need for manual redirects!
   return (
     <div className="flex flex-col">
-      {/* <HeaderInventory name="Inventory" /> */}
+      <HeaderInventory name="Inventory" />
 
       {/* ✅ Add Product Button */}
       <div className="flex justify-end mb-4 p-5">

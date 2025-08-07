@@ -29,27 +29,26 @@ import {
   Users,
   Loader2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addUser } from "./action";
+import { useAuth } from "../(auth)/hooks/useAuth";
 
-// ✅ Enhanced Auth imports
-import { useAuth } from "@/app/(auth)/hooks/useAuth";
-import { useRouter } from "next/navigation";
+// Loading component
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <p className="text-sm text-muted-foreground">
+        Loading admin dashboard...
+      </p>
+    </div>
+  </div>
+);
 
 export default function AdminDashboard() {
-  // ✅ Enhanced auth state and routing
-  const {
-    user: authUser,
-    userRole,
-    loading: authLoading,
-    hasPermission,
-    error: authError,
-    isInitialized,
-    refreshAuth,
-  } = useAuth();
-  const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  // ✅ Only use auth for loading state - middleware handles the rest!
+  const { loading } = useAuth();
 
   // Original component state
   const [message, setMessage] = useState<{
@@ -58,95 +57,12 @@ export default function AdminDashboard() {
   } | null>(null);
   const { user } = useUserData();
 
-  // ✅ Enhanced auth protection effect
-  useEffect(() => {
-    console.log("🔍 Admin Dashboard Auth Check:", {
-      authLoading,
-      isInitialized,
-      user: !!authUser,
-      userRole,
-      hasAdminPermission: hasPermission("admin"),
-      authError,
-    });
-
-    // Don't do anything while still loading auth state
-    if (authLoading || !isInitialized) {
-      return;
-    }
-
-    // Handle auth errors - try to refresh once
-    if (authError) {
-      console.error("Auth error in admin dashboard:", authError);
-      if (authError.includes("timeout") || authError.includes("expired")) {
-        console.log("🔄 Attempting to refresh auth due to error");
-        refreshAuth();
-        return;
-      }
-    }
-
-    // If no user is authenticated, redirect to login
-    if (!authUser) {
-      console.log("❌ No user found, redirecting to login");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If user is authenticated but role is salesrep, redirect to sales dashboard
-    if (userRole === "salesrep") {
-      console.log("🔄 Salesrep detected, redirecting to sales dashboard");
-      setIsRedirecting(true);
-      router.push("/dashboard/sales");
-      return;
-    }
-
-    // If user doesn't have admin permission (and is not a salesrep), redirect to login
-    if (!hasPermission("admin") && userRole !== null) {
-      console.log("❌ No admin permission, redirecting to login");
-      setIsRedirecting(true);
-      router.push("/login");
-      return;
-    }
-
-    // If we get here, user has proper access
-    console.log("✅ User has admin access to admin dashboard");
-    setIsRedirecting(false);
-  }, [
-    authLoading,
-    isInitialized,
-    authUser,
-    userRole,
-    router,
-    hasPermission,
-    authError,
-    refreshAuth,
-  ]);
-
-  // ✅ Show loading state while checking auth or redirecting
-  if (authLoading || !isInitialized || isRedirecting) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-sm text-muted-foreground">
-            {authLoading || !isInitialized
-              ? "Loading dashboard..."
-              : "Redirecting..."}
-          </p>
-          {authError && (
-            <p className="text-xs text-red-500 max-w-md text-center">
-              {authError}
-            </p>
-          )}
-        </div>
-      </div>
-    );
+  // ✅ Show loading for auth (middleware handles authentication and authorization)
+  if (loading) {
+    return <LoadingSpinner />;
   }
 
-  // ✅ Additional safety check - don't render if user doesn't have admin access
-  if (!authUser || (userRole !== null && !hasPermission("admin"))) {
-    return null;
-  }
+  // ✅ If we reach here, middleware has verified admin access!
 
   // Role-specific limits
   const MAX_ADMINS = 2;

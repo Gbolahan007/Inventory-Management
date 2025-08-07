@@ -38,6 +38,7 @@ import {
   groupProfitByDate,
   groupSalesByDate,
 } from "./utils/groupedSalesByDate";
+import { useAuth } from "@/app/(auth)/hooks/useAuth";
 
 // -------------------------------------------------------------------------
 // Types (using your actual type definitions)
@@ -276,9 +277,22 @@ function ItemTooltip({ active, payload, label, metric }: ItemTooltipProps) {
 }
 
 // -------------------------------------------------------------------------
-// Main Component
+// Loading Spinner Component
+// -------------------------------------------------------------------------
+const LoadingSpinner = () => (
+  <div className="p-6 text-center text-muted-foreground">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+    Loading dashboard data...
+  </div>
+);
+
+// -------------------------------------------------------------------------
+// Main Component - SIMPLIFIED!
 // -------------------------------------------------------------------------
 export default function ReportsDashboard(): React.JSX.Element {
+  // ✅ Only use auth for loading state - middleware handles the rest!
+  const { loading } = useAuth();
+
   // Data -------------------------------------------------------------------
   const { stats, isLoading: statsLoading } = useStats();
   const { recentSales = [] as Sale[], isLoading: salesLoading } =
@@ -352,13 +366,14 @@ export default function ReportsDashboard(): React.JSX.Element {
     );
   }, [rawItemStats, productMetric]);
 
+  // ✅ Show loading for auth (middleware handles authentication)
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   // Loading dashboard data -------------------------------------------------
   if (statsLoading || salesLoading) {
-    return (
-      <div className="p-6 text-center text-muted-foreground">
-        Loading dashboard data...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   // Safe stats --------------------------------------------------------------
@@ -381,6 +396,7 @@ export default function ReportsDashboard(): React.JSX.Element {
   const productMetricKey =
     productMetric === "quantity" ? "quantity" : "revenue";
 
+  // ✅ If we reach here, middleware already verified admin access!
   return (
     <div className="p-6 space-y-6 bg-background">
       {/* Metrics */}
