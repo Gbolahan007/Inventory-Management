@@ -76,6 +76,11 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => {
+                  if (window.innerWidth < 768) {
+                    dispatch(setIsCollapsed(true));
+                  }
+                }}
                 className={`group flex items-center px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                   isSidebarCollapsed ? "md:justify-center" : "space-x-3"
                 } ${

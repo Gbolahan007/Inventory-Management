@@ -259,7 +259,7 @@ export default function Inventory() {
 
   return (
     <div className="flex flex-col">
-      <HeaderInventory name="Inventory" />
+      {/* <HeaderInventory name="Inventory" /> */}
 
       {/* ✅ Add Product Button */}
       <div className="flex justify-end mb-4 p-5">
