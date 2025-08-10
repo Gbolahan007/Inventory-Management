@@ -25,42 +25,57 @@ export async function middleware(request: NextRequest) {
 
   // If user is authenticated
   if (session) {
-    try {
-      // Fetch user role
-      const { data: userData, error } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
+    let userRole =
+      session.user.user_metadata?.role || session.user.app_metadata?.role;
 
-      if (error) {
-        console.error("Error fetching user role:", error);
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
+    // CRITICAL FIX: If no role in token, fetch from database BUT don't redirect immediately
+    if (!userRole) {
+      try {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
 
-      const userRole = userData?.role;
+        if (userData?.role) {
+          userRole = userData.role;
 
-      // If no role found, redirect to login
-      if (!userRole) {
-        console.error("No role found for user:", session.user.id);
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
-
-      // Handle redirect after login (only redirect if coming from login page)
-      if (pathname === "/login") {
-        if (userRole === "salesrep") {
-          return NextResponse.redirect(
-            new URL("/dashboard/sales", request.url)
-          );
-        } else if (userRole === "admin") {
-          return NextResponse.redirect(
-            new URL("/dashboard/inventory", request.url)
-          );
+          // Update token in background (don't await to avoid blocking)
+          supabase.auth
+            .updateUser({
+              data: { role: userData.role },
+            })
+            .catch((err) =>
+              console.error("Error updating user metadata:", err)
+            );
+        } else {
+          // Only redirect to login if we really can't find a role
+          console.error("No role found for user:", session.user.id);
+          await supabase.auth.signOut();
+          return NextResponse.redirect(new URL("/login", request.url));
         }
-        // If role is neither admin nor salesrep, stay on login page
-        return res;
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        // Don't redirect on database errors - let them through for now
+        userRole = "unknown";
       }
+    }
 
+    // Handle redirect after login - but ONLY if we have a role
+    if (pathname === "/login" && userRole && userRole !== "unknown") {
+      if (userRole === "salesrep") {
+        return NextResponse.redirect(new URL("/dashboard/sales", request.url));
+      } else if (userRole === "admin") {
+        return NextResponse.redirect(
+          new URL("/dashboard/inventory", request.url)
+        );
+      }
+      // If role is neither admin nor salesrep, stay on login page
+      return res;
+    }
+
+    // Don't enforce role-based protection if role is unknown (prevents loops)
+    if (userRole && userRole !== "unknown") {
       // Role-based route protection
       const adminOnlyRoutes = [
         "/dashboard/inventory",
@@ -84,17 +99,13 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL("/login", request.url));
         }
       }
-    } catch (error) {
-      console.error("Error in middleware:", error);
-      return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
   return res;
 }
 
+// More restrictive matcher - only run on protected routes
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/login"],
 };
