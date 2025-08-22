@@ -1,7 +1,14 @@
 "use client";
 
 import type { RootState } from "@/app/store";
-import { BarChart3, Boxes, FileText, Home, Settings } from "lucide-react";
+import {
+  BarChart2,
+  BarChart3,
+  Boxes,
+  FileText,
+  Home,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +21,8 @@ const navigation = [
   { name: "Inventory", href: "/dashboard/inventory", icon: Boxes },
   { name: "sales", href: "/dashboard/sales", icon: BarChart3 },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
-  // { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { name: "Bar", href: "/dashboard/bar", icon: BarChart2 },
+
   { name: "Settings", href: "/admin", icon: Settings },
 ];
 

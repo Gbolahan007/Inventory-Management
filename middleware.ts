@@ -11,9 +11,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   const { pathname } = request.nextUrl;
-
   // Public routes that don't need authentication
-  const publicRoutes = ["/login", "/signup", "/"];
+  const publicRoutes = ["/login"];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // If no session and trying to access protected route
@@ -28,7 +27,6 @@ export async function middleware(request: NextRequest) {
     let userRole =
       session.user.user_metadata?.role || session.user.app_metadata?.role;
 
-    // CRITICAL FIX: If no role in token, fetch from database BUT don't redirect immediately
     if (!userRole) {
       try {
         const { data: userData } = await supabase
@@ -40,7 +38,6 @@ export async function middleware(request: NextRequest) {
         if (userData?.role) {
           userRole = userData.role;
 
-          // Update token in background (don't await to avoid blocking)
           supabase.auth
             .updateUser({
               data: { role: userData.role },
@@ -56,7 +53,6 @@ export async function middleware(request: NextRequest) {
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
-        // Don't redirect on database errors - let them through for now
         userRole = "unknown";
       }
     }
@@ -66,9 +62,7 @@ export async function middleware(request: NextRequest) {
       if (userRole === "salesrep") {
         return NextResponse.redirect(new URL("/dashboard/sales", request.url));
       } else if (userRole === "admin") {
-        return NextResponse.redirect(
-          new URL("/dashboard/inventory", request.url)
-        );
+        return NextResponse.redirect(new URL("/dashboard", request.url));
       }
       // If role is neither admin nor salesrep, stay on login page
       return res;
@@ -83,7 +77,6 @@ export async function middleware(request: NextRequest) {
         "/admin",
       ];
       const salesrepRoutes = ["/dashboard/sales"];
-
       // Check admin routes
       if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
         if (userRole !== "admin") {

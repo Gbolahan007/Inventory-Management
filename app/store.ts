@@ -16,7 +16,7 @@ import {
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["global"], // only persist global
+  whitelist: ["global"],
 };
 
 const rootReducer = combineReducers({

@@ -31,7 +31,6 @@ export async function createProduct(formdata: FormData) {
   const low_stock = Number(formdata.get("low_stock"));
   const category = formdata.get("category") as string;
   const profit = Number(formdata.get("profit"));
-  console.log(formdata);
   try {
     // Check if product with this name already exists
     const { data: existingProduct, error: selectError } = await supabase
@@ -133,4 +132,23 @@ export async function updateProductStock(productId: string, newStock: number) {
     throw new Error("Could not update product stock");
   }
   return data;
+}
+
+export async function addRoomBooking(formData: FormData) {
+  const customerType = formData.get("customer_type") as string;
+  const roomType = formData.get("room_type") as string;
+  const price = parseFloat(formData.get("price") as string);
+  const category = formData.get("category") as string;
+
+  console.log(formData);
+  const { error } = await supabase.from("room_bookings").insert({
+    customer_type: customerType,
+    room_type: roomType,
+    price,
+    category,
+  });
+
+  if (error) throw new Error(error.message);
+
+  return { success: true };
 }

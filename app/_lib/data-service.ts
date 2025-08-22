@@ -1,5 +1,6 @@
 import { supabase } from "@/app/_lib/supabase";
 import { Sale, SaleItem } from "../dashboard/reports/page";
+import { BarRequest } from "../dashboard/sales/(sales)/types";
 
 interface SaleData {
   total_amount: number;
@@ -274,4 +275,72 @@ export async function getUserData() {
     throw new Error("user could not be loaded");
   }
   return data;
+}
+
+export async function getBarRequests() {
+  const { data, error } = await supabase.from("bar_requests").select("*");
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not fetch bar requests");
+  }
+  return data ?? [];
+}
+
+export async function createBarRequests(
+  barRequestItems: Omit<BarRequest, "id">[]
+) {
+  const { data, error } = await supabase
+    .from("bar_requests")
+    .insert(barRequestItems)
+    .select();
+
+  if (error) {
+    console.error(error);
+    throw new Error("Could not create bar requests");
+  }
+
+  return data ?? [];
+}
+
+export async function updateRequestStatus(
+  requestId: string,
+  newStatus: "given" | "cancelled"
+) {
+  const { error: updateError } = await supabase
+    .from("bar_requests")
+    .update({
+      status: newStatus,
+    })
+    .eq("id", requestId);
+
+  if (updateError) {
+    console.error("Error updating request status:", updateError);
+    throw new Error(
+      `Could not update status for request ${requestId}: ${updateError.message}`
+    );
+  }
+
+  return { success: true, requestId, newStatus };
+}
+
+export async function updateMultipleRequestsStatus(
+  requestIds: string[],
+  newStatus: "given" | "cancelled"
+) {
+  const { error: updateError } = await supabase
+    .from("bar_requests")
+    .update({
+      status: newStatus,
+    })
+    .in("id", requestIds);
+
+  if (updateError) {
+    console.error("Error updating multiple request statuses:", updateError);
+    throw new Error(
+      `Could not update status for requests: ${updateError.message}`
+    );
+  }
+
+  return { success: true, requestIds, newStatus };
 }
