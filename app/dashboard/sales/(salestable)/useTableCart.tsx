@@ -11,7 +11,7 @@ interface UseTableCartLogicProps {
     id: string;
     name: string;
   };
-  currentUserId?: string; // Added this as it was missing from the interface
+  currentUserId?: string;
 }
 
 export function useTableCartLogic({
@@ -26,7 +26,7 @@ export function useTableCartLogic({
 
   const createSaleMutation = useCreateSale();
   const createBarRequestMutation = useCreateBarRequest();
-
+  console.log(currentUser);
   const {
     selectedTable,
     addToTableCart,
@@ -40,7 +40,6 @@ export function useTableCartLogic({
   } = useTableCartStore();
 
   const currentCart = getTableCart(selectedTable);
-  console.log("Current cart:", currentCart);
   const currentTotal = getTableTotal(selectedTable);
   const tableBarRequestStatus = getTableBarRequestStatus(selectedTable);
 
@@ -214,18 +213,16 @@ export function useTableCartLogic({
           toast.success(`Bar request sent for Table ${selectedTable}!`);
           setTableBarRequestStatus(selectedTable, "pending");
         },
-        onError: (error) => {
+        onError: () => {
           toast.error("Failed to send bar request");
-          console.error("Bar request error:", error);
         },
       });
-    } catch (error) {
+    } catch {
       toast.error("Failed to send bar request");
-      console.error("Bar request error:", error);
     }
   };
 
-  // Finalize sale - FIXED VERSION
+  // Finalize sale
   const handleFinalizeSale = async () => {
     if (currentCart.length === 0) {
       toast.error("Cart is empty");
@@ -252,39 +249,27 @@ export function useTableCartLogic({
         table_id: selectedTable,
       };
 
-      console.log("Finalizing sale for table:", selectedTable);
-      console.log("Cart before clearing:", currentCart);
+      // Reset mutation status before making the call
+      createSaleMutation.reset();
 
-      createSaleMutation.mutate(saleData, {
-        onSuccess: () => {
-          console.log(
-            "Sale successful, clearing cart for table:",
-            selectedTable
-          );
-
-          // Clear the cart first
+      await createSaleMutation
+        .mutateAsync(saleData)
+        .then(() => {
+          // Clear the cart
           clearTableCart(selectedTable);
 
           // Reset bar request status
           setTableBarRequestStatus(selectedTable, "none");
 
-          // Verify cart is cleared
-          const updatedCart = getTableCart(selectedTable);
-          console.log("Cart after clearing:", updatedCart);
-
           toast.success(`Sale completed for Table ${selectedTable}!`);
-
-          // Force a re-render by updating component state if needed
-          // You might need to trigger a parent component re-render here
-        },
-        onError: (error) => {
-          toast.error("Failed to complete sale");
-          console.error("Sale error:", error);
-        },
-      });
-    } catch (error) {
+        })
+        .catch((error: any) => {
+          toast.error(
+            `Failed to complete sale: ${error?.message || "Unknown error"}`
+          );
+        });
+    } catch {
       toast.error("Failed to complete sale");
-      console.error("Sale error:", error);
     }
   };
 

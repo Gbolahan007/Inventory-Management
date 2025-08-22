@@ -32,7 +32,7 @@ export function Sidebar() {
   );
   const pathname = usePathname();
   const dispatch = useDispatch();
-  const { user, userRole } = useAuth();
+  const { user, userRole, userData } = useAuth();
 
   return (
     <>
@@ -135,7 +135,7 @@ export function Sidebar() {
             {(!isSidebarCollapsed || window.innerWidth < 768) && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">
-                  {userRole}
+                  {userData?.name}
                 </p>
                 <p className="text-xs text-secondary truncate">{user?.email}</p>
               </div>

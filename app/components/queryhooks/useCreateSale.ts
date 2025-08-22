@@ -29,7 +29,6 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
-      toast.success("Sale completed successfully!");
     },
     onError: (error: Error) => {
       console.error("Sale error:", error);

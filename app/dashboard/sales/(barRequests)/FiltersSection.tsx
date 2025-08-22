@@ -31,20 +31,20 @@ export default function FiltersSection({
       <div className="sm:hidden mb-4">
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow text-left"
+          className="w-full flex items-center justify-between px-4 py-3 bg-card border rounded-lg shadow text-left hover:bg-muted/30 transition-colors"
         >
-          <span className="font-medium text-gray-900">Filters</span>
+          <span className="font-medium text-foreground">Filters</span>
           {showFilters ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           )}
         </button>
       </div>
 
       {/* Filters */}
       <div
-        className={`bg-white rounded-lg shadow mb-4 sm:mb-6 ${
+        className={`bg-card border rounded-lg shadow mb-4 sm:mb-6 ${
           showFilters || "hidden sm:block"
         }`}
       >
@@ -52,7 +52,7 @@ export default function FiltersSection({
           <div className="space-y-4 sm:space-y-6">
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+              <label className="block text-sm font-medium text-foreground mb-2 sm:mb-3">
                 Filter by Status
               </label>
               <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -63,14 +63,14 @@ export default function FiltersSection({
                       onClick={() => setFilter(status)}
                       className={`px-3 py-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
                         filter === status
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row items-center gap-1">
                         <span className="capitalize">{status}</span>
                         {status !== "all" && (
-                          <span className="px-1.5 py-0.5 bg-white bg-opacity-20 rounded-full text-xs">
+                          <span className="px-1.5 py-0.5 bg-background/20 rounded-full text-xs">
                             {status === "pending" && counts.pending}
                             {status === "given" && counts.given}
                             {status === "cancelled" && counts.cancelled}
@@ -85,7 +85,7 @@ export default function FiltersSection({
 
             {/* Table Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+              <label className="block text-sm font-medium text-foreground mb-2 sm:mb-3">
                 Filter by Table
               </label>
               <div className="flex flex-wrap gap-2">
@@ -93,8 +93,8 @@ export default function FiltersSection({
                   onClick={() => setSelectedTable(null)}
                   className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
                     selectedTable === null
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
                   }`}
                 >
                   All Tables
@@ -105,8 +105,8 @@ export default function FiltersSection({
                     onClick={() => setSelectedTable(tableId)}
                     className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
                       selectedTable === tableId
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
                     Table {tableId}

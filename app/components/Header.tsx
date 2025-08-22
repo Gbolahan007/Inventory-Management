@@ -19,7 +19,7 @@ import { handleLogout } from "../(auth)/logout-action";
 import { useState } from "react";
 
 export function Header() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, userData } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const isSidebarCollapsed = useSelector(
     (state: RootState) => state.global.isCollapsed
@@ -65,7 +65,9 @@ export function Header() {
             <p className="text-sm text-secondary hidden sm:block">
               Welcome back,{" "}
               <span className="font-medium">
-                {userRole ? userRole.toUpperCase() : user?.email ?? "Guest"}
+                {userData?.name
+                  ? userData?.name.toUpperCase()
+                  : user?.email ?? "Guest"}
               </span>
               !
             </p>

@@ -6,9 +6,11 @@ export function useBarRequestsQuery() {
     data: barRequests,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["bar_requests"],
     queryFn: () => getBarRequests(),
   });
-  return { barRequests, isLoading, error };
+
+  return { barRequests, isLoading, error, refetch };
 }
