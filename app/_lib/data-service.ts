@@ -6,6 +6,9 @@ interface SaleData {
   total_amount: number;
   payment_method: string;
   items: SaleItem[];
+  table_id: string;
+  sales_rep_id?: string;
+  sales_rep_name?: string;
 }
 
 type ProfitData = {
@@ -190,6 +193,9 @@ export async function createSales(saleData: SaleData) {
         total_amount: saleData.total_amount,
         payment_method: saleData.payment_method,
         sale_date: new Date().toISOString(),
+        table_id: saleData.table_id,
+        sales_rep_id: saleData.sales_rep_id,
+        sales_rep_name: saleData.sales_rep_name,
       })
       .select()
       .single();

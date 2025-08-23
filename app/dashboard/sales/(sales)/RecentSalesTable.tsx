@@ -15,9 +15,13 @@ import {
   Typography,
   Divider,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Sale } from "./types";
 import { getDataGridStyles } from "./getDataGridStyles";
 import { compareDesc, parseISO } from "date-fns";
@@ -55,17 +59,41 @@ export function RecentSalesTable({
   // State to manage selected sale and modal visibility
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string>("all");
 
-  // Sorts sales by descending date
+  // Get unique sales rep names for filter dropdown
+  const salesRepNames = useMemo(() => {
+    const uniqueNames = new Set<string>();
+    sales.forEach((sale) => {
+      if (sale.sales_rep_name) {
+        uniqueNames.add(sale.sales_rep_name);
+      }
+    });
+    return Array.from(uniqueNames).sort();
+  }, [sales]);
+
+  // Sorts sales by descending date and filters by sales rep if selected
   function getFilteredSales(sales?: Sale[]): Sale[] {
     if (!sales?.length) return [];
-    const r = [...sales].sort((a, b) =>
+
+    let filtered = [...sales];
+
+    // Filter by sales rep if not "all"
+    if (selectedSalesRep !== "all") {
+      filtered = filtered.filter(
+        (sale) => sale.sales_rep_name === selectedSalesRep
+      );
+    }
+
+    // Sort by date descending
+    const sorted = filtered.sort((a, b) =>
       compareDesc(
         parseISO(a.created_at || a.sale_date),
         parseISO(b.created_at || b.sale_date)
       )
     );
-    return r;
+
+    return sorted;
   }
 
   // Filters sale items by sale ID
@@ -101,6 +129,11 @@ export function RecentSalesTable({
     setSelectedSale(null);
   };
 
+  // Handle sales rep filter change
+  const handleSalesRepChange = (event: any) => {
+    setSelectedSalesRep(event.target.value);
+  };
+
   // Modal styling (light or dark mode aware)
   const modalStyle = {
     position: "absolute" as const,
@@ -124,13 +157,25 @@ export function RecentSalesTable({
     {
       field: "id",
       headerName: "Sale ID",
-      width: 120,
+      width: 100,
       renderCell: (params) => `#${params.value.toString().slice(-6)}`,
+    },
+    {
+      field: "table_id",
+      headerName: "Table",
+      width: 80,
+      renderCell: (params) => params.value || "N/A",
+    },
+    {
+      field: "sales_rep_name",
+      headerName: "Sales Rep",
+      width: 120,
+      renderCell: (params) => params.value || "Unknown",
     },
     {
       field: "total_amount",
       headerName: "Amount",
-      width: 130,
+      width: 120,
       type: "number",
       renderCell: (params) => {
         const value = Number(params.value);
@@ -140,7 +185,7 @@ export function RecentSalesTable({
     {
       field: "payment_method",
       headerName: "Payment",
-      width: 120,
+      width: 100,
       renderCell: (params) => (
         <Chip
           label={params.value || "Cash"}
@@ -185,14 +230,81 @@ export function RecentSalesTable({
         }
       >
         <CardHeader>
-          <CardTitle className={isDarkMode ? "text-white" : "text-gray-900"}>
-            Recent Sales
-          </CardTitle>
-          <CardDescription
-            className={isDarkMode ? "text-gray-400" : "text-gray-500"}
-          >
-            Latest transactions - Click on a row to view details
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle
+                className={isDarkMode ? "text-white" : "text-gray-900"}
+              >
+                Recent Sales
+              </CardTitle>
+              <CardDescription
+                className={isDarkMode ? "text-gray-400" : "text-gray-500"}
+              >
+                Latest transactions - Click on a row to view details
+              </CardDescription>
+            </div>
+
+            {/* Sales Rep Filter */}
+            <FormControl
+              size="small"
+              sx={{
+                minWidth: 150,
+                "& .MuiOutlinedInput-root": {
+                  color: isDarkMode ? "#f8fafc" : "#111827",
+                  "& fieldset": {
+                    borderColor: isDarkMode ? "#374151" : "#e5e7eb",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: isDarkMode ? "#4b5563" : "#d1d5db",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: isDarkMode ? "#6366f1" : "#3b82f6",
+                  },
+                },
+                "& .MuiInputLabel-root": {
+                  color: isDarkMode ? "#9ca3af" : "#6b7280",
+                },
+              }}
+            >
+              <InputLabel>Filter by Sales Rep</InputLabel>
+              <Select
+                value={selectedSalesRep}
+                onChange={handleSalesRepChange}
+                label="Filter by Sales Rep"
+                sx={{
+                  "& .MuiSelect-select": {
+                    color: isDarkMode ? "#f8fafc" : "#111827",
+                  },
+                  "& .MuiSvgIcon-root": {
+                    color: isDarkMode ? "#9ca3af" : "#6b7280",
+                  },
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: isDarkMode ? "#1f2937" : "#ffffff",
+                      border: isDarkMode
+                        ? "1px solid #374151"
+                        : "1px solid #e5e7eb",
+                      "& .MuiMenuItem-root": {
+                        color: isDarkMode ? "#f8fafc" : "#111827",
+                        "&:hover": {
+                          backgroundColor: isDarkMode ? "#374151" : "#f3f4f6",
+                        },
+                      },
+                    },
+                  },
+                }}
+              >
+                <MenuItem value="all">All Sales Reps</MenuItem>
+                {salesRepNames.map((name) => (
+                  <MenuItem key={name} value={name}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
         </CardHeader>
         <CardContent>
           <div style={{ height: 400, width: "100%" }}>
@@ -274,6 +386,28 @@ export function RecentSalesTable({
                   </Typography>
                   <Typography variant="body1">
                     {selectedSale.sale_number || "N/A"}
+                  </Typography>
+                </div>
+                <div>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: isDarkMode ? "#9ca3af" : "#6b7280" }}
+                  >
+                    Table
+                  </Typography>
+                  <Typography variant="body1">
+                    {selectedSale.table_id || "N/A"}
+                  </Typography>
+                </div>
+                <div>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: isDarkMode ? "#9ca3af" : "#6b7280" }}
+                  >
+                    Sales Rep
+                  </Typography>
+                  <Typography variant="body1">
+                    {selectedSale.sales_rep_name || "Unknown"}
                   </Typography>
                 </div>
                 <div>

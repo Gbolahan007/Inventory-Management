@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState } from "react";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
@@ -223,6 +225,7 @@ export function useTableCartLogic({
   };
 
   // Finalize sale
+  // Finalize sale
   const handleFinalizeSale = async () => {
     if (currentCart.length === 0) {
       toast.error("Cart is empty");
@@ -241,12 +244,19 @@ export function useTableCartLogic({
       return;
     }
 
+    if (!currentUser) {
+      toast.error("User information not available");
+      return;
+    }
+
     try {
       const saleData = {
         total_amount: currentTotal,
         payment_method: paymentMethod,
         items: currentCart,
         table_id: selectedTable,
+        sales_rep_id: currentUserId,
+        sales_rep_name: currentUser,
       };
 
       // Reset mutation status before making the call

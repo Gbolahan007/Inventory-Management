@@ -164,7 +164,7 @@ export default function BarRequestsPage() {
 
   if (isLoading && !isRefreshing) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen  bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading bar requests...</p>
@@ -175,7 +175,7 @@ export default function BarRequestsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background  flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
           <p className="text-foreground font-medium mb-2">

@@ -97,35 +97,17 @@ export default function SalesPage() {
   }
 
   return (
-    <div
-      className={`min-h-screen ${
-        isDarkMode ? "bg-gray-900" : "bg-gray-50"
-      } p-6`}
-    >
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Enhanced POS Header with Table Info */}
-        <div
-          className={`rounded-lg shadow-sm border ${
-            isDarkMode
-              ? "bg-slate-800 border-slate-700"
-              : "bg-white border-gray-200"
-          }`}
-        >
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h1
-                  className={`text-2xl lg:text-3xl font-bold ${
-                    isDarkMode ? "text-slate-100" : "text-gray-900"
-                  }`}
-                >
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
                   Point of Sale Dashboard
                 </h1>
-                <p
-                  className={`text-sm mt-1 ${
-                    isDarkMode ? "text-slate-400" : "text-gray-600"
-                  }`}
-                >
+                <p className="text-sm mt-1 text-muted-foreground">
                   Manage your restaurant sales and table orders
                 </p>
               </div>
@@ -133,64 +115,28 @@ export default function SalesPage() {
               {/* Table Status Summary */}
               {activeTables.length > 0 && (
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <div
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg ${
-                      isDarkMode
-                        ? "bg-slate-700 border border-slate-600"
-                        : "bg-blue-50 border border-blue-200"
-                    }`}
-                  >
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="flex items-center gap-2">
-                      <Users
-                        className={`w-5 h-5 ${
-                          isDarkMode ? "text-blue-400" : "text-blue-600"
-                        }`}
-                      />
+                      <Users className="w-5 h-5 text-primary" />
                       <div>
-                        <div
-                          className={`text-sm font-medium ${
-                            isDarkMode ? "text-slate-300" : "text-gray-700"
-                          }`}
-                        >
+                        <div className="text-sm font-medium text-muted-foreground">
                           Active Tables
                         </div>
-                        <div
-                          className={`text-lg font-bold ${
-                            isDarkMode ? "text-blue-400" : "text-blue-600"
-                          }`}
-                        >
+                        <div className="text-lg font-bold text-primary">
                           {activeTables.length}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg ${
-                      isDarkMode
-                        ? "bg-slate-700 border border-slate-600"
-                        : "bg-green-50 border border-green-200"
-                    }`}
-                  >
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-600/10 border border-green-600/20">
                     <div className="flex items-center gap-2">
-                      <ShoppingCart
-                        className={`w-5 h-5 ${
-                          isDarkMode ? "text-green-400" : "text-green-600"
-                        }`}
-                      />
+                      <ShoppingCart className="w-5 h-5 text-green-600 dark:text-green-400" />
                       <div>
-                        <div
-                          className={`text-sm font-medium ${
-                            isDarkMode ? "text-slate-300" : "text-gray-700"
-                          }`}
-                        >
+                        <div className="text-sm font-medium text-muted-foreground">
                           Pending Items
                         </div>
-                        <div
-                          className={`text-lg font-bold ${
-                            isDarkMode ? "text-green-400" : "text-green-600"
-                          }`}
-                        >
+                        <div className="text-lg font-bold text-green-600 dark:text-green-400">
                           {totalActiveItems}
                         </div>
                       </div>
@@ -201,11 +147,7 @@ export default function SalesPage() {
 
               <button
                 onClick={handleAddSale}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105 ${
-                  isDarkMode
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
-                } shadow-lg`}
+                className="px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
               >
                 Manage Table Orders
               </button>
@@ -214,11 +156,7 @@ export default function SalesPage() {
             {/* Active Tables Quick View */}
             {activeTables.length > 0 && (
               <div className="mt-6">
-                <h3
-                  className={`text-sm font-medium mb-3 ${
-                    isDarkMode ? "text-slate-300" : "text-gray-700"
-                  }`}
-                >
+                <h3 className="text-sm font-medium mb-3 text-muted-foreground">
                   Active Table Orders
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -228,31 +166,15 @@ export default function SalesPage() {
                     return (
                       <div
                         key={tableId}
-                        className={`p-3 rounded-lg border text-center ${
-                          isDarkMode
-                            ? "bg-slate-700 border-slate-600"
-                            : "bg-white border-gray-200"
-                        }`}
+                        className="p-3 rounded-lg border border-border bg-card text-center"
                       >
-                        <div
-                          className={`text-xs font-medium ${
-                            isDarkMode ? "text-slate-400" : "text-gray-600"
-                          }`}
-                        >
+                        <div className="text-xs font-medium text-muted-foreground">
                           Table {tableId}
                         </div>
-                        <div
-                          className={`text-lg font-bold ${
-                            isDarkMode ? "text-slate-100" : "text-gray-900"
-                          }`}
-                        >
+                        <div className="text-lg font-bold text-foreground">
                           {tableItems.length}
                         </div>
-                        <div
-                          className={`text-xs ${
-                            isDarkMode ? "text-slate-400" : "text-gray-500"
-                          }`}
-                        >
+                        <div className="text-xs text-muted-foreground">
                           ₦{tableTotal.toFixed(0)}
                         </div>
                       </div>
@@ -265,24 +187,14 @@ export default function SalesPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div
-          className={`rounded-lg shadow-sm border ${
-            isDarkMode
-              ? "bg-slate-800 border-slate-700"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <div className="flex border-b border-gray-200 dark:border-slate-700">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+          <div className="flex border-b border-border">
             <button
               onClick={() => setActiveTab("dashboard")}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
                 activeTab === "dashboard"
-                  ? isDarkMode
-                    ? "text-blue-400 border-b-2 border-blue-400 bg-slate-700"
-                    : "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : isDarkMode
-                  ? "text-slate-400 hover:text-slate-300"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <BarChart3 className="w-5 h-5" />
@@ -292,12 +204,8 @@ export default function SalesPage() {
               onClick={() => setActiveTab("bar-requests")}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
                 activeTab === "bar-requests"
-                  ? isDarkMode
-                    ? "text-blue-400 border-b-2 border-blue-400 bg-slate-700"
-                    : "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : isDarkMode
-                  ? "text-slate-400 hover:text-slate-300"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Package className="w-5 h-5" />
@@ -311,14 +219,14 @@ export default function SalesPage() {
           <>
             <StatsCards
               stats={stats}
-              salesItems={rawSalesItems} // Use original data for StatsCards
+              salesItems={rawSalesItems}
               isDarkMode={isDarkMode}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RecentSalesTable
                 sales={recentSales}
-                salesItems={salesItems} // Use transformed data
+                salesItems={salesItems}
                 isDarkMode={isDarkMode}
               />
               <ProductInventoryTable
