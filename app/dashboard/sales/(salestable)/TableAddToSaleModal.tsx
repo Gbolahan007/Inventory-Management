@@ -68,7 +68,7 @@ export default function TableAddToSaleModal({
     handleSendToBar,
     handleFinalizeSale,
     createSaleMutation,
-    createBarRequestMutation,
+    isSendingToBar,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
@@ -212,6 +212,7 @@ export default function TableAddToSaleModal({
             >
               <TableShoppingCartDisplay
                 cartItems={currentCart}
+                isSendingToBar={isSendingToBar}
                 removeFromCart={removeFromCart}
                 updateCartItemQuantity={updateCartItemQuantity}
                 cartTotal={currentTotal}
@@ -223,7 +224,6 @@ export default function TableAddToSaleModal({
                 handleFinalizeSale={handleFinalizeSaleWithClose}
                 handleSendToBar={handleSendToBar}
                 createSaleMutation={createSaleMutation}
-                createBarRequestMutation={createBarRequestMutation}
                 isOpen={isCartOpenMobile}
                 onClose={() => setIsCartOpenMobile(false)}
                 selectedTable={selectedTable}

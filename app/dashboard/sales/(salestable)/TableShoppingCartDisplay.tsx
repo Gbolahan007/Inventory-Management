@@ -25,13 +25,13 @@ interface TableShoppingCartDisplayProps {
   handleFinalizeSale: () => void;
   handleSendToBar: () => void;
   createSaleMutation: UseMutationResult<any, Error, any, unknown>;
-  createBarRequestMutation: UseMutationResult<any, Error, any, unknown>;
   isOpen: boolean;
   onClose: () => void;
   selectedTable: number;
   activeTables: number[];
   tableBarRequestStatus: "none" | "pending" | "given";
   getAllTableCarts: () => TableCart[];
+  isSendingToBar: boolean;
 }
 
 export default function TableShoppingCartDisplay({
@@ -46,7 +46,6 @@ export default function TableShoppingCartDisplay({
   handleFinalizeSale,
   handleSendToBar,
   createSaleMutation,
-  createBarRequestMutation,
   isOpen,
   onClose,
   selectedTable,
@@ -117,7 +116,6 @@ export default function TableShoppingCartDisplay({
               handleSendToBar={handleSendToBar}
               handleFinalizeSale={handleFinalizeSale}
               createSaleMutation={createSaleMutation}
-              createBarRequestMutation={createBarRequestMutation}
               isDarkMode={isDarkMode}
               tableBarRequestStatus={tableBarRequestStatus}
               cartItems={cartItems}
@@ -188,7 +186,6 @@ export default function TableShoppingCartDisplay({
             handleSendToBar={handleSendToBar}
             handleFinalizeSale={handleFinalizeSale}
             createSaleMutation={createSaleMutation}
-            createBarRequestMutation={createBarRequestMutation}
             isDarkMode={isDarkMode}
             tableBarRequestStatus={tableBarRequestStatus}
             cartItems={cartItems}

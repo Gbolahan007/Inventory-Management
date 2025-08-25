@@ -12,10 +12,10 @@ interface CartFooterProps {
   handleSendToBar: () => void;
   handleFinalizeSale: () => void;
   createSaleMutation: UseMutationResult<any, Error, any, unknown>;
-  createBarRequestMutation: UseMutationResult<any, Error, any, unknown>;
   isDarkMode: boolean;
   tableBarRequestStatus: "none" | "pending" | "given";
   cartItems: SaleItem[];
+  isSendingToBar?: boolean; // Add this prop to track sending state
 }
 
 export function CartFooter({
@@ -26,10 +26,10 @@ export function CartFooter({
   handleSendToBar,
   handleFinalizeSale,
   createSaleMutation,
-  createBarRequestMutation,
   isDarkMode,
   tableBarRequestStatus,
   cartItems,
+  isSendingToBar = false,
 }: CartFooterProps) {
   const hasItems = cartItems.length > 0;
 
@@ -140,9 +140,7 @@ export function CartFooter({
           <button
             onClick={handleSendToBar}
             disabled={
-              !hasItems ||
-              createBarRequestMutation.isPending ||
-              tableBarRequestStatus === "pending"
+              !hasItems || isSendingToBar || tableBarRequestStatus === "pending"
             }
             className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
               !hasItems || tableBarRequestStatus === "pending"
@@ -154,7 +152,7 @@ export function CartFooter({
                 : "bg-orange-500 hover:bg-orange-600 text-white"
             }`}
           >
-            {createBarRequestMutation.isPending ? (
+            {isSendingToBar ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                 Sending to Bar...

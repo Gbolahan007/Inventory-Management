@@ -11,7 +11,8 @@ export interface SaleItem {
   total_cost: number;
   profit_amount: number;
   selling_price: number;
-  approval_status?: "pending" | "approved";
+  approval_status?: "pending" | "approved" | "rejected";
+  request_id?: string;
 }
 
 export interface TableCart {
@@ -49,6 +50,20 @@ interface TableCartState {
     status: "none" | "pending" | "given"
   ) => void;
   getTableBarRequestStatus: (tableId: number) => "none" | "pending" | "given";
+
+  // New request ID methods
+  updateCartItemByRequestId: (
+    tableId: number,
+    requestId: string,
+    status: "approved" | "rejected"
+  ) => boolean;
+  removeCartItemByRequestId: (tableId: number, requestId: string) => boolean;
+  updateCartItemRequestId: (
+    tableId: number,
+    productId: string,
+    unitPrice: number,
+    requestId: string
+  ) => boolean;
 
   // Getters
   getTableCart: (tableId: number) => SaleItem[];
@@ -248,6 +263,86 @@ export const useTableCartStore = create<TableCartState>()(
       },
       getTableBarRequestStatus: (tableId) =>
         get().carts[tableId]?.barRequestStatus || "none",
+
+      // NEW: Update cart item by request ID
+      updateCartItemByRequestId: (tableId, requestId, status) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+        if (!currentCart) return false;
+
+        const updatedItems = currentCart.items.map((item) =>
+          item.request_id === requestId
+            ? { ...item, approval_status: status }
+            : item
+        );
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: {
+              ...currentCart,
+              items: updatedItems,
+              updated_at: new Date().toISOString(),
+            },
+          },
+        });
+        return true;
+      },
+
+      // NEW: Remove cart item by request ID
+      removeCartItemByRequestId: (tableId, requestId) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+        if (!currentCart) return false;
+
+        const updatedItems = currentCart.items.filter(
+          (item) => item.request_id !== requestId
+        );
+
+        if (updatedItems.length === 0) {
+          const { [tableId]: _, ...rest } = carts;
+          set({ carts: rest });
+        } else {
+          set({
+            carts: {
+              ...carts,
+              [tableId]: {
+                ...currentCart,
+                items: updatedItems,
+                updated_at: new Date().toISOString(),
+              },
+            },
+          });
+        }
+        return true;
+      },
+
+      // NEW: Update cart item request ID
+      updateCartItemRequestId: (tableId, productId, unitPrice, requestId) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+        if (!currentCart) return false;
+
+        const updatedItems = currentCart.items.map((item) =>
+          item.product_id === productId &&
+          item.unit_price === unitPrice &&
+          item.request_id?.startsWith("temp_")
+            ? { ...item, request_id: requestId }
+            : item
+        );
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: {
+              ...currentCart,
+              items: updatedItems,
+              updated_at: new Date().toISOString(),
+            },
+          },
+        });
+        return true;
+      },
 
       // Totals
       getTableCart: (tableId) => get().carts[tableId]?.items || [],

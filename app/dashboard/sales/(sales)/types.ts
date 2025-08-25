@@ -59,7 +59,8 @@ export interface SaleItem {
   total_cost: number;
   profit_amount: number;
   selling_price: number;
-  approval_status?: "pending" | "approved";
+  approval_status?: "pending" | "approved" | "rejected";
+  bar_request_id?: string;
   products?: {
     name: string;
   };
