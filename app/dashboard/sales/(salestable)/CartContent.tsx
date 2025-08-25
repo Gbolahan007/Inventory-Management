@@ -23,6 +23,7 @@ export function CartContent({
 }: CartContentProps) {
   const isLocked = tableBarRequestStatus === "pending";
 
+  console.log(cartItems);
   // Group items by approval status
   const approvedItems = cartItems.filter(
     (item) => item.approval_status === "approved"

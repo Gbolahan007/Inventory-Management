@@ -1,30 +1,49 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-interface SaleItem {
-  product_id: string;
-  name: string;
-  quantity: number;
-  unit_price: number;
-  unit_cost: number;
-  total_price: number;
-  total_cost: number;
-  profit_amount: number;
-  selling_price: number;
-  approval_status?: "pending" | "approved";
-  request_id?: string; // Use the bar_requests table id directly
-}
-
 import { useState, useEffect, useRef } from "react";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
 import toast from "react-hot-toast";
 import type { Product } from "../(sales)/types";
 import { supabase } from "@/app/_lib/supabase";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 interface UseTableCartLogicProps {
   products?: Product[];
   currentUser?: { name: string };
   currentUserId?: string;
+}
+
+// Table_carts schema
+interface TableCart {
+  id: string;
+  table_id: number;
+  sales_rep_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price?: number;
+  unit_cost?: number;
+  total_price?: number;
+  total_cost?: number;
+  profit_amount?: number;
+  approval_status?: "pending" | "approved" | "rejected";
+  request_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Bar_requests schema
+interface BarRequest {
+  id: string;
+  table_id: number;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  sales_rep_id: string;
+  sales_rep_name: string;
+  status: "pending" | "approved" | "rejected";
+  created_at?: string;
+  updated_at?: string;
 }
 
 export function useTableCartLogic({
@@ -41,11 +60,15 @@ export function useTableCartLogic({
   // Track subscription to prevent duplicates
   const subscriptionRef = useRef<any>(null);
   const isSubscribedRef = useRef(false);
+  const cartSubscriptionRef = useRef<any>(null);
 
   const createSaleMutation = useCreateSale();
 
   const {
     selectedTable,
+    setCurrentUser,
+    loadTableCart,
+    syncCartFromDatabase,
     addToTableCart,
     removeFromTableCart,
     updateTableCartItemQuantity,
@@ -56,31 +79,40 @@ export function useTableCartLogic({
     getTableBarRequestStatus,
     getTableApprovedCart,
     getTablePendingCart,
-    updateCartItemByRequestId, // Renamed method
-    removeCartItemByRequestId, // New method
-    updateCartItemRequestId, // New method
+    updateCartItemByRequestId,
+    removeCartItemByRequestId,
+    updateCartItemRequestId,
+    isLoading,
   } = useTableCartStore();
 
   const currentCart = getTableCart(selectedTable);
   const currentTotal = getTableTotal(selectedTable);
   const tableBarRequestStatus = getTableBarRequestStatus(selectedTable);
 
-  // Enhanced real-time sync with proper cleanup and race condition prevention
+  // Initialize user and load cart
+  useEffect(() => {
+    if (currentUserId) {
+      setCurrentUser(currentUserId);
+      loadTableCart(selectedTable);
+    }
+  }, [currentUserId, selectedTable, setCurrentUser, loadTableCart]);
+
+  // Real-time sync for bar_requests table
   useEffect(() => {
     if (!currentUserId) return;
 
-    // Cleanup any existing subscription first
+    // Cleanup existing subscription
     if (subscriptionRef.current && isSubscribedRef.current) {
       subscriptionRef.current.unsubscribe();
       isSubscribedRef.current = false;
     }
 
-    // Create new subscription with unique channel name
+    // Create new subscription for bar_requests
     const channelName = `bar_requests_${currentUserId}_${Date.now()}`;
 
     subscriptionRef.current = supabase
       .channel(channelName)
-      .on(
+      .on<RealtimePostgresChangesPayload<BarRequest>>(
         "postgres_changes",
         {
           event: "UPDATE",
@@ -97,19 +129,63 @@ export function useTableCartLogic({
         }
       });
 
-    // Cleanup function
     return () => {
       if (subscriptionRef.current && isSubscribedRef.current) {
         subscriptionRef.current.unsubscribe();
         isSubscribedRef.current = false;
-        console.log(
-          `Unsubscribed from bar requests for user: ${currentUserId}`
-        );
       }
     };
-  }, [currentUserId]); // Only depend on currentUserId, not selectedTable
+  }, [currentUserId]);
 
-  // Handle real-time updates using exact request id
+  // Real-time sync for table_carts table
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    // Cleanup existing cart subscription
+    if (cartSubscriptionRef.current) {
+      cartSubscriptionRef.current.unsubscribe();
+    }
+
+    // Create new subscription for table_carts
+    const cartChannelName = `table_carts_${currentUserId}_${Date.now()}`;
+
+    cartSubscriptionRef.current = supabase
+      .channel(cartChannelName)
+      .on<RealtimePostgresChangesPayload<TableCart>>(
+        "postgres_changes",
+        {
+          event: "*", // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: "public",
+          table: "table_carts",
+          filter: `sales_rep_id=eq.${currentUserId}`,
+        },
+        async (payload) => {
+          console.log("Cart change detected:", payload);
+
+          const newRow = payload.new as TableCart | undefined;
+          const oldRow = payload.old as TableCart | undefined;
+
+          if (newRow?.table_id) {
+            await syncCartFromDatabase(newRow.table_id);
+          } else if (oldRow?.table_id) {
+            await syncCartFromDatabase(oldRow.table_id);
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.log(`Subscribed to cart changes for user: ${currentUserId}`);
+        }
+      });
+
+    return () => {
+      if (cartSubscriptionRef.current) {
+        cartSubscriptionRef.current.unsubscribe();
+      }
+    };
+  }, [currentUserId, syncCartFromDatabase]);
+
+  // Handle bar request updates
   const handleBarRequestUpdate = async (payload: any) => {
     const updatedRequest = payload.new;
     const requestId = updatedRequest.id;
@@ -118,8 +194,7 @@ export function useTableCartLogic({
     if (updatedRequest.table_id !== selectedTable) return;
 
     if (updatedRequest.status === "approved") {
-      // Use exact request_id to update the specific item
-      const success = updateCartItemByRequestId(
+      const success = await updateCartItemByRequestId(
         selectedTable,
         requestId,
         "approved"
@@ -148,8 +223,7 @@ export function useTableCartLogic({
     if (updatedRequest.status === "rejected") {
       toast.error(`${updatedRequest.product_name} rejected by bartender`);
 
-      // Remove the specific rejected item using request_id
-      const success = removeCartItemByRequestId(selectedTable, requestId);
+      const success = await removeCartItemByRequestId(selectedTable, requestId);
 
       if (success) {
         setTableBarRequestStatus(selectedTable, "none");
@@ -157,8 +231,8 @@ export function useTableCartLogic({
     }
   };
 
-  // Enhanced add to cart with bar_request_id tracking
-  const handleAddToCart = () => {
+  // Enhanced add to cart with database sync
+  const handleAddToCart = async () => {
     if (!selectedProduct || quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity");
       return;
@@ -188,8 +262,8 @@ export function useTableCartLogic({
     const totalPrice = unitPrice * quantity;
     const profitAmount = totalPrice - unitCost * quantity;
 
-    // Create item with unique temporary ID (will be replaced with request_id)
-    const newItem: SaleItem = {
+    // Create item for database
+    const newItem = {
       product_id: selectedProductData.id,
       name: selectedProductData.name,
       quantity: quantity,
@@ -199,20 +273,25 @@ export function useTableCartLogic({
       total_cost: unitCost * quantity,
       profit_amount: profitAmount,
       selling_price: unitPrice,
-      approval_status: "pending",
-      request_id: `temp_${Date.now()}_${Math.random()}`, // Temporary ID
+      approval_status: "pending" as const,
+      sales_rep_name: currentUser?.name || "",
     };
 
-    addToTableCart(selectedTable, newItem);
-    toast.success(`${newItem.name} added to cart! Send to bar for approval.`);
+    try {
+      await addToTableCart(selectedTable, newItem);
+      toast.success(`${newItem.name} added to cart! Send to bar for approval.`);
 
-    // Reset form
-    setSelectedProduct("");
-    setQuantity(1);
-    setCustomSellingPrice(0);
+      // Reset form
+      setSelectedProduct("");
+      setQuantity(1);
+      setCustomSellingPrice(0);
+    } catch (error: any) {
+      console.error("Error adding to cart:", error);
+      toast.error(`Failed to add item: ${error.message}`);
+    }
   };
 
-  // Enhanced send to bar with simplified schema
+  // Enhanced send to bar with database sync
   const handleSendToBar = async () => {
     const pendingItemsToSend = currentCart.filter(
       (item) => !item.approval_status || item.approval_status === "pending"
@@ -237,6 +316,7 @@ export function useTableCartLogic({
 
     try {
       setIsSendingToBar(true);
+
       // Create bar requests with only essential data
       const barRequestItems = pendingItemsToSend.map((item) => ({
         table_id: selectedTable,
@@ -258,15 +338,17 @@ export function useTableCartLogic({
 
       // Update cart items with their corresponding request_id
       if (createdRequests) {
-        createdRequests.forEach((request, index) => {
-          const cartItem = pendingItemsToSend[index];
-          updateCartItemRequestId(
+        for (let i = 0; i < createdRequests.length; i++) {
+          const request = createdRequests[i];
+          const cartItem = pendingItemsToSend[i];
+
+          await updateCartItemRequestId(
             selectedTable,
             cartItem.product_id,
             cartItem.unit_price,
             request.id
           );
-        });
+        }
       }
 
       setTableBarRequestStatus(selectedTable, "pending");
@@ -281,7 +363,7 @@ export function useTableCartLogic({
     }
   };
 
-  // Enhanced finalize sale with cleanup
+  // Enhanced finalize sale with database sync
   const handleFinalizeSale = async () => {
     if (currentCart.length === 0) {
       toast.error("Cart is empty");
@@ -337,7 +419,8 @@ export function useTableCartLogic({
         .eq("sales_rep_id", currentUserId)
         .eq("table_id", selectedTable);
 
-      clearTableCart(selectedTable);
+      // Clear cart from database
+      await clearTableCart(selectedTable);
       setTableBarRequestStatus(selectedTable, "none");
 
       toast.success(`Sale completed for Table ${selectedTable}!`);
@@ -347,17 +430,23 @@ export function useTableCartLogic({
     }
   };
 
-  // Other handlers remain the same...
-  const removeFromCart = (productId: string, unitPrice: number) => {
+  // Remove from cart with database sync
+  const removeFromCart = async (productId: string, unitPrice: number) => {
     if (tableBarRequestStatus === "pending") {
       toast.error("Cannot modify cart while waiting for bar approval.");
       return;
     }
-    removeFromTableCart(selectedTable, productId, unitPrice);
-    toast.success("Item removed from cart");
+
+    try {
+      await removeFromTableCart(selectedTable, productId, unitPrice);
+      toast.success("Item removed from cart");
+    } catch (error: any) {
+      toast.error(`Failed to remove item: ${error.message}`);
+    }
   };
 
-  const updateCartItemQuantity = (
+  // Update cart item quantity with database sync
+  const updateCartItemQuantity = async (
     productId: string,
     unitPrice: number,
     newQuantity: number
@@ -368,7 +457,7 @@ export function useTableCartLogic({
     }
 
     if (newQuantity <= 0) {
-      removeFromCart(productId, unitPrice);
+      await removeFromCart(productId, unitPrice);
       return;
     }
 
@@ -391,12 +480,16 @@ export function useTableCartLogic({
       }
     }
 
-    updateTableCartItemQuantity(
-      selectedTable,
-      productId,
-      unitPrice,
-      newQuantity
-    );
+    try {
+      await updateTableCartItemQuantity(
+        selectedTable,
+        productId,
+        unitPrice,
+        newQuantity
+      );
+    } catch (error: any) {
+      toast.error(`Failed to update quantity: ${error.message}`);
+    }
   };
 
   // Helper calculations
@@ -476,6 +569,7 @@ export function useTableCartLogic({
     pendingTotal,
     hasPendingItems,
     canFinalizeSale,
+    isLoading,
     setSelectedProduct,
     setQuantity,
     setCustomSellingPrice,

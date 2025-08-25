@@ -65,7 +65,7 @@ export function CartFooter({
         }`}
       >
         <div className="space-y-1">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center ">
             <span className="text-sm font-medium">Total</span>
             <span className="font-bold text-lg">
               ₦{cartTotal.toLocaleString()}
