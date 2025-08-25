@@ -15,6 +15,7 @@ interface SaleItem {
 }
 
 interface SaleData {
+  table_id: number;
   total_amount: number;
   payment_method: string;
   items: SaleItem[];

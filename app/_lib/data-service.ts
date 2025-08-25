@@ -6,7 +6,7 @@ interface SaleData {
   total_amount: number;
   payment_method: string;
   items: SaleItem[];
-  table_id: string;
+  table_id: number;
   sales_rep_id?: string;
   sales_rep_name?: string;
 }
