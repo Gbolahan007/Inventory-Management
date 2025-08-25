@@ -1,17 +1,15 @@
 "use client";
 
 import nature from "@/app/public/nature.jpg";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { handleLogin } from "../action";
-import { useFormStatus } from "react-dom";
-import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { LoginButton } from "./LoginButton";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -118,26 +116,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Submit Button with useFormStatus */}
+            {/* Submit Button */}
             <LoginButton />
           </form>
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-export function LoginButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="w-full bg-white text-black hover:bg-gray-200 font-medium py-2.5 rounded-full transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-      {pending ? "Logging in..." : "Login"}
-    </Button>
   );
 }
