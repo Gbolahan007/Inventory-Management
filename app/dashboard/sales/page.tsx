@@ -236,7 +236,7 @@ export default function SalesPage() {
             </div>
           </>
         ) : (
-          <BarRequestsPage isDarkMode={isDarkMode} />
+          <BarRequestsPage />
         )}
       </div>
 
@@ -245,7 +245,7 @@ export default function SalesPage() {
           isOpen={isAddSaleOpen}
           onClose={() => setIsAddSaleOpen(false)}
           isDarkMode={isDarkMode}
-          currentUser={userData?.name}
+          currentUser={userData?.name ? { name: userData.name } : undefined}
           currentUserId={userData?.id}
         />
       )}

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { X } from "lucide-react";
 import type React from "react";
 import type { Product, SaleItem, TableCart } from "../(sales)/types";
@@ -39,7 +41,6 @@ export default function TableShoppingCartDisplay({
   cartTotal,
   cartTotalProfit,
   isDarkMode,
-  products,
   paymentMethod,
   setPaymentMethod,
   handleFinalizeSale,
@@ -49,9 +50,7 @@ export default function TableShoppingCartDisplay({
   isOpen,
   onClose,
   selectedTable,
-  activeTables,
   tableBarRequestStatus,
-  getAllTableCarts,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (

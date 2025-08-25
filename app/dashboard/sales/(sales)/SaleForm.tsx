@@ -6,11 +6,8 @@ import type { Product } from "./types";
 interface SaleFormProps {
   products: Product[] | undefined;
   selectedProduct: string;
-  setSelectedProduct: (productName: string) => void;
   quantity: number;
-  setQuantity: (quantity: number) => void;
   customSellingPrice: number;
-  setCustomSellingPrice: (price: number) => void;
   selectedProductData: Product | undefined;
   unitPrice: number;
   totalPrice: number;
@@ -21,6 +18,7 @@ interface SaleFormProps {
   groupedProducts: Record<string, Product[]> | undefined;
   categoryDisplayNames: Record<string, { label: string; emoji: string }>;
   isDarkMode: boolean;
+  disabled?: boolean;
 }
 
 export default function SaleForm({

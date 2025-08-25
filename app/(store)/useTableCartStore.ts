@@ -1,4 +1,3 @@
-// stores/useTableCartStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -12,6 +11,7 @@ export interface SaleItem {
   total_cost: number;
   profit_amount: number;
   selling_price: number;
+  approval_status?: "pending" | "approved";
 }
 
 export interface TableCart {
@@ -19,7 +19,7 @@ export interface TableCart {
   items: SaleItem[];
   created_at: string;
   updated_at: string;
-  barRequestStatus?: "none" | "pending" | "given"; // Add bar request status
+  barRequestStatus?: "none" | "pending" | "given"; // Bar request status
 }
 
 interface TableCartState {
@@ -43,7 +43,7 @@ interface TableCartState {
   clearTableCart: (tableId: number) => void;
   setSelectedTable: (tableId: number) => void;
 
-  // NEW: Bar request status methods
+  // Bar request status
   setTableBarRequestStatus: (
     tableId: number,
     status: "none" | "pending" | "given"
@@ -58,7 +58,18 @@ interface TableCartState {
   getActiveTables: () => number[];
   getAllCartsData: () => Record<number, TableCart>;
 
-  // Finalize sale
+  // Approval-based getters
+  getTableApprovedCart: (tableId: number) => SaleItem[];
+  getTablePendingCart: (tableId: number) => SaleItem[];
+  moveSpecificItemsToApproved: (
+    tableId: number,
+    approvedItems: { product_id: string; quantity: number }[]
+  ) => void;
+  moveItemsToApproved: (tableId: number) => void;
+  getTableApprovedTotal: (tableId: number) => number;
+  getTablePendingTotal: (tableId: number) => number;
+
+  // Finalize
   finalizeTableSale: (tableId: number) => SaleItem[] | null;
 }
 
@@ -69,26 +80,32 @@ export const useTableCartStore = create<TableCartState>()(
       carts: {},
       selectedTable: 1,
 
-      // Add item to specific table's cart
-      addToTableCart: (tableId: number, item: SaleItem) => {
+      // Add item
+      addToTableCart: (tableId, item) => {
         const { carts } = get();
         const currentCart = carts[tableId];
         const currentItems = currentCart?.items || [];
 
-        // Check if item already exists with same product_id and unit_price
+        // Force new items to be pending if not set
+        const itemWithStatus: SaleItem = {
+          ...item,
+          approval_status: item.approval_status || "pending",
+        };
+
+        // Find matching item (same product, same unit_price, same approval status)
         const existingItemIndex = currentItems.findIndex(
           (cartItem) =>
             cartItem.product_id === item.product_id &&
-            cartItem.unit_price === item.unit_price
+            cartItem.unit_price === item.unit_price &&
+            cartItem.approval_status === itemWithStatus.approval_status
         );
 
         let updatedItems: SaleItem[];
 
         if (existingItemIndex >= 0) {
-          // Update existing item
           const existingItem = currentItems[existingItemIndex];
-          updatedItems = currentItems.map((cartItem, index) =>
-            index === existingItemIndex
+          updatedItems = currentItems.map((cartItem, idx) =>
+            idx === existingItemIndex
               ? {
                   ...existingItem,
                   quantity: existingItem.quantity + item.quantity,
@@ -100,8 +117,7 @@ export const useTableCartStore = create<TableCartState>()(
               : cartItem
           );
         } else {
-          // Add new item
-          updatedItems = [...currentItems, item];
+          updatedItems = [...currentItems, itemWithStatus];
         }
 
         const now = new Date().toISOString();
@@ -114,32 +130,26 @@ export const useTableCartStore = create<TableCartState>()(
               items: updatedItems,
               created_at: currentCart?.created_at || now,
               updated_at: now,
-              barRequestStatus: currentCart?.barRequestStatus || "none", // Preserve existing status
+              barRequestStatus: currentCart?.barRequestStatus || "none",
             },
           },
         });
       },
 
-      // Remove item from specific table's cart
-      removeFromTableCart: (
-        tableId: number,
-        productId: string,
-        unitPrice: number
-      ) => {
+      // Remove item
+      removeFromTableCart: (tableId, productId, unitPrice) => {
         const { carts } = get();
         const currentCart = carts[tableId];
-
         if (!currentCart) return;
 
         const updatedItems = currentCart.items.filter(
-          (item) =>
-            !(item.product_id === productId && item.unit_price === unitPrice)
+          (i) => !(i.product_id === productId && i.unit_price === unitPrice)
         );
 
         if (updatedItems.length === 0) {
-          // Remove entire cart if no items left
-          const { [tableId]: removed, ...remainingCarts } = carts;
-          set({ carts: remainingCarts });
+          // remove the whole cart if no items left
+          const { [tableId]: _, ...rest } = carts;
+          set({ carts: rest });
         } else {
           set({
             carts: {
@@ -154,36 +164,32 @@ export const useTableCartStore = create<TableCartState>()(
         }
       },
 
-      // Update item quantity in specific table's cart
+      // Update item qty
       updateTableCartItemQuantity: (
-        tableId: number,
-        productId: string,
-        unitPrice: number,
-        newQuantity: number
+        tableId,
+        productId,
+        unitPrice,
+        newQuantity
       ) => {
         if (newQuantity <= 0) {
           get().removeFromTableCart(tableId, productId, unitPrice);
           return;
         }
-
         const { carts } = get();
         const currentCart = carts[tableId];
-
         if (!currentCart) return;
 
-        const updatedItems = currentCart.items.map((item) => {
-          if (item.product_id === productId && item.unit_price === unitPrice) {
-            return {
-              ...item,
-              quantity: newQuantity,
-              total_price: item.unit_price * newQuantity,
-              total_cost: item.unit_cost * newQuantity,
-              profit_amount:
-                item.unit_price * newQuantity - item.unit_cost * newQuantity,
-            };
-          }
-          return item;
-        });
+        const updatedItems = currentCart.items.map((item) =>
+          item.product_id === productId && item.unit_price === unitPrice
+            ? {
+                ...item,
+                quantity: newQuantity,
+                total_price: item.unit_price * newQuantity,
+                total_cost: item.unit_cost * newQuantity,
+                profit_amount: (item.unit_price - item.unit_cost) * newQuantity,
+              }
+            : item
+        );
 
         set({
           carts: {
@@ -197,29 +203,23 @@ export const useTableCartStore = create<TableCartState>()(
         });
       },
 
-      // Clear specific table's cart
-      clearTableCart: (tableId: number) => {
+      // Clear cart
+      clearTableCart: (tableId) => {
         const { carts } = get();
-        const { [tableId]: removed, ...remainingCarts } = carts;
-        set({ carts: remainingCarts });
+        const { [tableId]: _, ...rest } = carts;
+        set({ carts: rest });
       },
 
-      // Set selected table
-      setSelectedTable: (tableId: number) => {
-        set({ selectedTable: tableId });
-      },
+      // Select table
+      setSelectedTable: (tableId) => set({ selectedTable: tableId }),
 
-      // NEW: Set bar request status for a table
-      setTableBarRequestStatus: (
-        tableId: number,
-        status: "none" | "pending" | "given"
-      ) => {
+      // Bar request status
+      setTableBarRequestStatus: (tableId, status) => {
         const { carts } = get();
         const currentCart = carts[tableId];
+        const now = new Date().toISOString();
 
         if (!currentCart) {
-          // If no cart exists but we're setting status, create an empty cart with status
-          const now = new Date().toISOString();
           set({
             carts: {
               ...carts,
@@ -241,87 +241,121 @@ export const useTableCartStore = create<TableCartState>()(
             [tableId]: {
               ...currentCart,
               barRequestStatus: status,
+              updated_at: now,
+            },
+          },
+        });
+      },
+      getTableBarRequestStatus: (tableId) =>
+        get().carts[tableId]?.barRequestStatus || "none",
+
+      // Totals
+      getTableCart: (tableId) => get().carts[tableId]?.items || [],
+      getTableTotal: (tableId) =>
+        get()
+          .getTableCart(tableId)
+          .reduce((s, i) => s + i.total_price, 0),
+      getTableTotalCost: (tableId) =>
+        get()
+          .getTableCart(tableId)
+          .reduce((s, i) => s + i.total_cost, 0),
+      getTableTotalProfit: (tableId) =>
+        get()
+          .getTableCart(tableId)
+          .reduce((s, i) => s + i.profit_amount, 0),
+
+      // Approval getters
+      getTableApprovedCart: (tableId) =>
+        get()
+          .getTableCart(tableId)
+          .filter((i) => i.approval_status === "approved"),
+      getTablePendingCart: (tableId) =>
+        get()
+          .getTableCart(tableId)
+          .filter((i) => !i.approval_status || i.approval_status === "pending"),
+
+      moveSpecificItemsToApproved: (tableId, approvedItems) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+        if (!currentCart) return;
+
+        const updatedItems = currentCart.items.map((item) => {
+          const match = approvedItems.find(
+            (ap) =>
+              ap.product_id === item.product_id &&
+              item.approval_status === "pending"
+          );
+          return match
+            ? { ...item, approval_status: "approved" as const }
+            : item;
+        });
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: {
+              ...currentCart,
+              items: updatedItems,
               updated_at: new Date().toISOString(),
             },
           },
         });
       },
 
-      // NEW: Get bar request status for a table
-      getTableBarRequestStatus: (tableId: number) => {
+      moveItemsToApproved: (tableId) => {
         const { carts } = get();
-        return carts[tableId]?.barRequestStatus || "none";
+        const currentCart = carts[tableId];
+        if (!currentCart) return;
+
+        const updatedItems = currentCart.items.map((i) => ({
+          ...i,
+          approval_status:
+            i.approval_status === "pending"
+              ? ("approved" as const)
+              : i.approval_status,
+        }));
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: {
+              ...currentCart,
+              items: updatedItems,
+              updated_at: new Date().toISOString(),
+            },
+          },
+        });
       },
 
-      // Get cart for specific table
-      getTableCart: (tableId: number) => {
-        const { carts } = get();
-        return carts[tableId]?.items || [];
-      },
+      getTableApprovedTotal: (tableId) =>
+        get()
+          .getTableApprovedCart(tableId)
+          .reduce((s, i) => s + i.total_price, 0),
+      getTablePendingTotal: (tableId) =>
+        get()
+          .getTablePendingCart(tableId)
+          .reduce((s, i) => s + i.total_price, 0),
 
-      // Get cart total for specific table
-      getTableTotal: (tableId: number) => {
-        const { carts } = get();
-        const cart = carts[tableId];
-        if (!cart) return 0;
-        return cart.items.reduce((total, item) => total + item.total_price, 0);
-      },
-
-      // Get cart total cost for specific table
-      getTableTotalCost: (tableId: number) => {
-        const { carts } = get();
-        const cart = carts[tableId];
-        if (!cart) return 0;
-        return cart.items.reduce((total, item) => total + item.total_cost, 0);
-      },
-
-      // Get cart total profit for specific table
-      getTableTotalProfit: (tableId: number) => {
-        const { carts } = get();
-        const cart = carts[tableId];
-        if (!cart) return 0;
-        return cart.items.reduce(
-          (total, item) => total + item.profit_amount,
-          0
-        );
-      },
-
-      // Get all active tables (tables with items in cart)
-      getActiveTables: () => {
-        const { carts } = get();
-        return Object.keys(carts)
+      // Active tables
+      getActiveTables: () =>
+        Object.keys(get().carts)
           .map(Number)
-          .filter(
-            (tableId) => carts[tableId] && carts[tableId].items.length > 0
-          )
-          .sort((a, b) => a - b);
-      },
+          .filter((id) => get().carts[id]?.items.length > 0)
+          .sort((a, b) => a - b),
 
-      // Get all carts data
-      getAllCartsData: () => {
-        const { carts } = get();
-        return carts;
-      },
+      getAllCartsData: () => get().carts,
 
-      // Finalize sale for specific table
-      finalizeTableSale: (tableId: number) => {
-        const { carts } = get();
-        const cart = carts[tableId];
-
-        if (!cart || cart.items.length === 0) {
-          return null;
-        }
-
+      // Finalize
+      finalizeTableSale: (tableId) => {
+        const cart = get().carts[tableId];
+        if (!cart || cart.items.length === 0) return null;
         const saleItems = [...cart.items];
-
-        // Clear the cart after getting the items
         get().clearTableCart(tableId);
-
         return saleItems;
       },
     }),
     {
-      name: "table-cart-storage", // localStorage key
+      name: "table-cart-storage",
       partialize: (state) => ({
         carts: state.carts,
         selectedTable: state.selectedTable,

@@ -32,6 +32,22 @@ export function CartFooter({
   cartItems,
 }: CartFooterProps) {
   const hasItems = cartItems.length > 0;
+
+  // Group items by approval status
+  const approvedItems = cartItems.filter(
+    (item) => item.approval_status === "approved"
+  );
+  const pendingItems = cartItems.filter(
+    (item) => !item.approval_status || item.approval_status === "pending"
+  );
+
+  const hasPendingItems = pendingItems.length > 0;
+  const hasApprovedItems = approvedItems.length > 0;
+  const approvedTotal = approvedItems.reduce(
+    (sum, item) => sum + item.total_price,
+    0
+  );
+
   const paymentMethods = [
     { value: "cash", label: "Cash", icon: "💰" },
     { value: "transfer", label: "Transfer", icon: "💳" },
@@ -55,6 +71,22 @@ export function CartFooter({
               ₦{cartTotal.toLocaleString()}
             </span>
           </div>
+          {hasApprovedItems && hasPendingItems && (
+            <div className="space-y-1 pt-2 border-t border-gray-200 dark:border-slate-600">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-green-600">Approved:</span>
+                <span className="text-sm font-medium text-green-600">
+                  ₦{approvedTotal.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-orange-600">Pending:</span>
+                <span className="text-sm font-medium text-orange-600">
+                  ₦{(cartTotal - approvedTotal).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span
               className={`text-xs ${
@@ -74,8 +106,8 @@ export function CartFooter({
         </div>
       </div>
 
-      {/* Payment Method Selection - Only show when ready for payment */}
-      {tableBarRequestStatus === "given" && (
+      {/* Payment Method Selection - Only show when ready for payment and no pending items */}
+      {!hasPendingItems && hasApprovedItems && (
         <div className="space-y-2">
           <label className="text-sm font-medium">Payment Method</label>
           <div className="grid grid-cols-3 gap-2">
@@ -103,12 +135,17 @@ export function CartFooter({
 
       {/* Action Buttons */}
       <div className="space-y-2">
-        {tableBarRequestStatus === "none" && hasItems && (
+        {/* Send to Bar - Show when there are pending items */}
+        {hasPendingItems && (
           <button
             onClick={handleSendToBar}
-            disabled={!hasItems || createBarRequestMutation.isPending}
+            disabled={
+              !hasItems ||
+              createBarRequestMutation.isPending ||
+              tableBarRequestStatus === "pending"
+            }
             className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-              !hasItems
+              !hasItems || tableBarRequestStatus === "pending"
                 ? isDarkMode
                   ? "bg-slate-700 text-slate-500 cursor-not-allowed"
                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
@@ -125,12 +162,13 @@ export function CartFooter({
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                Send to Bar
+                Send to Bar ({pendingItems.length} items)
               </>
             )}
           </button>
         )}
 
+        {/* Waiting for bartender - Show when request is pending */}
         {tableBarRequestStatus === "pending" && (
           <div
             className={`w-full py-3 px-4 rounded-lg text-sm text-center ${
@@ -146,7 +184,8 @@ export function CartFooter({
           </div>
         )}
 
-        {tableBarRequestStatus === "given" && (
+        {/* Complete Sale - Show when no pending items and has approved items */}
+        {!hasPendingItems && hasApprovedItems && (
           <button
             onClick={handleFinalizeSale}
             disabled={!hasItems || createSaleMutation.isPending}
@@ -168,10 +207,23 @@ export function CartFooter({
             ) : (
               <>
                 <CreditCard className="w-4 h-4" />
-                Complete Sale
+                Complete Sale (₦{approvedTotal.toLocaleString()})
               </>
             )}
           </button>
+        )}
+
+        {/* No items available message */}
+        {!hasPendingItems && !hasApprovedItems && hasItems && (
+          <div
+            className={`w-full py-3 px-4 rounded-lg text-sm text-center ${
+              isDarkMode
+                ? "bg-slate-700 text-slate-400"
+                : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            No items available for processing
+          </div>
         )}
       </div>
 
@@ -182,12 +234,13 @@ export function CartFooter({
             isDarkMode ? "text-slate-400" : "text-gray-500"
           }`}
         >
-          {tableBarRequestStatus === "none" &&
-            "Send items to bar first, then complete sale when ready"}
+          {hasPendingItems &&
+            "Send pending items to bar for approval before completing sale"}
           {tableBarRequestStatus === "pending" &&
-            "Bartender is preparing your order"}
-          {tableBarRequestStatus === "given" &&
-            "Items are ready! Complete the sale to collect payment"}
+            "Bartender is reviewing your items"}
+          {!hasPendingItems &&
+            hasApprovedItems &&
+            "All items approved! Complete the sale to collect payment"}
         </div>
       )}
     </div>

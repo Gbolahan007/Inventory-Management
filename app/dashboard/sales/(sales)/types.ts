@@ -1,5 +1,3 @@
-// types.ts - unified
-
 // PRODUCT
 export interface Product {
   id: string;
@@ -34,6 +32,8 @@ export interface Sale {
   total_revenue?: number;
   profits?: number;
   total_cost?: number;
+  sales_rep_name?: string;
+  table_id?: number;
   // Optional inventory relationship
   inventory?: {
     id: string;
@@ -59,6 +59,7 @@ export interface SaleItem {
   total_cost: number;
   profit_amount: number;
   selling_price: number;
+  approval_status?: "pending" | "approved";
   products?: {
     name: string;
   };
@@ -83,7 +84,6 @@ export interface BarRequest {
   updated_at?: string;
 }
 
-// Used to manage table cart state (frontend only)
 export interface TableCart {
   id: number;
   items: SaleItem[];

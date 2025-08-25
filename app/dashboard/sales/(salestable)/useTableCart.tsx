@@ -10,7 +10,6 @@ import type { SaleItem, BarRequest, Product } from "../(sales)/types";
 interface UseTableCartLogicProps {
   products?: Product[];
   currentUser?: {
-    id: string;
     name: string;
   };
   currentUserId?: string;
@@ -28,7 +27,7 @@ export function useTableCartLogic({
 
   const createSaleMutation = useCreateSale();
   const createBarRequestMutation = useCreateBarRequest();
-  console.log(currentUser);
+
   const {
     selectedTable,
     addToTableCart,
@@ -39,11 +38,34 @@ export function useTableCartLogic({
     getTableTotal,
     setTableBarRequestStatus,
     getTableBarRequestStatus,
+    // New methods needed for tracking approved vs pending items
+    getTableApprovedCart,
+    getTablePendingCart,
+    moveSpecificItemsToApproved,
+    moveItemsToApproved,
   } = useTableCartStore();
 
   const currentCart = getTableCart(selectedTable);
   const currentTotal = getTableTotal(selectedTable);
   const tableBarRequestStatus = getTableBarRequestStatus(selectedTable);
+
+  // Split cart into approved and pending items
+  const approvedItems = getTableApprovedCart?.(selectedTable) || [];
+  const pendingItems = getTablePendingCart?.(selectedTable) || [];
+
+  // Calculate totals for different item states
+  const approvedTotal = approvedItems.reduce(
+    (sum, item) => sum + item.total_price,
+    0
+  );
+  const pendingTotal = pendingItems.reduce(
+    (sum, item) => sum + item.total_price,
+    0
+  );
+  const currentTotalProfit = currentCart.reduce(
+    (sum, item) => sum + item.profit_amount,
+    0
+  );
 
   // Find the selected product
   const selectedProductData = products?.find(
@@ -85,7 +107,7 @@ export function useTableCartLogic({
     setCustomSellingPrice(Number(e.target.value));
   };
 
-  // Add item to cart
+  // Enhanced add to cart logic
   const handleAddToCart = () => {
     if (!selectedProductData || quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity");
@@ -119,10 +141,19 @@ export function useTableCartLogic({
       total_cost: unitCost * quantity,
       profit_amount: profitAmount,
       selling_price: unitPrice,
+      approval_status: "pending",
     };
 
     addToTableCart(selectedTable, newItem);
-    toast.success(`${newItem.name} added to Table ${selectedTable} cart!`);
+
+    // If there are already approved items, show different message
+    if (tableBarRequestStatus === "given") {
+      toast.success(
+        `${newItem.name} added to Table ${selectedTable} cart! This item needs bar approval before finalizing sale.`
+      );
+    } else {
+      toast.success(`${newItem.name} added to Table ${selectedTable} cart!`);
+    }
 
     // Reset form
     setSelectedProduct("");
@@ -185,10 +216,15 @@ export function useTableCartLogic({
     );
   };
 
-  // Send bar request
+  // Enhanced send to bar logic
   const handleSendToBar = async () => {
-    if (currentCart.length === 0) {
-      toast.error("Cart is empty");
+    // Get only pending items for bar request
+    const pendingItemsToSend = currentCart.filter(
+      (item) => !item.approval_status || item.approval_status === "pending"
+    );
+
+    if (pendingItemsToSend.length === 0) {
+      toast.error("No pending items to send to bar");
       return;
     }
 
@@ -198,21 +234,23 @@ export function useTableCartLogic({
     }
 
     try {
-      const barRequestItems: Omit<BarRequest, "id">[] = currentCart.map(
+      const barRequestItems: Omit<BarRequest, "id">[] = pendingItemsToSend.map(
         (item) => ({
           table_id: selectedTable,
           product_id: item.product_id,
           product_name: item.name,
           quantity: item.quantity,
-          sales_rep_id: currentUserId,
-          sales_rep_name: currentUser,
+          sales_rep_id: currentUserId!,
+          sales_rep_name: currentUser.name,
           status: "pending",
         })
       );
 
       createBarRequestMutation.mutate(barRequestItems, {
         onSuccess: () => {
-          toast.success(`Bar request sent for Table ${selectedTable}!`);
+          toast.success(
+            `Bar request sent for ${pendingItemsToSend.length} item(s) on Table ${selectedTable}!`
+          );
           setTableBarRequestStatus(selectedTable, "pending");
         },
         onError: () => {
@@ -224,11 +262,22 @@ export function useTableCartLogic({
     }
   };
 
-  // Finalize sale
-  // Finalize sale
+  // Enhanced finalize sale logic
   const handleFinalizeSale = async () => {
     if (currentCart.length === 0) {
       toast.error("Cart is empty");
+      return;
+    }
+
+    // Check if there are any pending items
+    const hasPendingItems = currentCart.some(
+      (item) => !item.approval_status || item.approval_status === "pending"
+    );
+
+    if (hasPendingItems) {
+      toast.error(
+        "Cannot finalize sale. Some items are still pending bar approval. Please send them to bar first."
+      );
       return;
     }
 
@@ -239,8 +288,13 @@ export function useTableCartLogic({
       return;
     }
 
-    if (tableBarRequestStatus === "none") {
-      toast.error("Please send items to bar first before finalizing sale.");
+    // Only allow finalization if all items are approved
+    const allItemsApproved = currentCart.every(
+      (item) => item.approval_status === "approved"
+    );
+
+    if (!allItemsApproved) {
+      toast.error("All items must be approved by bar before finalizing sale.");
       return;
     }
 
@@ -256,7 +310,7 @@ export function useTableCartLogic({
         items: currentCart,
         table_id: selectedTable,
         sales_rep_id: currentUserId,
-        sales_rep_name: currentUser,
+        sales_rep_name: currentUser.name,
       };
 
       // Reset mutation status before making the call
@@ -283,6 +337,53 @@ export function useTableCartLogic({
     }
   };
 
+  // New method to handle bar approval confirmation for specific items
+  const handleBarApprovalReceived = (
+    approvedBarRequestItems?: BarRequest[]
+  ) => {
+    if (!approvedBarRequestItems || approvedBarRequestItems.length === 0) {
+      // Fallback: approve all pending items (for backward compatibility)
+      if (moveItemsToApproved) {
+        moveItemsToApproved(selectedTable);
+      }
+    } else {
+      // Approve only the specific confirmed items
+      if (moveSpecificItemsToApproved) {
+        const itemsToApprove = approvedBarRequestItems.map((barItem) => ({
+          product_id: barItem.product_id,
+          quantity: barItem.quantity,
+        }));
+
+        moveSpecificItemsToApproved(selectedTable, itemsToApprove);
+      }
+    }
+
+    // Update table status based on current cart state
+    const updatedCart = getTableCart(selectedTable);
+    const stillHasPendingItems = updatedCart.some(
+      (item) => !item.approval_status || item.approval_status === "pending"
+    );
+
+    if (!stillHasPendingItems && updatedCart.length > 0) {
+      // All items are approved
+      setTableBarRequestStatus(selectedTable, "given");
+    } else if (stillHasPendingItems) {
+      // Still have pending items, reset to allow new bar requests
+      setTableBarRequestStatus(selectedTable, "none");
+    }
+  };
+
+  // Check if there are pending items that need bar approval
+  const hasPendingItems = currentCart.some(
+    (item) => !item.approval_status || item.approval_status === "pending"
+  );
+
+  // Check if sale can be finalized
+  const canFinalizeSale =
+    currentCart.length > 0 &&
+    currentCart.every((item) => item.approval_status === "approved") &&
+    tableBarRequestStatus !== "pending";
+
   return {
     // State
     selectedProduct,
@@ -292,9 +393,18 @@ export function useTableCartLogic({
     selectedProductData,
     currentCart,
     currentTotal,
+    currentTotalProfit,
     tableBarRequestStatus,
     unitPrice,
     totalPrice,
+
+    // Enhanced state
+    approvedItems,
+    pendingItems,
+    approvedTotal,
+    pendingTotal,
+    hasPendingItems,
+    canFinalizeSale,
 
     // Setters
     setSelectedProduct,
@@ -311,6 +421,7 @@ export function useTableCartLogic({
     updateCartItemQuantity,
     handleSendToBar,
     handleFinalizeSale,
+    handleBarApprovalReceived,
 
     // Mutations
     createSaleMutation,

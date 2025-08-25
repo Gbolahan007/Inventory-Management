@@ -29,26 +29,61 @@ export default function BarRequestsPage() {
   const { mutate: updateMultipleRequests, isPending: isUpdatingMultiple } =
     useUpdateMultipleRequestsStatus();
 
-  const { setTableBarRequestStatus } = useTableCartStore();
+  const {
+    setTableBarRequestStatus,
+    moveSpecificItemsToApproved,
+    moveItemsToApproved,
+  } = useTableCartStore();
 
   const [filter, setFilter] = useState<
     "all" | "pending" | "given" | "cancelled"
   >("all");
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const requests = barRequests || [];
 
+  // Enhanced filtering logic
   const filteredRequests = requests.filter((request: BarRequest) => {
     const statusMatch = filter === "all" || request.status === filter;
     const tableMatch =
       selectedTable === null || request.table_id === selectedTable;
-    return statusMatch && tableMatch;
+    const salesRepMatch =
+      selectedSalesRep === null || request.sales_rep_id === selectedSalesRep;
+
+    // Date filtering - check if request date matches selected date
+    const dateMatch =
+      !selectedDate ||
+      new Date(request.created_at).toDateString() ===
+        new Date(selectedDate).toDateString();
+
+    return statusMatch && tableMatch && salesRepMatch && dateMatch;
   });
 
   const uniqueTables = [
     ...new Set(requests.map((r: BarRequest) => r.table_id)),
   ].sort();
+
+  const uniqueSalesReps = Array.from(
+    new Map(
+      requests.map((r: BarRequest) => [
+        r.sales_rep_id,
+        {
+          id: r.sales_rep_id,
+          name: r.sales_rep_name,
+        },
+      ])
+    ).values()
+  ).sort((a, b) => a.name?.localeCompare(b.name));
+
+  // Get unique dates for filtering
+  const uniqueDates = [
+    ...new Set(
+      requests.map((r: BarRequest) => new Date(r.created_at).toDateString())
+    ),
+  ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime()); // Most recent first
 
   // Handle refresh functionality
   const handleRefresh = async () => {
@@ -64,12 +99,20 @@ export default function BarRequestsPage() {
     }
   };
 
-  // Updated to sync with Zustand store and simplified with query invalidation
+  // Clear all filters
+  const clearFilters = () => {
+    setFilter("all");
+    setSelectedTable(null);
+    setSelectedSalesRep(null);
+    setSelectedDate("");
+  };
+
+  // ENHANCED: Update individual request and approve specific cart items
   const handleUpdateRequestStatus = (
     requestId: string,
     newStatus: "given" | "cancelled"
   ) => {
-    // Find the request to get the table_id
+    // Find the request to get the table_id and item details
     const request = requests.find((r: BarRequest) => r.id === requestId);
 
     if (!request) {
@@ -81,9 +124,18 @@ export default function BarRequestsPage() {
       { requestId, newStatus },
       {
         onSuccess: () => {
-          // Update the Zustand store based on the new status
           if (newStatus === "given") {
-            // Check if this was the last pending request for this table
+            // CRITICAL: Approve the specific item in the cart
+            if (moveSpecificItemsToApproved) {
+              moveSpecificItemsToApproved(request.table_id, [
+                {
+                  product_id: request.product_id,
+                  quantity: request.quantity,
+                },
+              ]);
+            }
+
+            // Update table status
             const otherPendingRequests = requests.filter(
               (r: BarRequest) =>
                 r.table_id === request.table_id &&
@@ -91,12 +143,15 @@ export default function BarRequestsPage() {
                 r.id !== requestId
             );
 
-            // If no other pending requests, mark table as "given", otherwise keep as "pending"
             const tableStatus =
-              otherPendingRequests.length === 0 ? "given" : "pending";
+              otherPendingRequests.length === 0 ? "given" : "none";
             setTableBarRequestStatus(request.table_id, tableStatus);
+
+            toast.success(
+              `Request approved! Item marked as ready in Table ${request.table_id} cart.`
+            );
           } else if (newStatus === "cancelled") {
-            // Check if there are any remaining pending requests for this table
+            // Handle cancelled requests - remove from cart or keep as pending
             const remainingPendingRequests = requests.filter(
               (r: BarRequest) =>
                 r.table_id === request.table_id &&
@@ -104,13 +159,12 @@ export default function BarRequestsPage() {
                 r.id !== requestId
             );
 
-            // If no pending requests left, set to "none", otherwise keep as "pending"
             const tableStatus =
               remainingPendingRequests.length === 0 ? "none" : "pending";
             setTableBarRequestStatus(request.table_id, tableStatus);
-          }
 
-          toast.success(`Request marked as ${newStatus}!`);
+            toast.success(`Request cancelled for Table ${request.table_id}.`);
+          }
         },
         onError: () => {
           toast.error("Failed to update request status. Please try again.");
@@ -119,16 +173,19 @@ export default function BarRequestsPage() {
     );
   };
 
-  // Updated to sync with Zustand store and simplified with query invalidation
+  // ENHANCED: Mark entire table as given and approve ALL pending items
   const handleMarkTableAsGiven = (tableId: number) => {
-    const tablePendingRequests = requests.filter(
+    // Only consider filtered pending requests for this table
+    const tablePendingRequests = filteredRequests.filter(
       (r: BarRequest) => r.table_id === tableId && r.status === "pending"
     );
 
     const requestIds = tablePendingRequests.map((request) => request.id);
 
     if (requestIds.length === 0) {
-      toast.error(`No pending requests found for table ${tableId}`);
+      toast.error(
+        `No pending requests found for table ${tableId} with current filters`
+      );
       return;
     }
 
@@ -136,9 +193,24 @@ export default function BarRequestsPage() {
       { requestIds, newStatus: "given" },
       {
         onSuccess: () => {
+          // CRITICAL: Approve ALL pending items for this table in the cart
+          if (moveSpecificItemsToApproved) {
+            const itemsToApprove = tablePendingRequests.map((request) => ({
+              product_id: request.product_id,
+              quantity: request.quantity,
+            }));
+
+            moveSpecificItemsToApproved(tableId, itemsToApprove);
+          } else if (moveItemsToApproved) {
+            // Fallback: approve all pending items
+            moveItemsToApproved(tableId);
+          }
+
+          // Update table status
           setTableBarRequestStatus(tableId, "given");
+
           toast.success(
-            `Table ${tableId} marked as served! (${requestIds.length} items)`
+            `Table ${tableId} processed! ${requestIds.length} items approved in cart.`
           );
         },
         onError: () => {
@@ -150,21 +222,31 @@ export default function BarRequestsPage() {
 
   const getRequestCounts = () => {
     return {
-      all: requests.length,
-      pending: requests.filter((r: BarRequest) => r.status === "pending")
+      all: filteredRequests.length,
+      pending: filteredRequests.filter(
+        (r: BarRequest) => r.status === "pending"
+      ).length,
+      given: filteredRequests.filter((r: BarRequest) => r.status === "given")
         .length,
-      given: requests.filter((r: BarRequest) => r.status === "given").length,
-      cancelled: requests.filter((r: BarRequest) => r.status === "cancelled")
-        .length,
+      cancelled: filteredRequests.filter(
+        (r: BarRequest) => r.status === "cancelled"
+      ).length,
     };
   };
 
   // Check if any mutation is in progress
   const isUpdating = isUpdatingRequest || isUpdatingMultiple;
 
+  // Check if filters are active
+  const hasActiveFilters =
+    filter !== "all" ||
+    selectedTable !== null ||
+    selectedSalesRep !== null ||
+    selectedDate !== "";
+
   if (isLoading && !isRefreshing) {
     return (
-      <div className="min-h-screen  bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading bar requests...</p>
@@ -175,7 +257,7 @@ export default function BarRequestsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background  flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <XCircle className="w-8 h-8 text-destructive mx-auto mb-4" />
           <p className="text-foreground font-medium mb-2">
@@ -213,20 +295,35 @@ export default function BarRequestsPage() {
               </h1>
               <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                 Manage drink orders from sales representatives
+                {hasActiveFilters && (
+                  <span className="ml-2 px-2 py-1 bg-primary/10 text-primary rounded text-xs">
+                    Filtered
+                  </span>
+                )}
               </p>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing || isLoading}
-              className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm sm:text-base min-h-[44px]"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${
-                  isRefreshing || isLoading ? "animate-spin" : ""
-                }`}
-              />
-              {isRefreshing ? "Refreshing..." : "Refresh"}
-            </button>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-2 text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted/50 transition-colors text-sm"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoading}
+                className="flex items-center justify-center gap-2 px-3 py-2 sm:px-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm sm:text-base min-h-[44px]"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${
+                    isRefreshing || isLoading ? "animate-spin" : ""
+                  }`}
+                />
+                {isRefreshing ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -237,7 +334,13 @@ export default function BarRequestsPage() {
           setFilter={setFilter}
           selectedTable={selectedTable}
           setSelectedTable={setSelectedTable}
+          selectedSalesRep={selectedSalesRep}
+          setSelectedSalesRep={setSelectedSalesRep}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
           uniqueTables={uniqueTables}
+          uniqueSalesReps={uniqueSalesReps}
+          uniqueDates={uniqueDates}
           counts={getRequestCounts()}
         />
 

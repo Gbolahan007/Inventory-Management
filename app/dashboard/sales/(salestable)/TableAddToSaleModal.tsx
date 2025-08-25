@@ -41,7 +41,6 @@ export default function TableAddToSaleModal({
     setSelectedTable,
     getTableCart,
     getTableTotal,
-    getTableTotalProfit,
     getActiveTables,
     getTableBarRequestStatus,
   } = useTableCartStore();

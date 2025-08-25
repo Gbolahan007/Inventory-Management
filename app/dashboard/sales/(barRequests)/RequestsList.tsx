@@ -1,14 +1,4 @@
-import { useState } from "react";
-import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  User,
-  Hash,
-  Package,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { CheckCircle, Clock, XCircle, Users } from "lucide-react";
 
 interface BarRequest {
   id: string;
@@ -28,8 +18,8 @@ interface RequestsListProps {
   updateRequestStatus: (
     requestId: string,
     newStatus: "given" | "cancelled"
-  ) => Promise<void>;
-  markTableAsGiven: (tableId: number) => Promise<void>;
+  ) => void;
+  markTableAsGiven: (tableId: number) => void;
 }
 
 export default function RequestsList({
@@ -38,226 +28,175 @@ export default function RequestsList({
   updateRequestStatus,
   markTableAsGiven,
 }: RequestsListProps) {
-  const [expandedTables, setExpandedTables] = useState<Set<number>>(new Set());
-  console.log(requests);
+  if (requests.length === 0) {
+    return (
+      <div className="bg-card rounded-lg border p-8 text-center">
+        <div className="text-4xl mb-4">🍺</div>
+        <h3 className="text-lg font-medium text-foreground mb-2">
+          No requests found
+        </h3>
+        <p className="text-muted-foreground">
+          No bar requests match your current filters.
+        </p>
+      </div>
+    );
+  }
 
-  const groupedRequests = requests.reduce(
-    (groups: Record<number, BarRequest[]>, request: BarRequest) => {
-      const key = request.table_id;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(request);
-      return groups;
-    },
-    {} as Record<number, BarRequest[]>
-  );
-
-  const toggleTableExpansion = (tableId: number) => {
-    const newExpanded = new Set(expandedTables);
-    if (newExpanded.has(tableId)) {
-      newExpanded.delete(tableId);
-    } else {
-      newExpanded.add(tableId);
+  // Group requests by table
+  const requestsByTable = requests.reduce((acc, request) => {
+    if (!acc[request.table_id]) {
+      acc[request.table_id] = [];
     }
-    setExpandedTables(newExpanded);
-  };
+    acc[request.table_id].push(request);
+    return acc;
+  }, {} as Record<number, BarRequest[]>);
+
+  // Sort tables by ID
+  const sortedTables = Object.keys(requestsByTable)
+    .map(Number)
+    .sort((a, b) => a - b);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
-        return (
-          <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600 dark:text-yellow-400" />
-        );
+        return <Clock className="w-4 h-4 text-orange-500" />;
       case "given":
-        return (
-          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 dark:text-green-400" />
-        );
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case "cancelled":
-        return (
-          <XCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 dark:text-red-400" />
-        );
+        return <XCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
+    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
     switch (status) {
       case "pending":
-        return "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700";
+        return `${baseClasses} bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200`;
       case "given":
-        return "bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700";
+        return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`;
       case "cancelled":
-        return "bg-red-50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700";
+        return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200`;
       default:
-        return "bg-gray-50 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
-    }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
-
-    if (isToday) {
-      return date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+        return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200`;
     }
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-      {Object.keys(groupedRequests).length === 0 ? (
-        <div className="bg-card rounded-lg shadow border p-6 sm:p-8 text-center">
-          <Package className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-          <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">
-            No requests found
-          </h3>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            No bar requests match your current filters.
-          </p>
-        </div>
-      ) : (
-        Object.entries(groupedRequests).map(([tableId, tableRequests]) => (
+    <div className="space-y-6">
+      {sortedTables.map((tableId) => {
+        const tableRequests = requestsByTable[tableId];
+        const pendingRequests = tableRequests.filter(
+          (r) => r.status === "pending"
+        );
+        const hasPendingRequests = pendingRequests.length > 0;
+
+        return (
           <div
             key={tableId}
-            className="bg-card rounded-lg shadow border overflow-hidden"
+            className="bg-card rounded-lg border overflow-hidden"
           >
-            {/* Table Header */}
-            <div className="px-3 py-3 sm:px-4 sm:py-4 lg:px-6 border-b border-border">
+            {/* Table Header with Mark All Button at Top */}
+            <div className="bg-muted/50 px-4 py-3 border-b">
               <div className="flex items-center justify-between">
-                <button
-                  onClick={() => toggleTableExpansion(Number(tableId))}
-                  className="flex items-center gap-2 sm:gap-3 flex-1 text-left min-h-[44px] hover:bg-muted/50 rounded-md p-1 transition-colors"
-                >
-                  <Hash className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 min-w-0">
-                    <h2 className="text-base sm:text-lg font-semibold text-foreground">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold text-foreground">
                       Table {tableId}
-                    </h2>
-                    <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs sm:text-sm w-fit">
-                      {tableRequests.length} items
-                    </span>
+                    </h3>
                   </div>
-                  <div className="ml-auto flex-shrink-0 sm:hidden">
-                    {expandedTables.has(Number(tableId)) ? (
-                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{tableRequests.length} total items</span>
+                    {hasPendingRequests && (
+                      <span className="text-orange-600">
+                        • {pendingRequests.length} pending
+                      </span>
                     )}
                   </div>
-                </button>
+                </div>
 
-                {/* Quick Actions - Desktop */}
-                {tableRequests.some((r) => r.status === "pending") && (
+                {/* Mark All Button - Positioned at the top */}
+                {hasPendingRequests && (
                   <button
-                    onClick={() => markTableAsGiven(Number(tableId))}
+                    onClick={() => markTableAsGiven(tableId)}
                     disabled={isUpdating}
-                    className="hidden sm:flex items-center gap-2 px-3 py-2 lg:px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm min-h-[44px] dark:bg-green-600 dark:hover:bg-green-700"
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                   >
                     <CheckCircle className="w-4 h-4" />
-                    <span className="hidden lg:inline">Mark All as Given</span>
-                    <span className="lg:hidden">Mark All</span>
+                    Mark All Ready ({pendingRequests.length})
                   </button>
                 )}
               </div>
-
-              {/* Quick Actions - Mobile */}
-              {tableRequests.some((r) => r.status === "pending") && (
-                <div className="mt-3 sm:hidden">
-                  <button
-                    onClick={() => markTableAsGiven(Number(tableId))}
-                    disabled={isUpdating}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm min-h-[44px] dark:bg-green-600 dark:hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Mark All as Given
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Request Items */}
-            <div
-              className={`divide-y divide-border ${
-                expandedTables.has(Number(tableId)) || "hidden sm:block"
-              }`}
-            >
+            {/* Requests List */}
+            <div className="divide-y divide-border">
               {tableRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="px-3 py-3 sm:px-4 sm:py-4 lg:px-6 hover:bg-muted/30 transition-colors"
+                  className="p-4 hover:bg-muted/20 transition-colors"
                 >
-                  <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:gap-3 mb-2">
-                        <h3 className="font-medium text-foreground text-sm sm:text-base mb-1 sm:mb-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        {getStatusIcon(request.status)}
+                        <h4 className="text-base font-medium text-foreground truncate">
                           {request.product_name}
-                        </h3>
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border w-fit ${getStatusColor(
-                            request.status
-                          )}`}
-                        >
-                          {getStatusIcon(request.status)}
-                          <span className="ml-1 capitalize">
-                            {request.status}
-                          </span>
+                        </h4>
+                        <span className={getStatusBadge(request.status)}>
+                          {request.status}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Package className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                          <span>Qty: {request.quantity}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <User className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                          <span className="truncate">
-                            {request.sales_rep_name}
+                          <span className="font-medium">Qty:</span>
+                          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">
+                            {request.quantity}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                          <span>{formatDateTime(request.created_at)}</span>
+                          <span className="font-medium">Rep:</span>
+                          <span>{request.sales_rep_name}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">Time:</span>
+                          <span>
+                            {new Date(request.created_at).toLocaleTimeString(
+                              [],
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Individual Action Buttons */}
                     {request.status === "pending" && (
-                      <div className="flex gap-2 sm:flex-shrink-0">
+                      <div className="flex gap-2 ml-4">
                         <button
                           onClick={() =>
                             updateRequestStatus(request.id, "given")
                           }
                           disabled={isUpdating}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-green-600 text-white rounded text-xs sm:text-sm hover:bg-green-700 disabled:opacity-50 transition-colors min-h-[40px] dark:bg-green-600 dark:hover:bg-green-700"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                         >
-                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="sm:hidden">Given</span>
-                          <span className="hidden sm:inline">
-                            Mark as Given
-                          </span>
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Ready
                         </button>
                         <button
                           onClick={() =>
                             updateRequestStatus(request.id, "cancelled")
                           }
                           disabled={isUpdating}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-red-600 text-white rounded text-xs sm:text-sm hover:bg-red-700 disabled:opacity-50 transition-colors min-h-[40px] dark:bg-red-600 dark:hover:bg-red-700"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                         >
-                          <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <XCircle className="w-3.5 h-3.5" />
                           Cancel
                         </button>
                       </div>
@@ -267,8 +206,8 @@ export default function RequestsList({
               ))}
             </div>
           </div>
-        ))
-      )}
+        );
+      })}
     </div>
   );
 }
