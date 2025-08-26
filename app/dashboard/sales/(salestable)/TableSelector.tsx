@@ -6,8 +6,6 @@ interface TableSelectorProps {
   onTableSelect: (tableNum: number) => void;
   activeTables: number[];
   getTableCart: (tableNum: number) => SaleItem[];
-  getTableBarRequestStatus: (tableNum: number) => string;
-  tableBarRequestStatus: string;
 }
 
 export default function TableSelector({
@@ -16,30 +14,7 @@ export default function TableSelector({
   onTableSelect,
   activeTables,
   getTableCart,
-  getTableBarRequestStatus,
-  tableBarRequestStatus,
 }: TableSelectorProps) {
-  // Helper function to get status display
-  const getStatusDisplay = (status: string) => {
-    switch (status) {
-      case "pending":
-        return {
-          text: "Bar Request Pending",
-          color: "bg-yellow-100 text-yellow-800 border-yellow-300",
-        };
-      case "given":
-        return {
-          text: "Ready for Payment",
-          color: "bg-green-100 text-green-800 border-green-300",
-        };
-      default:
-        return {
-          text: "Ready to Send",
-          color: "bg-blue-100 text-blue-800 border-blue-300",
-        };
-    }
-  };
-
   return (
     <div
       className={`p-3 sm:p-4 border-b ${
@@ -62,7 +37,6 @@ export default function TableSelector({
       {/* Table buttons */}
       <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((tableNum) => {
-          const tableStatus = getTableBarRequestStatus(tableNum);
           const isSelected = selectedTable === tableNum;
           const hasItems = activeTables.includes(tableNum);
 
@@ -76,11 +50,7 @@ export default function TableSelector({
                     ? "bg-blue-600 text-white shadow-lg border-blue-400"
                     : "bg-blue-500 text-white shadow-lg border-blue-300"
                   : hasItems
-                  ? tableStatus === "pending"
-                    ? "bg-yellow-100 text-yellow-800 border-yellow-300"
-                    : tableStatus === "given"
-                    ? "bg-green-100 text-green-800 border-green-300"
-                    : isDarkMode
+                  ? isDarkMode
                     ? "bg-slate-600 text-slate-300 border-slate-400"
                     : "bg-gray-100 text-gray-700 border-gray-300"
                   : isDarkMode
@@ -94,15 +64,11 @@ export default function TableSelector({
                   ({getTableCart(tableNum).length})
                 </span>
               )}
-              {/* Status indicator dot */}
-              {tableStatus !== "none" && (
+              {/* Active indicator dot */}
+              {hasItems && (
                 <span
                   className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                    tableStatus === "pending"
-                      ? "bg-yellow-400"
-                      : tableStatus === "given"
-                      ? "bg-green-400"
-                      : "bg-blue-400"
+                    isDarkMode ? "bg-green-400" : "bg-green-500"
                   }`}
                 />
               )}
@@ -116,10 +82,12 @@ export default function TableSelector({
         <div className="mt-3">
           <div
             className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-              getStatusDisplay(tableBarRequestStatus).color
+              isDarkMode
+                ? "bg-green-100 text-green-800 border-green-300"
+                : "bg-green-100 text-green-800 border-green-300"
             }`}
           >
-            {getStatusDisplay(tableBarRequestStatus).text}
+            Ready for Payment
           </div>
         </div>
       )}

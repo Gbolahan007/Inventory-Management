@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import type React from "react";
 import type { Product, SaleItem, TableCart } from "../(sales)/types";
 import type { UseMutationResult } from "@tanstack/react-query";
-import { StatusIndicator } from "./StatusIndicator";
 import { CartContent } from "./CartContent";
 import { CartFooter } from "./CartFooter";
 
@@ -23,15 +22,12 @@ interface TableShoppingCartDisplayProps {
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
   handleFinalizeSale: () => void;
-  handleSendToBar: () => void;
   createSaleMutation: UseMutationResult<any, Error, any, unknown>;
   isOpen: boolean;
   onClose: () => void;
   selectedTable: number;
   activeTables: number[];
-  tableBarRequestStatus: "none" | "pending" | "given";
   getAllTableCarts: () => TableCart[];
-  isSendingToBar: boolean;
 }
 
 export default function TableShoppingCartDisplay({
@@ -44,19 +40,17 @@ export default function TableShoppingCartDisplay({
   paymentMethod,
   setPaymentMethod,
   handleFinalizeSale,
-  handleSendToBar,
   createSaleMutation,
   isOpen,
   onClose,
   selectedTable,
-  tableBarRequestStatus,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
       <div className="fixed inset-0 z-50 md:hidden">
         <div className="fixed inset-0 bg-black/60" onClick={onClose} />
         <div
-          className={`fixed  inset-x-0 bottom-0 rounded-t-xl max-h-[90vh] flex flex-col ${
+          className={`fixed inset-x-0 bottom-0 rounded-t-xl max-h-[90vh] flex flex-col ${
             isDarkMode
               ? "bg-slate-800 text-slate-100"
               : "bg-white text-gray-900"
@@ -64,7 +58,7 @@ export default function TableShoppingCartDisplay({
         >
           {/* Mobile Header */}
           <div
-            className={`p-4 border-b flex items-center justify-between  ${
+            className={`p-4 border-b flex items-center justify-between ${
               isDarkMode ? "border-slate-700" : "border-gray-200"
             }`}
           >
@@ -81,14 +75,6 @@ export default function TableShoppingCartDisplay({
             </button>
           </div>
 
-          {/* Mobile Status */}
-          <div className="p-4">
-            <StatusIndicator
-              status={tableBarRequestStatus}
-              isDarkMode={isDarkMode}
-            />
-          </div>
-
           {/* Mobile Cart Content */}
           <div className="flex-1 overflow-y-auto p-4">
             <CartContent
@@ -96,7 +82,6 @@ export default function TableShoppingCartDisplay({
               removeFromCart={removeFromCart}
               updateCartItemQuantity={updateCartItemQuantity}
               isDarkMode={isDarkMode}
-              tableBarRequestStatus={tableBarRequestStatus}
             />
           </div>
 
@@ -113,11 +98,9 @@ export default function TableShoppingCartDisplay({
               cartTotalProfit={cartTotalProfit}
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
-              handleSendToBar={handleSendToBar}
               handleFinalizeSale={handleFinalizeSale}
               createSaleMutation={createSaleMutation}
               isDarkMode={isDarkMode}
-              tableBarRequestStatus={tableBarRequestStatus}
               cartItems={cartItems}
             />
           </div>
@@ -155,10 +138,19 @@ export default function TableShoppingCartDisplay({
               {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}
             </div>
           </div>
-          <StatusIndicator
-            status={tableBarRequestStatus}
-            isDarkMode={isDarkMode}
-          />
+
+          {/* Status indicator - always ready for payment in simplified flow */}
+          {cartItems.length > 0 && (
+            <div
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                isDarkMode
+                  ? "bg-green-100 text-green-800 border-green-300"
+                  : "bg-green-100 text-green-800 border-green-300"
+              }`}
+            >
+              Ready for Payment
+            </div>
+          )}
         </div>
 
         {/* Desktop Cart Content */}
@@ -168,7 +160,6 @@ export default function TableShoppingCartDisplay({
             removeFromCart={removeFromCart}
             updateCartItemQuantity={updateCartItemQuantity}
             isDarkMode={isDarkMode}
-            tableBarRequestStatus={tableBarRequestStatus}
           />
         </div>
 
@@ -183,11 +174,9 @@ export default function TableShoppingCartDisplay({
             cartTotalProfit={cartTotalProfit}
             paymentMethod={paymentMethod}
             setPaymentMethod={setPaymentMethod}
-            handleSendToBar={handleSendToBar}
             handleFinalizeSale={handleFinalizeSale}
             createSaleMutation={createSaleMutation}
             isDarkMode={isDarkMode}
-            tableBarRequestStatus={tableBarRequestStatus}
             cartItems={cartItems}
           />
         </div>

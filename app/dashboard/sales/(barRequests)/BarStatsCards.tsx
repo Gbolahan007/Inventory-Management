@@ -1,80 +1,55 @@
 import { Clock, CheckCircle, XCircle, Package } from "lucide-react";
+import type { BarRequest } from "../(sales)/types";
 
-interface StatsCardsProps {
-  counts: {
-    all: number;
-    pending: number;
-    given: number;
-    cancelled: number;
-  };
+interface Props {
+  barRequests: BarRequest[];
 }
 
-export default function BarStatsCards({ counts }: StatsCardsProps) {
+export default function BarStatsCards({ barRequests }: Props) {
+  const counts = {
+    all: barRequests.length,
+    pending: barRequests.filter((r) => r.status === "pending").length,
+    given: barRequests.filter((r) => r.status === "given").length,
+    cancelled: barRequests.filter((r) => r.status === "cancelled").length,
+  };
+
+  const cards = [
+    { label: "Total", value: counts.all, icon: Package, color: "text-primary" },
+    {
+      label: "Pending",
+      value: counts.pending,
+      icon: Clock,
+      color: "text-yellow-600 dark:text-yellow-400",
+    },
+    {
+      label: "Given",
+      value: counts.given,
+      icon: CheckCircle,
+      color: "text-green-600 dark:text-green-400",
+    },
+    {
+      label: "Cancelled",
+      value: counts.cancelled,
+      icon: XCircle,
+      color: "text-red-600 dark:text-red-400",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
-      <div className="bg-card rounded-lg shadow border p-3 sm:p-4 lg:p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <Package className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary" />
-          </div>
-          <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-              Total
-            </p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">
-              {counts.all}
-            </p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
+      {cards.map(({ label, value, icon: Icon, color }) => (
+        <div key={label} className="bg-card rounded-lg shadow border p-4">
+          <div className="flex items-center">
+            <Icon className={`h-6 w-6 ${color}`} />
+            <div className="ml-3 min-w-0">
+              <p className="text-sm font-medium text-muted-foreground truncate">
+                {label}
+              </p>
+              <p className={`text-xl font-bold ${color}`}>{value}</p>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="bg-card rounded-lg shadow border p-3 sm:p-4 lg:p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <Clock className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-yellow-600 dark:text-yellow-400" />
-          </div>
-          <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-              Pending
-            </p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {counts.pending}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg shadow border p-3 sm:p-4 lg:p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-              Given
-            </p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 dark:text-green-400">
-              {counts.given}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg shadow border p-3 sm:p-4 lg:p-6">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <XCircle className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-red-600 dark:text-red-400" />
-          </div>
-          <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-              Cancelled
-            </p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 dark:text-red-400">
-              {counts.cancelled}
-            </p>
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

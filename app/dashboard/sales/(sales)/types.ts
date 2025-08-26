@@ -89,7 +89,7 @@ export interface TableCart {
   id: number;
   items: SaleItem[];
   total: number;
-  status: "none" | "pending" | "given";
+  status?: string;
 }
 
 // Statistics you show on dashboard

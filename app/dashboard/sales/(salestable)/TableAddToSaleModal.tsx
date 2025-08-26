@@ -11,7 +11,6 @@ import TableShoppingCartDisplay from "./TableShoppingCartDisplay";
 
 import type { Product } from "../(sales)/types";
 import ModalHeader from "./ModalHeader";
-import PendingWarning from "./PendingWarning";
 import TableSelector from "./TableSelector";
 import { useTableCartLogic } from "./useTableCart";
 
@@ -42,7 +41,6 @@ export default function TableAddToSaleModal({
     getTableCart,
     getTableTotal,
     getActiveTables,
-    getTableBarRequestStatus,
   } = useTableCartStore();
 
   // Custom hook for cart logic
@@ -55,7 +53,6 @@ export default function TableAddToSaleModal({
     currentCart,
     currentTotal,
     currentTotalProfit,
-    tableBarRequestStatus,
     unitPrice,
     totalPrice,
     setPaymentMethod,
@@ -65,10 +62,8 @@ export default function TableAddToSaleModal({
     handleAddToCart,
     removeFromCart,
     updateCartItemQuantity,
-    handleSendToBar,
     handleFinalizeSale,
     createSaleMutation,
-    isSendingToBar,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
@@ -138,8 +133,6 @@ export default function TableAddToSaleModal({
             onTableSelect={setSelectedTable}
             activeTables={activeTables}
             getTableCart={getTableCart}
-            getTableBarRequestStatus={getTableBarRequestStatus}
-            tableBarRequestStatus={tableBarRequestStatus}
           />
 
           {/* Modal Content - Sidebar Style Layout */}
@@ -171,14 +164,6 @@ export default function TableAddToSaleModal({
                       </p>
                     </div>
                   </div>
-                  {tableBarRequestStatus === "pending" && (
-                    <div className="mt-4">
-                      <PendingWarning
-                        tableNumber={selectedTable}
-                        isDarkMode={isDarkMode}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Form Content */}
@@ -197,7 +182,6 @@ export default function TableAddToSaleModal({
                   groupedProducts={groupedProducts}
                   categoryDisplayNames={categoryDisplayNames}
                   isDarkMode={isDarkMode}
-                  disabled={tableBarRequestStatus === "pending"}
                 />
               </div>
             </div>
@@ -212,7 +196,6 @@ export default function TableAddToSaleModal({
             >
               <TableShoppingCartDisplay
                 cartItems={currentCart}
-                isSendingToBar={isSendingToBar}
                 removeFromCart={removeFromCart}
                 updateCartItemQuantity={updateCartItemQuantity}
                 cartTotal={currentTotal}
@@ -222,19 +205,16 @@ export default function TableAddToSaleModal({
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
                 handleFinalizeSale={handleFinalizeSaleWithClose}
-                handleSendToBar={handleSendToBar}
                 createSaleMutation={createSaleMutation}
                 isOpen={isCartOpenMobile}
                 onClose={() => setIsCartOpenMobile(false)}
                 selectedTable={selectedTable}
                 activeTables={activeTables}
-                tableBarRequestStatus={tableBarRequestStatus}
                 getAllTableCarts={() =>
                   activeTables.map((id) => ({
                     id,
                     items: getTableCart(id),
                     total: getTableTotal(id),
-                    status: getTableBarRequestStatus(id),
                   }))
                 }
               />

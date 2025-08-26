@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Send, CreditCard, Clock } from "lucide-react";
+import { CreditCard, Banknote } from "lucide-react";
+import { useState } from "react";
 import type { SaleItem } from "../(sales)/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 
@@ -9,237 +10,149 @@ interface CartFooterProps {
   cartTotalProfit: number;
   paymentMethod: string;
   setPaymentMethod: (method: string) => void;
-  handleSendToBar: () => void;
   handleFinalizeSale: () => void;
   createSaleMutation: UseMutationResult<any, Error, any, unknown>;
   isDarkMode: boolean;
-  tableBarRequestStatus: "none" | "pending" | "given";
   cartItems: SaleItem[];
-  isSendingToBar?: boolean; // Add this prop to track sending state
 }
 
 export function CartFooter({
   cartTotal,
-  cartTotalProfit,
   paymentMethod,
   setPaymentMethod,
-  handleSendToBar,
   handleFinalizeSale,
   createSaleMutation,
   isDarkMode,
-  tableBarRequestStatus,
   cartItems,
-  isSendingToBar = false,
 }: CartFooterProps) {
-  const hasItems = cartItems.length > 0;
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  // Group items by approval status
-  const approvedItems = cartItems.filter(
-    (item) => item.approval_status === "approved"
-  );
-  const pendingItems = cartItems.filter(
-    (item) => !item.approval_status || item.approval_status === "pending"
-  );
+  const canFinalizeSale = cartItems.length > 0;
 
-  const hasPendingItems = pendingItems.length > 0;
-  const hasApprovedItems = approvedItems.length > 0;
-  const approvedTotal = approvedItems.reduce(
-    (sum, item) => sum + item.total_price,
-    0
-  );
+  // Simple retry logic with timeout
+  const handleSaleWithTimeout = async () => {
+    try {
+      setIsRetrying(false);
 
-  const paymentMethods = [
-    { value: "cash", label: "Cash", icon: "💰" },
-    { value: "transfer", label: "Transfer", icon: "💳" },
-    { value: "pos", label: "POS", icon: "📱" },
-  ];
+      // Create a timeout promise
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 15000) // 15 second timeout
+      );
+
+      // Race the sale against timeout
+      await Promise.race([handleFinalizeSale(), timeoutPromise]);
+    } catch (error) {
+      console.log(`Sale failed, retrying once... ${error}`);
+      setIsRetrying(true);
+
+      setTimeout(async () => {
+        try {
+          await handleFinalizeSale();
+          setIsRetrying(false);
+        } catch (retryError) {
+          setIsRetrying(false);
+          alert(
+            `Sale failed. Please check your connection and try again.${retryError}`
+          );
+        }
+      }, 2000);
+    }
+  };
+
+  const isProcessing = createSaleMutation.isPending || isRetrying;
 
   return (
     <div className="space-y-4">
-      {/* Total Summary */}
+      {/* Totals */}
       <div
-        className={`p-3 rounded-lg border ${
+        className={`p-4 rounded-lg border ${
           isDarkMode
-            ? "border-slate-700 bg-slate-800"
-            : "border-gray-200 bg-white"
+            ? "bg-slate-800 border-slate-700"
+            : "bg-gray-50 border-gray-200"
         }`}
       >
-        <div className="space-y-1">
-          <div className="flex justify-between items-center ">
-            <span className="text-sm font-medium">Total</span>
-            <span className="font-bold text-lg">
-              ₦{cartTotal.toLocaleString()}
-            </span>
-          </div>
-          {hasApprovedItems && hasPendingItems && (
-            <div className="space-y-1 pt-2 border-t border-gray-200 dark:border-slate-600">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-green-600">Approved:</span>
-                <span className="text-sm font-medium text-green-600">
-                  ₦{approvedTotal.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-orange-600">Pending:</span>
-                <span className="text-sm font-medium text-orange-600">
-                  ₦{(cartTotal - approvedTotal).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <span
-              className={`text-xs ${
-                isDarkMode ? "text-slate-400" : "text-gray-500"
-              }`}
-            >
-              Profit
-            </span>
-            <span
-              className={`text-sm font-medium ${
-                cartTotalProfit > 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              ₦{cartTotalProfit?.toLocaleString()}
-            </span>
-          </div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="font-semibold">Total</span>
+          <span className="text-xl font-bold">
+            {new Intl.NumberFormat("en-NG", {
+              style: "currency",
+              currency: "NGN",
+              minimumFractionDigits: 2,
+            }).format(cartTotal)}
+          </span>
         </div>
       </div>
 
-      {/* Payment Method Selection - Only show when ready for payment and no pending items */}
-      {!hasPendingItems && hasApprovedItems && (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Payment Method</label>
-          <div className="grid grid-cols-3 gap-2">
-            {paymentMethods.map((method) => (
+      {/* Payment Method */}
+      {cartItems.length > 0 && (
+        <div className="space-y-3">
+          <label
+            className={`block text-sm font-medium ${
+              isDarkMode ? "text-slate-300" : "text-gray-700"
+            }`}
+          >
+            Payment Method
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "transfer", label: "Transfer", icon: CreditCard },
+              { value: "cash", label: "Cash", icon: Banknote },
+            ].map(({ value, label, icon: Icon }) => (
               <button
-                key={method.value}
-                onClick={() => setPaymentMethod(method.value)}
-                className={`p-2 rounded-lg text-xs font-medium transition-all ${
-                  paymentMethod === method.value
+                key={value}
+                onClick={() => setPaymentMethod(value)}
+                className={`p-3 rounded-lg border-2 flex items-center justify-center space-x-2 transition-all ${
+                  paymentMethod === value
                     ? isDarkMode
-                      ? "bg-blue-600 text-white"
-                      : "bg-blue-500 text-white"
+                      ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                      : "border-blue-500 bg-blue-50 text-blue-600"
                     : isDarkMode
-                    ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "border-slate-600 hover:border-slate-500 text-slate-300"
+                    : "border-gray-300 hover:border-gray-400 text-gray-600"
                 }`}
               >
-                <div>{method.icon}</div>
-                <div>{method.label}</div>
+                <Icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{label}</span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="space-y-2">
-        {/* Send to Bar - Show when there are pending items */}
-        {hasPendingItems && (
-          <button
-            onClick={handleSendToBar}
-            disabled={
-              !hasItems || isSendingToBar || tableBarRequestStatus === "pending"
-            }
-            className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-              !hasItems || tableBarRequestStatus === "pending"
-                ? isDarkMode
-                  ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : isDarkMode
-                ? "bg-orange-600 hover:bg-orange-700 text-white"
-                : "bg-orange-500 hover:bg-orange-600 text-white"
-            }`}
-          >
-            {isSendingToBar ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                Sending to Bar...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Send to Bar ({pendingItems.length} items)
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Waiting for bartender - Show when request is pending */}
-        {tableBarRequestStatus === "pending" && (
-          <div
-            className={`w-full py-3 px-4 rounded-lg text-sm text-center ${
-              isDarkMode
-                ? "bg-yellow-900 text-yellow-200"
-                : "bg-yellow-50 text-yellow-800"
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Clock className="w-4 h-4" />
-              Waiting for bartender...
-            </div>
+      {/* Complete Sale Button */}
+      <button
+        onClick={handleSaleWithTimeout}
+        disabled={!canFinalizeSale || isProcessing}
+        className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+          !canFinalizeSale || isProcessing
+            ? isDarkMode
+              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            : isDarkMode
+            ? "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+            : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
+        }`}
+      >
+        {isProcessing ? (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span>{isRetrying ? "Retrying..." : "Processing..."}</span>
           </div>
+        ) : (
+          "Complete Sale"
         )}
+      </button>
 
-        {/* Complete Sale - Show when no pending items and has approved items */}
-        {!hasPendingItems && hasApprovedItems && (
-          <button
-            onClick={handleFinalizeSale}
-            disabled={!hasItems || createSaleMutation.isPending}
-            className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-              !hasItems
-                ? isDarkMode
-                  ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : isDarkMode
-                ? "bg-green-600 hover:bg-green-700 text-white"
-                : "bg-green-500 hover:bg-green-600 text-white"
-            }`}
-          >
-            {createSaleMutation.isPending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-4 h-4" />
-                Complete Sale (₦{approvedTotal.toLocaleString()})
-              </>
-            )}
-          </button>
-        )}
-
-        {/* No items available message */}
-        {!hasPendingItems && !hasApprovedItems && hasItems && (
-          <div
-            className={`w-full py-3 px-4 rounded-lg text-sm text-center ${
-              isDarkMode
-                ? "bg-slate-700 text-slate-400"
-                : "bg-gray-100 text-gray-500"
-            }`}
-          >
-            No items available for processing
-          </div>
-        )}
-      </div>
-
-      {/* Help Text */}
-      {hasItems && (
-        <div
+      {cartItems.length > 0 && (
+        <p
           className={`text-xs text-center ${
             isDarkMode ? "text-slate-400" : "text-gray-500"
           }`}
         >
-          {hasPendingItems &&
-            "Send pending items to bar for approval before completing sale"}
-          {tableBarRequestStatus === "pending" &&
-            "Bartender is reviewing your items"}
-          {!hasPendingItems &&
-            hasApprovedItems &&
-            "All items approved! Complete the sale to collect payment"}
-        </div>
+          Sale will be recorded immediately. Barman will receive notification
+          for inventory tracking.
+        </p>
       )}
     </div>
   );
