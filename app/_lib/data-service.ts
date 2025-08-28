@@ -1,6 +1,8 @@
-import { supabase } from "@/app/_lib/supabase";
-import { Sale, SaleItem } from "../dashboard/reports/page";
-import { BarRequest } from "../dashboard/sales/(sales)/types";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import type { Sale, SaleItem } from "../dashboard/reports/page";
+import type { BarRequest } from "../dashboard/sales/(sales)/types";
+import { supabaseServer } from "./supabaseServer";
 
 interface SaleData {
   total_amount: number;
@@ -15,177 +17,223 @@ type ProfitData = {
   profit_amount: number;
 };
 
+// Get Supabase server client with error handling
+async function getSupabaseServerClient() {
+  const client = await supabaseServer();
+  if (!client) {
+    throw new Error("Supabase server client not available");
+  }
+  return client;
+}
+
+// Error handling wrapper for server actions
+async function withErrorHandling<T>(
+  operation: () => Promise<{ data: T | null; error: any }>,
+  errorMessage: string
+): Promise<T> {
+  try {
+    const result = await operation();
+    const { data, error } = result;
+
+    if (error) {
+      console.error(`${errorMessage}:`, error);
+      console.error("Error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      throw new Error(`${errorMessage}: ${error.message}`);
+    }
+
+    return (data as T) ?? ([] as T);
+  } catch (err) {
+    console.error(`${errorMessage} - Unexpected error:`, err);
+    throw err;
+  }
+}
+
+// ---------------- PRODUCTS ----------------
+
 export async function getProducts() {
-  const { data, error } = await supabase.from("products").select("*");
-
-  if (error) {
-    console.error(error);
-    throw new Error("Could not fetch products");
-  }
-  return data ?? [];
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () => await supabase.from("products").select("*"),
+    "Could not fetch products"
+  );
 }
+
 export async function getDeleteProducts(id: number) {
-  const { data, error } = await supabase.from("products").delete().eq("id", id);
-
-  if (error) {
-    console.error(error);
-    throw new Error("products could not be deleted");
-  }
-  return data ?? [];
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () => await supabase.from("products").delete().eq("id", id),
+    "Products could not be deleted"
+  );
 }
+
+export async function getTotalInventory() {
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase
+        .from("products")
+        .select("current_stock, profit, low_stock, name"),
+    "Inventory could not be loaded"
+  );
+}
+
+// ---------------- SALES ----------------
 
 export async function getAllSales() {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("id, total_amount, sale_date");
-
-  if (error) {
-    console.error(error);
-    throw new Error("Could not fetch sales");
-  }
-
-  return data ?? [];
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase.from("sales").select("id, total_amount, sale_date"),
+    "Could not fetch sales"
+  );
 }
 
 export async function getTodaysSales(start: Date, end: Date): Promise<Sale[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("*")
-    .gte("created_at", start.toISOString())
-    .lte("created_at", end.toISOString());
-
-  if (error) {
-    console.error(error);
-    throw new Error("Sales could not be loaded");
-  }
-  return data;
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase
+        .from("sales")
+        .select("*")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString()),
+    "Sales could not be loaded"
+  );
 }
 
 export async function getTodaysProfit(
   start: Date,
   end: Date
 ): Promise<ProfitData[]> {
-  const { data, error } = await supabase
-    .from("sale_items")
-    .select("profit_amount")
-    .gte("created_at", start.toISOString())
-    .lte("created_at", end.toISOString());
-
-  if (error) {
-    console.error(error);
-    throw new Error("Sales could not be loaded");
-  }
-  return data;
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase
+        .from("sale_items")
+        .select("profit_amount")
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString()),
+    "Profit data could not be loaded"
+  );
 }
 
 export async function getRecentSales() {
-  const { data, error } = await supabase.from("sales").select("*");
-
-  if (error) {
-    console.error(error);
-    throw new Error("Sales could not be loaded");
-  }
-  return data;
-}
-
-export async function getTotalInventory() {
-  const { data, error } = await supabase
-    .from("products")
-    .select("current_stock, profit,low_stock,name");
-
-  if (error) {
-    console.error(error);
-    throw new Error("Sales could not be loaded");
-  }
-  return data;
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () => await supabase.from("sales").select("*"),
+    "Sales could not be loaded"
+  );
 }
 
 export async function getTopsellingProducts() {
-  const { data, error } = await supabase.from("sale_items").select(`
-    product_id,
-    quantity,
-    total_price,
-    total_cost,
-    sale_id,
-    created_at,
-    profit_amount,
-    products (
-      name,
-      category
-    )
-  `);
-
-  if (error) {
-    console.error(error);
-    throw new Error("Sales could not be loaded");
-  }
-  return data;
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase.from("sale_items").select(`
+      product_id,
+      quantity,
+      total_price,
+      total_cost,
+      sale_id,
+      created_at,
+      profit_amount,
+      products (
+        name,
+        category
+      )
+    `),
+    "Top selling products could not be loaded"
+  );
 }
 
 export async function getSaleItemsWithCategories() {
-  const { data, error } = await supabase.from("sale_items").select(`
-            *,
-            products!inner(
-                name,
-                category
-            )
-        `);
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { data, error } = await supabase.from("sale_items").select(`
+      *,
+      products!inner(
+        name,
+        category
+      )
+    `);
 
-  if (error) {
-    console.error("Error fetching sale items with categories:", error);
-    return null;
+    if (error) {
+      console.error("Error fetching sale items with categories:", error);
+      throw new Error(`Could not fetch sale items: ${error.message}`);
+    }
+
+    return data;
+  } catch (err) {
+    console.error("Unexpected error in getSaleItemsWithCategories:", err);
+    throw err;
   }
-
-  return data;
 }
+
+// ---------------- DASHBOARD STATS ----------------
 
 export async function getStats() {
-  // Get total sales and revenue
-  const { data: salesData } = await supabase
-    .from("sales")
-    .select("total_amount");
+  const supabase = await getSupabaseServerClient();
+  try {
+    const [salesResult, lowStockResult, productsResult] =
+      await Promise.allSettled([
+        supabase.from("sales").select("total_amount"),
+        supabase.from("products").select("id").eq("low_stock", true),
+        supabase.from("products").select("id, current_stock"),
+      ]);
 
-  // Get low stock items
-  const { data: lowStockData } = await supabase
-    .from("products")
-    .select("id")
-    .eq("low_stock", true);
+    const salesData =
+      salesResult.status === "fulfilled" ? salesResult.value.data : [];
+    const lowStockData =
+      lowStockResult.status === "fulfilled" ? lowStockResult.value.data : [];
+    const productsData =
+      productsResult.status === "fulfilled" ? productsResult.value.data : [];
 
-  // Get total products
-  const { data: productsData } = await supabase
-    .from("products")
-    .select("id, current_stock");
-  const totalRevenue =
-    salesData?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0;
+    const totalRevenue =
+      salesData?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0;
 
-  return {
-    totalSales: salesData?.length || 0,
-    totalRevenue,
-    lowStockItems: lowStockData?.length || 0,
-    totalProducts:
-      productsData?.filter((item) => item.current_stock !== 0).length || 0,
-  };
+    return {
+      totalSales: salesData?.length || 0,
+      totalRevenue,
+      lowStockItems: lowStockData?.length || 0,
+      totalProducts:
+        productsData?.filter((item) => item.current_stock !== 0).length || 0,
+    };
+  } catch (error) {
+    console.error("Error in getStats:", error);
+    return {
+      totalSales: 0,
+      totalRevenue: 0,
+      lowStockItems: 0,
+      totalProducts: 0,
+    };
+  }
 }
 
-// Function to generate sale number
+// ---------------- CREATE SALE ----------------
+
 function generateSaleNumber(): number {
   const now = new Date();
-  const year = now.getFullYear(); // e.g. 2025
-  const month = String(now.getMonth() + 1).padStart(2, "0"); // e.g. "07"
-  const day = String(now.getDate()).padStart(2, "0"); // e.g. "14"
-  const time = now.getTime().toString().slice(-6); // e.g. "123456"
-
-  // Combine to form something like 20250714123456
-  const saleNumberStr = `${year}${month}${day}${time}`;
-
-  return Number(saleNumberStr); // Convert to number
+  return Number(
+    `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(
+      now.getDate()
+    ).padStart(2, "0")}${String(now.getHours()).padStart(2, "0")}${String(
+      now.getMinutes()
+    ).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}${String(
+      now.getMilliseconds()
+    ).padStart(3, "0")}`
+  );
 }
 
-// Function to create a complete sale with items and update stock
 export async function createSales(saleData: SaleData) {
-  // Start a transaction-like approach
+  const supabase = await getSupabaseServerClient();
+  let saleId: string | null = null;
+
   try {
-    // Step 1: Create the main sale record
     const { data: sale, error: saleError } = await supabase
       .from("sales")
       .insert({
@@ -200,12 +248,11 @@ export async function createSales(saleData: SaleData) {
       .select()
       .single();
 
-    if (saleError) {
-      console.error("Sale creation error:", saleError);
-      throw new Error("Could not create sale");
-    }
+    if (saleError)
+      throw new Error(`Could not create sale: ${saleError.message}`);
 
-    // Step 2: Create sale items with the sale_id
+    saleId = sale.id;
+
     const saleItemsToInsert = saleData.items.map((item) => ({
       sale_id: sale.id,
       product_id: item.product_id,
@@ -221,132 +268,113 @@ export async function createSales(saleData: SaleData) {
       .from("sale_items")
       .insert(saleItemsToInsert);
 
-    if (itemsError) {
-      console.error("Sale items creation error:", itemsError);
-      // Rollback: Delete the sale record if items creation fails
-      await supabase.from("sales").delete().eq("id", sale.id);
-      throw new Error("Could not create sale items");
-    }
+    if (itemsError)
+      throw new Error(`Could not create sale items: ${itemsError.message}`);
 
-    // Step 3: Update product stock for each item
-    const stockUpdatePromises = saleData.items.map(async (item) => {
-      // First, get current stock
-      const { data: product, error: fetchError } = await supabase
-        .from("products")
-        .select("current_stock")
-        .eq("id", item.product_id)
-        .single();
+    // Update product stock
+    await Promise.all(
+      saleData.items.map(async (item) => {
+        const { data: product, error: fetchError } = await supabase
+          .from("products")
+          .select("current_stock")
+          .eq("id", item.product_id)
+          .single();
 
-      if (fetchError) {
-        console.error("Error fetching product stock:", fetchError);
-        throw new Error(`Could not fetch stock for product ${item.product_id}`);
-      }
+        if (fetchError) throw new Error(fetchError.message);
 
-      // Calculate new stock
-      const newStock = product.current_stock - item.quantity;
+        const newStock = Math.max(0, product.current_stock - item.quantity);
 
-      // Update the stock
-      const { error: updateError } = await supabase
-        .from("products")
-        .update({
-          current_stock: newStock,
-        })
-        .eq("id", item.product_id);
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ current_stock: newStock })
+          .eq("id", item.product_id);
 
-      if (updateError) {
-        console.error("Error updating product stock:", updateError);
-        throw new Error(
-          `Could not update stock for product ${item.product_id}`
-        );
-      }
-
-      return { product_id: item.product_id, new_stock: newStock };
-    });
-
-    // Wait for all stock updates to complete
-    await Promise.all(stockUpdatePromises);
+        if (updateError) throw new Error(updateError.message);
+      })
+    );
 
     return sale;
   } catch (error) {
-    console.error("Transaction failed:", error);
+    if (saleId) {
+      try {
+        await supabase.from("sales").delete().eq("id", saleId);
+      } catch (rollbackError) {
+        console.error("Failed to rollback sale:", rollbackError);
+      }
+    }
     throw error;
   }
 }
 
-export async function getUserData() {
-  const { data, error } = await supabase.from("users").select("*");
+// ---------------- USERS ----------------
 
-  if (error) {
-    console.error(error);
-    throw new Error("user could not be loaded");
-  }
-  return data;
+export async function getUserData() {
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () => await supabase.from("users").select("*"),
+    "Users could not be loaded"
+  );
 }
 
-export async function getBarRequests() {
-  const { data, error } = await supabase.from("bar_requests").select("*");
+// ---------------- BAR REQUESTS ----------------
 
-  if (error) {
-    console.error(error);
-    throw new Error("Could not fetch bar requests");
-  }
-  return data ?? [];
+export async function getBarRequests() {
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () => await supabase.from("bar_requests").select("*"),
+    "Could not fetch bar requests"
+  );
 }
 
 export async function createBarRequests(
   barRequestItems: Omit<BarRequest, "id">[]
 ) {
-  const { data, error } = await supabase
-    .from("bar_requests")
-    .insert(barRequestItems)
-    .select();
-
-  if (error) {
-    console.error(error);
-    throw new Error("Could not create bar requests");
-  }
-
-  return data ?? [];
+  const supabase = await getSupabaseServerClient();
+  return withErrorHandling(
+    async () =>
+      await supabase.from("bar_requests").insert(barRequestItems).select(),
+    "Could not create bar requests"
+  );
 }
 
 export async function updateRequestStatus(
   requestId: string,
   newStatus: "given" | "cancelled"
 ) {
-  const { error: updateError } = await supabase
-    .from("bar_requests")
-    .update({
-      status: newStatus,
-    })
-    .eq("id", requestId);
+  const supabase = await getSupabaseServerClient();
 
-  if (updateError) {
-    console.error("Error updating request status:", updateError);
-    throw new Error(
-      `Could not update status for request ${requestId}: ${updateError.message}`
-    );
+  try {
+    const { error } = await supabase
+      .from("bar_requests")
+      .update({ status: newStatus })
+      .eq("id", requestId);
+
+    if (error) throw new Error(`Could not update status: ${error.message}`);
+
+    return { success: true, requestId, newStatus };
+  } catch (error) {
+    console.error("Error updating request status:", error);
+    throw error;
   }
-
-  return { success: true, requestId, newStatus };
 }
 
 export async function updateMultipleRequestsStatus(
   requestIds: string[],
   newStatus: "given" | "cancelled"
 ) {
-  const { error: updateError } = await supabase
-    .from("bar_requests")
-    .update({
-      status: newStatus,
-    })
-    .in("id", requestIds);
+  const supabase = await getSupabaseServerClient();
 
-  if (updateError) {
-    console.error("Error updating multiple request statuses:", updateError);
-    throw new Error(
-      `Could not update status for requests: ${updateError.message}`
-    );
+  try {
+    const { error } = await supabase
+      .from("bar_requests")
+      .update({ status: newStatus })
+      .in("id", requestIds);
+
+    if (error) throw new Error(`Could not update statuses: ${error.message}`);
+
+    return { success: true, requestIds, newStatus };
+  } catch (error) {
+    console.error("Error updating multiple request statuses:", error);
+    throw error;
   }
-
-  return { success: true, requestIds, newStatus };
 }

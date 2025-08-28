@@ -1,4 +1,4 @@
-import { getStats } from "@/app/_lib/data-service";
+import { getStatsClient } from "@/app/_lib/client-data-service";
 import { useQuery } from "@tanstack/react-query";
 
 export function useStats() {
@@ -8,7 +8,7 @@ export function useStats() {
     error,
   } = useQuery({
     queryKey: ["stats"],
-    queryFn: () => getStats(),
+    queryFn: () => getStatsClient(),
   });
   return { stats, isLoading, error };
 }

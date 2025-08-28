@@ -1,10 +1,10 @@
-import { getTotalInventory } from "@/app/_lib/data-service";
+import { getTotalInventoryClient } from "@/app/_lib/client-data-service";
 import { useQuery } from "@tanstack/react-query";
 
 export function useTotalInventory() {
   const { data: totalInventory } = useQuery({
     queryKey: ["products"],
-    queryFn: () => getTotalInventory(),
+    queryFn: () => getTotalInventoryClient(),
   });
   return { totalInventory };
 }

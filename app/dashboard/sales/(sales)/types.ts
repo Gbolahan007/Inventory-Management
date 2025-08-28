@@ -80,7 +80,7 @@ export interface BarRequest {
   quantity: number;
   sales_rep_id: string;
   sales_rep_name: string;
-  status: "pending" | "given" | "cancelled";
+  status: "pending" | "given" | "cancelled " | "completed";
   created_at?: string;
   updated_at?: string;
 }

@@ -5,7 +5,7 @@ import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
 import toast from "react-hot-toast";
 import type { Product } from "../(sales)/types";
-import { supabase } from "@/app/_lib/supabase";
+import { BarRequestItem, createBarRequestRecords } from "@/app/_lib/actions";
 
 interface UseTableCartLogicProps {
   products?: Product[];
@@ -50,7 +50,6 @@ export function useTableCartLogic({
     }
   }, [currentUserId, setCurrentUser]);
 
-  // Add to cart (in-memory only)
   const handleAddToCart = () => {
     if (!selectedProduct || quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity");
@@ -109,7 +108,6 @@ export function useTableCartLogic({
     }
   };
 
-  // Complete sale directly (no bar approval needed)
   const handleFinalizeSale = async () => {
     if (currentCart.length === 0) {
       toast.error("Cart is empty");
@@ -120,7 +118,6 @@ export function useTableCartLogic({
       toast.error("User information not available");
       return;
     }
-
     try {
       // Prepare sale data
       const saleData = {
@@ -131,29 +128,34 @@ export function useTableCartLogic({
         sales_rep_id: currentUserId,
         sales_rep_name: currentUser.name,
       };
+      console.log(saleData);
 
       // Create sale record
       await createSaleMutation.mutateAsync(saleData);
 
-      // Also create bar_requests record for inventory tracking
-      const barRequestItems = currentCart.map((item) => ({
+      // Also create bar_requests record for inventory tracking using server action
+      const barRequestItems: BarRequestItem[] = currentCart.map((item) => ({
         table_id: selectedTable,
         product_id: item.product_id,
         product_name: item.name,
         quantity: item.quantity,
         sales_rep_id: currentUserId,
         sales_rep_name: currentUser.name,
-        status: "completed", // Immediately mark as completed since no approval needed
+        status: "completed",
       }));
 
-      // Insert bar request records for tracking
-      const { error: barRequestError } = await supabase
-        .from("bar_requests")
-        .insert(barRequestItems);
+      // Use server action to create bar request records
+      const barRequestResult = await createBarRequestRecords(barRequestItems);
 
-      if (barRequestError) {
-        console.error("Error creating bar request records:", barRequestError);
-        // Don't throw error - sale is already completed
+      if (!barRequestResult.success) {
+        console.error(
+          "Failed to create bar request records:",
+          barRequestResult.error
+        );
+        // Don't throw error - sale is already completed, but show warning
+        toast.error("Sale completed but tracking record failed");
+      } else {
+        console.log("Bar request records created successfully");
       }
 
       // Clear cart

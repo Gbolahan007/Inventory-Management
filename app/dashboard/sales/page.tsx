@@ -41,7 +41,6 @@ export default function SalesPage() {
     "dashboard"
   );
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
-
   // Table cart store
   const { getActiveTables, getTableCart, getTableTotal } = useTableCartStore();
   const activeTables = getActiveTables();

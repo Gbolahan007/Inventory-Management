@@ -1,4 +1,4 @@
-import { getBarRequests } from "@/app/_lib/data-service";
+import { getBarRequestsClient } from "@/app/_lib/client-data-service";
 import { useQuery } from "@tanstack/react-query";
 
 export function useBarRequestsQuery() {
@@ -11,7 +11,7 @@ export function useBarRequestsQuery() {
     isFetching,
   } = useQuery({
     queryKey: ["bar_requests"],
-    queryFn: () => getBarRequests(),
+    queryFn: () => getBarRequestsClient(),
 
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour

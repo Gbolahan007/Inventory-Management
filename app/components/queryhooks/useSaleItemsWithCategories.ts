@@ -1,4 +1,4 @@
-import { getSaleItemsWithCategories } from "@/app/_lib/data-service";
+import { getSaleItemsWithCategoriesClient } from "@/app/_lib/client-data-service";
 import { useQuery } from "@tanstack/react-query";
 
 export function useSaleItemsWithCategories() {
@@ -8,7 +8,7 @@ export function useSaleItemsWithCategories() {
     error,
   } = useQuery({
     queryKey: ["sales_items"],
-    queryFn: () => getSaleItemsWithCategories(),
+    queryFn: () => getSaleItemsWithCategoriesClient(),
   });
   return { saleItemsWithCategories, isLoading, error };
 }

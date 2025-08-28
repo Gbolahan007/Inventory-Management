@@ -1,89 +1,256 @@
 "use server";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import type { BarRequest } from "../dashboard/sales/(sales)/types";
+import { supabaseServer } from "@/app/_lib/supabaseServer";
+
+// ---------------- TYPES ----------------
+interface SaleData {
+  sale_number: string;
+  total_amount: number;
+  payment_method: string;
+  sale_date: string;
+}
+
+interface SaleItem {
+  sale_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  unit_cost: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+}
+
+export interface BarRequestItem {
+  table_id: number;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  sales_rep_id: string;
+  sales_rep_name: string;
+  status: "pending" | "given" | "cancelled" | "completed";
+}
+
+// ---------------- PRODUCT ACTIONS ----------------
+
+export async function createProduct(formdata: FormData) {
+  const supabase = await supabaseServer();
+
+  const name = formdata.get("name") as string;
+  const cost_price = Number(formdata.get("cost_price"));
+  const selling_price = Number(formdata.get("selling_price"));
+  const current_stock = Number(formdata.get("current_stock"));
+  const low_stock = Number(formdata.get("low_stock"));
+  const category = formdata.get("category") as string;
+  const profit = Number(formdata.get("profit"));
+
+  // Check if product exists
+  const { data: existingProduct, error: selectError } = await supabase
+    .from("products")
+    .select("current_stock")
+    .eq("name", name)
+    .maybeSingle();
+
+  if (selectError) throw new Error("Error checking existing product");
+
+  if (existingProduct) {
+    const updatedStock = existingProduct.current_stock + current_stock;
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({
+        current_stock: updatedStock,
+        cost_price,
+        selling_price,
+        low_stock,
+        category,
+        profit,
+        created_at: new Date().toISOString(),
+      })
+      .eq("name", name);
+
+    if (updateError) throw new Error("Product stock could not be updated");
+  } else {
+    const newProduct = {
+      name,
+      cost_price,
+      selling_price,
+      current_stock,
+      low_stock,
+      category,
+      profit,
+      quantity: 1,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error: insertError } = await supabase
+      .from("products")
+      .insert(newProduct);
+
+    if (insertError) throw new Error("Product could not be created");
+  }
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/");
+  redirect("/dashboard/inventory");
+}
+
+export async function updateProductStock(productId: string, newStock: number) {
+  const supabase = await supabaseServer();
+
+  const { data, error } = await supabase
+    .from("products")
+    .update({ current_stock: newStock })
+    .eq("id", productId);
+
+  if (error) throw new Error("Could not update product stock");
+  return data;
+}
+
+// ---------------- SALES ACTIONS ----------------
+
+export async function createSale(saleData: SaleData) {
+  const supabase = await supabaseServer();
+
+  const { data, error } = await supabase
+    .from("sales")
+    .insert(saleData)
+    .select()
+    .single();
+
+  if (error) throw new Error("Could not create sale");
+  return data;
+}
+
+export async function createSaleItems(saleItems: SaleItem[]) {
+  const supabase = await supabaseServer();
+
+  const { data, error } = await supabase.from("sale_items").insert(saleItems);
+
+  if (error) throw new Error("Could not create sale items");
+  return data;
+}
+
+// ---------------- ROOM BOOKING ----------------
+
+export async function addRoomBooking(formData: FormData) {
+  const supabase = await supabaseServer();
+
+  const customerType = formData.get("customer_type") as string;
+  const roomType = formData.get("room_type") as string;
+  const price = parseFloat(formData.get("price") as string);
+  const category = formData.get("category") as string;
+
+  const { error } = await supabase.from("room_bookings").insert({
+    customer_type: customerType,
+    room_type: roomType,
+    price,
+    category,
+  });
+
+  if (error) throw new Error(error.message);
+
+  return { success: true };
+}
+
+// ---------------- BAR REQUESTS ----------------
+
+export async function createBarRequestRecords(
+  barRequestItems: Omit<BarRequest, "id">[]
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase
+    .from("bar_requests")
+    .insert(barRequestItems)
+    .select();
+
+  if (error) {
+    return {
+      success: false,
+      error: `Failed to create bar request records: ${error.message}`,
+    };
+  }
+  return { success: true };
+}
+
+export async function updateBarRequestStatus(
+  requestId: string,
+  newStatus: "given" | "cancelled" | "completed"
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase
+    .from("bar_requests")
+    .update({ status: newStatus })
+    .eq("id", requestId);
+
+  if (error) {
+    return {
+      success: false,
+      error: `Failed to update status: ${error.message}`,
+    };
+  }
+  return { success: true };
+}
+
+export async function updateMultipleBarRequestsStatus(
+  requestIds: string[],
+  newStatus: "given" | "cancelled" | "completed"
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase
+    .from("bar_requests")
+    .update({ status: newStatus })
+    .in("id", requestIds);
+
+  if (error) {
+    return {
+      success: false,
+      error: `Failed to update statuses: ${error.message}`,
+    };
+  }
+  return { success: true };
+}
+
+// Add this to your server actions file
 
 export async function handleLogin(formData: FormData) {
+  const supabase = await supabaseServer();
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
+  // Validate input
   if (!email || !password) {
     return { error: "Email and password are required" };
   }
 
   try {
-    const supabase = createServerActionClient({ cookies });
-
-    // Step 1: Sign in the user
+    // Sign in with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error("Login error:", error.message);
-
-      if (error.message.includes("Invalid login credentials")) {
-        return { error: "Invalid email or password" };
-      } else if (error.message.includes("Email not confirmed")) {
-        return { error: "Please confirm your email address" };
-      } else if (error.message.includes("rate limit")) {
-        return {
-          error:
-            "Too many login attempts. Please wait a few minutes and try again.",
-        };
-      } else {
-        return { error: "Login failed. Please try again." };
-      }
+      return { error: error.message };
     }
 
-    const user = data.user;
-    if (!user) {
-      return { error: "Login failed. Please try again." };
+    if (data.user) {
+      return {
+        success: true,
+        user: { email: data.user.email },
+        redirectUrl: "/dashboard",
+      };
     }
 
-    // Step 2: Get user role from database
-    const { data: userData, error: roleError } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (roleError || !userData?.role) {
-      console.error("Error fetching user role:", roleError);
-      await supabase.auth.signOut();
-      return { error: "User role not found. Please contact support." };
-    }
-
-    // Step 3: Update user metadata with role
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: { role: userData.role },
-    });
-
-    if (updateError) {
-      console.error("Error updating user metadata:", updateError);
-      return { error: "Login failed. Please try again." };
-    }
-
-    console.log("Login successful for user:", user.email);
-
-    // Return success with redirect URL instead of using redirect()
-    const redirectUrl =
-      userData.role === "salesrep"
-        ? "/dashboard/sales"
-        : userData.role === "admin"
-        ? "/dashboard"
-        : "/dashboard";
-
-    return {
-      success: true,
-      redirectUrl,
-      user: {
-        email: user.email,
-        role: userData.role,
-      },
-    };
+    return { error: "Login failed" };
   } catch (error) {
-    console.error("Unexpected login error:", error);
-    return { error: "An unexpected error occurred. Please try again." };
+    console.error("Login error:", error);
+    return { error: "An unexpected error occurred" };
   }
 }

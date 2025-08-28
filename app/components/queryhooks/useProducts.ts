@@ -1,4 +1,4 @@
-import { getProducts } from "@/app/_lib/data-service";
+import { getProductsClient } from "@/app/_lib/client-data-service";
 import { useQuery } from "@tanstack/react-query";
 
 export function useProducts() {
@@ -9,7 +9,7 @@ export function useProducts() {
     refetch,
   } = useQuery({
     queryKey: ["products"],
-    queryFn: () => getProducts(),
+    queryFn: () => getProductsClient(),
   });
   return { products, isLoading, error, refetch };
 }

@@ -1,20 +1,39 @@
-import { createBarRequests } from "@/app/_lib/data-service";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getBarRequestsClient } from "@/app/_lib/client-data-service";
+import { useQuery } from "@tanstack/react-query";
 
-export const useCreateBarRequest = () => {
-  const queryClient = useQueryClient();
+export function useBarRequestsQuery() {
+  const {
+    data: barRequests,
+    isLoading,
+    error,
+    refetch,
+    isError,
+    isFetching,
+  } = useQuery({
+    queryKey: ["bar_requests"],
+    queryFn: () => getBarRequestsClient(),
 
-  return useMutation({
-    mutationFn: createBarRequests,
-    onSuccess: () => {
-      // Invalidate bar requests query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["bar-requests"] });
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
 
-      // Optionally update products cache if stock is reduced virtually
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-    },
-    onError: (error) => {
-      console.error("Error creating bar request:", error);
-    },
+    // PREVENT AUTOMATIC REFETCHING
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+
+    enabled: true, // Query is enabled
   });
-};
+
+  return {
+    barRequests: barRequests || [], // Ensure we always return an array
+    isLoading,
+    error,
+    refetch,
+    isError,
+    isFetching, // Useful to show when background refetching
+  };
+}
