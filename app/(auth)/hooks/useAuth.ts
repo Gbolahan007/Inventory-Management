@@ -3,7 +3,7 @@
 
 import { supabase } from "@/app/_lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 // ---------- TYPES ----------
@@ -32,6 +32,12 @@ export const useAuth = () => {
 
   const pathname = usePathname();
   const router = useRouter();
+
+  // Prevent excessive calls but allow retries when needed
+  const lastInitTime = useRef<number>(0);
+  const initializingRef = useRef(false);
+  const retryCount = useRef(0);
+  const maxRetries = 3;
 
   const log = (label: string, data?: any) => {
     console.log(`[AuthDebug ${new Date().toISOString()}] ${label}`, data || "");
@@ -99,78 +105,181 @@ export const useAuth = () => {
   );
 
   // ---------- INITIALIZE AUTH ----------
-  const initializeAuth = useCallback(async () => {
-    log("Initializing auth...");
-    setLoading(true);
-    setError(null);
+  const initializeAuth = useCallback(
+    async (forceRefresh = false) => {
+      const now = Date.now();
 
-    try {
-      const {
-        data: { user: verifiedUser },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-
-      if (!verifiedUser) {
-        log("No verified user found — redirecting to /login");
-        setUser(null);
-        setUserData(null);
-        setUserRole(null);
-        router.replace("/login");
+      // Rate limit: don't allow calls more frequent than every 2 seconds unless forced
+      if (!forceRefresh && now - lastInitTime.current < 2000) {
+        log("Rate limiting init call");
         return;
       }
 
-      log("Verified user", { id: verifiedUser.id, email: verifiedUser.email });
-      setUser(verifiedUser);
-
-      const profile = await fetchUserData(
-        verifiedUser.id,
-        verifiedUser.email || ""
-      );
-
-      if (profile) {
-        log("Loaded user profile", profile);
-        setUserData(profile);
-        setUserRole(profile.role);
+      // Prevent concurrent calls
+      if (initializingRef.current) {
+        log("Init already in progress");
+        return;
       }
-    } catch (err: any) {
-      log("Auth init error", err.message);
-      setError(err.message || "Authentication failed");
-      setUser(null);
-      setUserData(null);
-      setUserRole(null);
-      router.replace("/login");
-    } finally {
-      setLoading(false);
-      setIsInitialized(true);
-      log("Auth init complete", { isInitialized: true });
-    }
-  }, [fetchUserData, router]);
+
+      // Retry logic - if we've failed too many times, wait longer
+      if (retryCount.current >= maxRetries && !forceRefresh) {
+        log(`Max retries (${maxRetries}) reached, skipping init`);
+        return;
+      }
+
+      initializingRef.current = true;
+      lastInitTime.current = now;
+
+      log("Initializing auth...", {
+        forceRefresh,
+        retryCount: retryCount.current,
+      });
+      setLoading(true);
+      setError(null);
+
+      try {
+        const {
+          data: { user: verifiedUser },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        if (!verifiedUser) {
+          log("No verified user found — redirecting to /login");
+          setUser(null);
+          setUserData(null);
+          setUserRole(null);
+          retryCount.current = 0; // Reset retry count on clear state
+          if (pathname !== "/login") {
+            router.replace("/login");
+          }
+          return;
+        }
+
+        log("Verified user", {
+          id: verifiedUser.id,
+          email: verifiedUser.email,
+        });
+        setUser(verifiedUser);
+
+        const profile = await fetchUserData(
+          verifiedUser.id,
+          verifiedUser.email || ""
+        );
+
+        if (profile) {
+          log("Loaded user profile", profile);
+          setUserData(profile);
+          setUserRole(profile.role);
+          retryCount.current = 0; // Reset on success
+        }
+      } catch (err: any) {
+        retryCount.current++;
+        log("Auth init error", {
+          error: err.message,
+          retryCount: retryCount.current,
+        });
+        setError(err.message || "Authentication failed");
+
+        // Only clear state and redirect on persistent failures
+        if (retryCount.current >= maxRetries) {
+          setUser(null);
+          setUserData(null);
+          setUserRole(null);
+          if (pathname !== "/login") {
+            router.replace("/login");
+          }
+        }
+      } finally {
+        setLoading(false);
+        setIsInitialized(true);
+        initializingRef.current = false;
+        log("Auth init complete", { retryCount: retryCount.current });
+      }
+    },
+    [fetchUserData, router, pathname]
+  );
 
   // ---------- SUBSCRIBE TO AUTH STATE ----------
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
-      log(`Auth state change: ${_event}`);
-      initializeAuth();
+    let mounted = true;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+
+      log(`Auth state change: ${event}`);
+
+      // Reset retry count on auth events
+      retryCount.current = 0;
+
+      // Always reinitialize on auth changes - this ensures data reliability
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        initializeAuth(true); // Force refresh on auth events
+      }
     });
 
-    if (!isInitialized) initializeAuth();
-
-    window.addEventListener("focus", initializeAuth);
-    return () => {
-      sub.subscription.unsubscribe();
-      window.removeEventListener("focus", initializeAuth);
-    };
-  }, [initializeAuth, isInitialized]);
-
-  // ---------- ROUTE CHANGE RE-CHECK ----------
-  useEffect(() => {
-    if (isInitialized && !loading) {
-      log("Route change detected, re-initializing auth", pathname);
-      initializeAuth();
+    // Initial auth check
+    if (!isInitialized) {
+      initializeAuth(true);
     }
-  }, [pathname, initializeAuth, isInitialized, loading]);
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []); // Removed dependencies to prevent re-subscription
+
+  // ---------- ROUTE CHANGE HANDLING ----------
+  useEffect(() => {
+    // Only reinitialize on route change if we have stale/missing data
+    if (isInitialized && !loading) {
+      const needsRefresh = !user || !userData || error;
+
+      if (needsRefresh) {
+        log("Route change detected with missing data, re-initializing", {
+          hasUser: !!user,
+          hasUserData: !!userData,
+          hasError: !!error,
+          pathname,
+        });
+        initializeAuth(true);
+      }
+    }
+  }, [pathname]); // Only depend on pathname
+
+  // ---------- WINDOW FOCUS RECOVERY ----------
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only refresh on focus if we have missing data or errors
+      if (isInitialized && (!user || !userData || error)) {
+        log("Window focus with missing data, refreshing auth");
+        initializeAuth(true);
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [isInitialized, user, userData, error, initializeAuth]);
+
+  // ---------- PERIODIC HEALTH CHECK ----------
+  useEffect(() => {
+    if (!isInitialized || loading) return;
+
+    const healthCheck = setInterval(() => {
+      // Check if we should have data but don't
+      if (user && !userData) {
+        log("Health check: Missing userData, refreshing");
+        initializeAuth(true);
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(healthCheck);
+  }, [isInitialized, loading, user, userData, initializeAuth]);
 
   return {
     user,
@@ -181,5 +290,7 @@ export const useAuth = () => {
     isInitialized,
     hasPermission: (r: UserRole) =>
       userRole === "admin" || (userRole === "salesrep" && r === "salesrep"),
+    // Expose manual refresh for debugging
+    refreshAuth: () => initializeAuth(true),
   };
 };
