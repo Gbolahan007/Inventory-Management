@@ -62,8 +62,6 @@ export default function AdminDashboard() {
     return <LoadingSpinner />;
   }
 
-  // ✅ If we reach here, middleware has verified admin access!
-
   // Role-specific limits
   const MAX_ADMINS = 2;
   const MAX_SALESREP = 4;

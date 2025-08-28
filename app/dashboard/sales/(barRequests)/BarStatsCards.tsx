@@ -10,7 +10,6 @@ export default function BarStatsCards({ barRequests }: Props) {
     all: barRequests.length,
     pending: barRequests.filter((r) => r.status === "pending").length,
     given: barRequests.filter((r) => r.status === "given").length,
-    cancelled: barRequests.filter((r) => r.status === "cancelled").length,
   };
 
   const cards = [
@@ -29,7 +28,6 @@ export default function BarStatsCards({ barRequests }: Props) {
     },
     {
       label: "Cancelled",
-      value: counts.cancelled,
       icon: XCircle,
       color: "text-red-600 dark:text-red-400",
     },
