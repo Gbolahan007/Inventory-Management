@@ -19,6 +19,7 @@ import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
 
 // Import the TopSellingProduct type
 import type { TopSellingProduct } from "../(dashboard)/TopSellingItems";
+import DebugPanel from "../components/DebugPanel";
 
 // Header component for better organization
 const DashboardHeader = () => {
@@ -126,6 +127,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <DebugPanel />
     </div>
   );
 }
