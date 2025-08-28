@@ -118,11 +118,10 @@ export async function createBarRequestsClient(barRequestItems: any[]) {
   );
 }
 
-export async function getUserDataClient(userId: string) {
+export async function getAllUsersClient() {
   return withClientErrorHandling(
-    async () =>
-      await supabase.from("users").select("*").eq("id", userId).single(),
-    "User data could not be loaded"
+    async () => await supabase.from("users").select("*"),
+    "Users data could not be loaded"
   );
 }
 
