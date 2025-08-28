@@ -44,6 +44,7 @@ export const useAuth = () => {
         .single();
 
       if (error) {
+        console.warn("[useAuth] Failed to create user record:", error.message);
         return { id: userId, email, name: defaultName, role: "admin" };
       }
 
@@ -72,6 +73,7 @@ export const useAuth = () => {
           console.log("[useAuth] User not found, creating new record");
           return await createUserRecord(userId, email);
         }
+        console.warn("[useAuth] Failed to fetch user data:", error.message);
         return { id: userId, email, name: email.split("@")[0], role: "admin" };
       }
 
@@ -89,11 +91,34 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
+      // 🔎 Try to get session
       const { data, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) throw new Error(sessionError.message);
 
-      const session: Session | null = data.session;
+      let session: Session | null = data.session;
+
+      // 🔄 Fall back to getUser if session missing
+      if (!session?.user) {
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+        if (!userError && userData?.user) {
+          session = {
+            user: userData.user,
+            access_token: "",
+            token_type: "bearer",
+          } as Session;
+        }
+      }
+
+      console.log("[Auth] Session Debug", {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        expiresAt: session?.expires_at ?? null,
+        isExpired: session?.expires_at
+          ? new Date(session.expires_at * 1000) < new Date()
+          : null,
+      });
 
       if (session?.user) {
         setUser(session.user);
@@ -123,6 +148,7 @@ export const useAuth = () => {
 
   const handleAuthStateChange = useCallback(
     async (event: string, session: Session | null) => {
+      console.log("[Auth] State change:", event);
       if (event === "SIGNED_OUT") {
         setUser(null);
         setUserData(null);
@@ -130,7 +156,7 @@ export const useAuth = () => {
         setError(null);
         setLoading(false);
         setIsInitialized(true);
-        router.push("/login"); // Redirect out if signed out
+        router.push("/login");
       }
       if (["SIGNED_IN", "TOKEN_REFRESHED"].includes(event) && session?.user) {
         setLoading(true);
@@ -188,9 +214,11 @@ export const useAuth = () => {
       handleAuthStateChange
     );
 
-    initializeAuth();
+    // 🔄 Force refresh session on mount
+    supabase.auth.refreshSession().catch(() => null);
 
-    // 🔄 Re‑check auth on browser focus
+    if (!isInitialized) initializeAuth();
+
     const handleFocus = () => initializeAuth();
     window.addEventListener("focus", handleFocus);
 
@@ -198,12 +226,14 @@ export const useAuth = () => {
       sub.subscription.unsubscribe();
       window.removeEventListener("focus", handleFocus);
     };
-  }, [handleAuthStateChange, initializeAuth]);
+  }, [handleAuthStateChange, initializeAuth, isInitialized]);
 
-  // 🔄 Re‑check auth on route change
+  // 🔄 Only re-check on route change if not loading
   useEffect(() => {
-    if (isInitialized) initializeAuth();
-  }, [pathname, initializeAuth, isInitialized]);
+    if (isInitialized && !loading) {
+      initializeAuth();
+    }
+  }, [pathname]);
 
   return {
     user,

@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+("use client");
 
 import { supabase } from "./supabase";
+
+const TIMEOUT_MS = 10000; // 10 seconds
 
 // ---------- ERROR HANDLER ----------
 
@@ -32,10 +34,18 @@ const debugLog = (
   }
 };
 
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Operation timed out")), ms)
+  );
+
+  return Promise.race([promise, timeout]);
+}
+
 async function withClientErrorHandling<T>(
   operation: () => Promise<{ data: T | null; error: any }>,
   errorMessage: string,
-  operationName: string = "Unknown Operation"
+  operationName = "Unknown Operation"
 ): Promise<T> {
   const startTime = Date.now();
 
@@ -62,7 +72,7 @@ async function withClientErrorHandling<T>(
       expiresAt: session.expires_at,
     });
 
-    const { data, error } = await operation();
+    const { data, error } = await withTimeout(operation(), TIMEOUT_MS);
     const duration = Date.now() - startTime;
 
     if (error) {
@@ -160,19 +170,11 @@ export async function getRecentSalesClient() {
 export async function getTopSellingProductsClient() {
   return withClientErrorHandling(
     async () =>
-      await supabase.from("sale_items").select(`
-        product_id,
-        quantity,
-        total_price,
-        total_cost,
-        sale_id,
-        created_at,
-        profit_amount,
-        products (
-          name,
-          category
-        )
-      `),
+      await supabase
+        .from("sale_items")
+        .select(
+          `product_id, quantity, total_price, total_cost, sale_id, created_at, profit_amount, products (name, category)`
+        ),
     "Top selling products could not be loaded",
     "Get Top Selling Products"
   );
@@ -206,13 +208,9 @@ export async function getAllUsersClient() {
 export async function getSaleItemsWithCategoriesClient() {
   return withClientErrorHandling(
     async () =>
-      await supabase.from("sale_items").select(`
-        *,
-        products!inner(
-          name,
-          category
-        )
-      `),
+      await supabase
+        .from("sale_items")
+        .select(`*, products!inner(name, category)`),
     "Could not fetch sale items with categories",
     "Get Sale Items With Categories"
   );
