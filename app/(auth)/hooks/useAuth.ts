@@ -3,7 +3,7 @@
 
 import { supabase } from "@/app/_lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 // ---------- TYPES ----------
@@ -32,6 +32,10 @@ export const useAuth = () => {
 
   const pathname = usePathname();
   const router = useRouter();
+
+  // Prevent multiple simultaneous auth initializations
+  const initializingRef = useRef(false);
+  const lastPathRef = useRef<string | null>(null);
 
   const log = (label: string, data?: any) => {
     console.log(`[AuthDebug ${new Date().toISOString()}] ${label}`, data || "");
@@ -100,8 +104,19 @@ export const useAuth = () => {
 
   // ---------- INITIALIZE AUTH ----------
   const initializeAuth = useCallback(async () => {
+    // Prevent multiple simultaneous initializations
+    if (initializingRef.current) {
+      log("Auth initialization already in progress, skipping");
+      return;
+    }
+
+    initializingRef.current = true;
     log("Initializing auth...");
-    setLoading(true);
+
+    // Only set loading to true if we're not already initialized
+    if (!isInitialized) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -114,15 +129,22 @@ export const useAuth = () => {
 
       if (!verifiedUser) {
         log("No verified user found — redirecting to /login");
-        setUser(null);
-        setUserData(null);
-        setUserRole(null);
+        // Only update state if values actually changed
+        if (user !== null || userData !== null || userRole !== null) {
+          setUser(null);
+          setUserData(null);
+          setUserRole(null);
+        }
         router.replace("/login");
         return;
       }
 
       log("Verified user", { id: verifiedUser.id, email: verifiedUser.email });
-      setUser(verifiedUser);
+
+      // Only update user state if it actually changed
+      if (!user || user.id !== verifiedUser.id) {
+        setUser(verifiedUser);
+      }
 
       const profile = await fetchUserData(
         verifiedUser.id,
@@ -131,46 +153,99 @@ export const useAuth = () => {
 
       if (profile) {
         log("Loaded user profile", profile);
-        setUserData(profile);
-        setUserRole(profile.role);
+        // Only update state if values actually changed
+        if (
+          !userData ||
+          userData.id !== profile.id ||
+          userData.email !== profile.email ||
+          userData.name !== profile.name ||
+          userData.role !== profile.role
+        ) {
+          setUserData(profile);
+          setUserRole(profile.role);
+        }
       }
     } catch (err: any) {
       log("Auth init error", err.message);
       setError(err.message || "Authentication failed");
-      setUser(null);
-      setUserData(null);
-      setUserRole(null);
+      if (user !== null || userData !== null || userRole !== null) {
+        setUser(null);
+        setUserData(null);
+        setUserRole(null);
+      }
       router.replace("/login");
     } finally {
       setLoading(false);
-      setIsInitialized(true);
-      log("Auth init complete", { isInitialized: true });
+      if (!isInitialized) {
+        setIsInitialized(true);
+        log("Auth init complete", { isInitialized: true });
+      }
+      initializingRef.current = false;
     }
-  }, [fetchUserData, router]);
+  }, [fetchUserData, router, user, userData, userRole, isInitialized]);
 
   // ---------- SUBSCRIBE TO AUTH STATE ----------
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
-      log(`Auth state change: ${_event}`);
-      initializeAuth();
+    let mounted = true;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+
+      log(`Auth state change: ${event}`);
+      // Only reinitialize on actual auth changes, not on every event
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        initializeAuth();
+      }
     });
 
-    if (!isInitialized) initializeAuth();
-
-    window.addEventListener("focus", initializeAuth);
-    return () => {
-      sub.subscription.unsubscribe();
-      window.removeEventListener("focus", initializeAuth);
-    };
-  }, [initializeAuth, isInitialized]);
-
-  // ---------- ROUTE CHANGE RE-CHECK ----------
-  useEffect(() => {
-    if (isInitialized && !loading) {
-      log("Route change detected, re-initializing auth", pathname);
+    // Initial auth check - only if not already initialized
+    if (!isInitialized && !initializingRef.current) {
       initializeAuth();
     }
-  }, [pathname, initializeAuth, isInitialized, loading]);
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []); // Remove initializeAuth and isInitialized from dependencies
+
+  // ---------- HANDLE ROUTE CHANGES (MUCH MORE CONSERVATIVE) ----------
+  useEffect(() => {
+    // Only check auth on route change if:
+    // 1. We're initialized
+    // 2. We're not currently loading
+    // 3. The path actually changed
+    // 4. We're not already initializing
+    if (
+      isInitialized &&
+      !loading &&
+      lastPathRef.current !== pathname &&
+      !initializingRef.current &&
+      user
+    ) {
+      lastPathRef.current = pathname;
+      log("Route change detected", pathname);
+
+      // Instead of full re-initialization, just verify the user is still valid
+      supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
+        if (error || !currentUser || currentUser.id !== user.id) {
+          log("User validation failed on route change, reinitializing");
+          initializeAuth();
+        }
+      });
+    } else {
+      lastPathRef.current = pathname;
+    }
+  }, [pathname, isInitialized, loading, user, initializeAuth]);
+
+  // ---------- REMOVE WINDOW FOCUS LISTENER (CAUSES TOO MANY CALLS) ----------
+  // The window focus listener was causing excessive re-initialization
+  // If you need to check auth on window focus, consider debouncing it or
+  // checking less frequently
 
   return {
     user,
