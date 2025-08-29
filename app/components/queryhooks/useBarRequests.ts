@@ -14,9 +14,8 @@ export function useBarRequestsQuery() {
     queryFn: () => getBarRequestsClient(),
 
     staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
+    gcTime: 1000 * 60 * 60,
 
-    // PREVENT AUTOMATIC REFETCHING
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,
@@ -25,7 +24,7 @@ export function useBarRequestsQuery() {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
-    enabled: true, // Query is enabled
+    enabled: true,
   });
 
   return {

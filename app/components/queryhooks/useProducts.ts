@@ -8,8 +8,11 @@ export function useProducts() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", "list"],
     queryFn: () => getProductsClient(),
+    staleTime: 1000 * 60 * 2,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
   return { products, isLoading, error, refetch };
 }

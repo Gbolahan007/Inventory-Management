@@ -13,10 +13,9 @@ export function useBarRequestsQuery() {
     queryKey: ["bar_requests"],
     queryFn: () => getBarRequestsClient(),
 
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
+    staleTime: 1000 * 60 * 15, // 15 minutes - reasonable for bar requests
+    gcTime: 1000 * 60 * 60, // 1 hour cache
 
-    // PREVENT AUTOMATIC REFETCHING
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,
@@ -25,15 +24,15 @@ export function useBarRequestsQuery() {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
-    enabled: true, // Query is enabled
+    enabled: true,
   });
 
   return {
-    barRequests: barRequests || [], // Ensure we always return an array
+    barRequests: barRequests || [],
     isLoading,
     error,
     refetch,
     isError,
-    isFetching, // Useful to show when background refetching
+    isFetching,
   };
 }

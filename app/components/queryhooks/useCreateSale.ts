@@ -28,9 +28,13 @@ export function useCreateSale() {
   return useMutation({
     mutationFn: (saleData: SaleData) => createSalesClient(saleData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      // Invalidate ALL sales-related queries
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sale_items"] });
+
+      toast.success("Sale completed successfully!");
     },
     onError: (error: Error) => {
       console.error("Sale error:", error);

@@ -7,8 +7,11 @@ export function useUserData() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["users"],
+    queryKey: ["users", "all"],
     queryFn: () => getAllUsersClient(),
+    staleTime: 1000 * 60 * 30,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   return { user, isLoading, error };
 }

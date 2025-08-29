@@ -7,8 +7,11 @@ export function useStats() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["stats"],
+    queryKey: ["stats", "dashboard"],
     queryFn: () => getStatsClient(),
+    staleTime: 1000 * 60 * 3,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
   return { stats, isLoading, error };
 }
