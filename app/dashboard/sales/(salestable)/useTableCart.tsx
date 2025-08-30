@@ -128,17 +128,16 @@ export function useTableCartLogic({
         sales_rep_id: currentUserId,
         sales_rep_name: currentUser.name,
       };
-      console.log(saleData);
 
       // Create sale record
       await createSaleMutation.mutateAsync(saleData);
 
-      // Also create bar_requests record for inventory tracking using server action
       const barRequestItems: BarRequestItem[] = currentCart.map((item) => ({
         table_id: selectedTable,
         product_id: item.product_id,
         product_name: item.name,
         quantity: item.quantity,
+        product_price: item.selling_price,
         sales_rep_id: currentUserId,
         sales_rep_name: currentUser.name,
         status: "completed",

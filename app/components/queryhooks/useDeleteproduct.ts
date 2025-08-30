@@ -7,7 +7,6 @@ export function useDeleteProduct() {
   const { isPending, mutate } = useMutation({
     mutationFn: (id: number) => getDeleteProductsClient(id),
     onSuccess: () => {
-      // Invalidate product-related queries after deletion
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
     },

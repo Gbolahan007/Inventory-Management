@@ -77,6 +77,7 @@ export interface BarRequest {
   table_id: number | string;
   product_id: string;
   product_name: string;
+  product_price: number;
   quantity: number;
   sales_rep_id: string;
   sales_rep_name: string;
