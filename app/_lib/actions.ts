@@ -29,6 +29,7 @@ export interface BarRequestItem {
   product_id: string;
   product_name: string;
   quantity: number;
+  product_price: number;
   sales_rep_id: string;
   sales_rep_name: string;
   status: "completed";
