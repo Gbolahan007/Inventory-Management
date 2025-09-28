@@ -39,10 +39,6 @@ export const useAuth = () => {
   const retryCount = useRef(0);
   const maxRetries = 3;
 
-  const log = (label: string, data?: any) => {
-    console.log(`[AuthDebug ${new Date().toISOString()}] ${label}`, data || "");
-  };
-
   // ---------- CREATE USER RECORD ----------
   const createUserRecord = useCallback(
     async (userId: string, email: string): Promise<UserData> => {
@@ -62,7 +58,6 @@ export const useAuth = () => {
         .single();
 
       if (error) {
-        log("Failed to create user record", error.message);
         return { id: userId, email, name: defaultName, role: "admin" };
       }
 
@@ -87,10 +82,8 @@ export const useAuth = () => {
 
       if (error) {
         if (error.code === "PGRST116") {
-          log("User not found, creating new record");
           return await createUserRecord(userId, email);
         }
-        log("Failed to fetch user data", error.message);
         return { id: userId, email, name: email.split("@")[0], role: "admin" };
       }
 
@@ -111,29 +104,22 @@ export const useAuth = () => {
 
       // Rate limit: don't allow calls more frequent than every 2 seconds unless forced
       if (!forceRefresh && now - lastInitTime.current < 2000) {
-        log("Rate limiting init call");
         return;
       }
 
       // Prevent concurrent calls
       if (initializingRef.current) {
-        log("Init already in progress");
         return;
       }
 
       // Retry logic - if we've failed too many times, wait longer
       if (retryCount.current >= maxRetries && !forceRefresh) {
-        log(`Max retries (${maxRetries}) reached, skipping init`);
         return;
       }
 
       initializingRef.current = true;
       lastInitTime.current = now;
 
-      log("Initializing auth...", {
-        forceRefresh,
-        retryCount: retryCount.current,
-      });
       setLoading(true);
       setError(null);
 
@@ -146,7 +132,6 @@ export const useAuth = () => {
         if (userError) throw userError;
 
         if (!verifiedUser) {
-          log("No verified user found — redirecting to /login");
           setUser(null);
           setUserData(null);
           setUserRole(null);
@@ -157,10 +142,6 @@ export const useAuth = () => {
           return;
         }
 
-        log("Verified user", {
-          id: verifiedUser.id,
-          email: verifiedUser.email,
-        });
         setUser(verifiedUser);
 
         const profile = await fetchUserData(
@@ -169,17 +150,12 @@ export const useAuth = () => {
         );
 
         if (profile) {
-          log("Loaded user profile", profile);
           setUserData(profile);
           setUserRole(profile.role);
           retryCount.current = 0; // Reset on success
         }
       } catch (err: any) {
         retryCount.current++;
-        log("Auth init error", {
-          error: err.message,
-          retryCount: retryCount.current,
-        });
         setError(err.message || "Authentication failed");
 
         // Only clear state and redirect on persistent failures
@@ -195,7 +171,6 @@ export const useAuth = () => {
         setLoading(false);
         setIsInitialized(true);
         initializingRef.current = false;
-        log("Auth init complete", { retryCount: retryCount.current });
       }
     },
     [fetchUserData, router, pathname]
@@ -207,8 +182,6 @@ export const useAuth = () => {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return;
-
-      log(`Auth state change: ${event}`);
 
       // Reset retry count on auth events
       retryCount.current = 0;
@@ -241,12 +214,6 @@ export const useAuth = () => {
       const needsRefresh = !user || !userData || error;
 
       if (needsRefresh) {
-        log("Route change detected with missing data, re-initializing", {
-          hasUser: !!user,
-          hasUserData: !!userData,
-          hasError: !!error,
-          pathname,
-        });
         initializeAuth(true);
       }
     }
@@ -257,7 +224,6 @@ export const useAuth = () => {
     const handleFocus = () => {
       // Only refresh on focus if we have missing data or errors
       if (isInitialized && (!user || !userData || error)) {
-        log("Window focus with missing data, refreshing auth");
         initializeAuth(true);
       }
     };
@@ -273,7 +239,6 @@ export const useAuth = () => {
     const healthCheck = setInterval(() => {
       // Check if we should have data but don't
       if (user && !userData) {
-        log("Health check: Missing userData, refreshing");
         initializeAuth(true);
       }
     }, 10000); // Check every 10 seconds

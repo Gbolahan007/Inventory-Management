@@ -19,6 +19,13 @@ export interface User {
   name: string;
   role?: string;
 }
+type Expense = {
+  id: number;
+  category: string;
+  amount: number;
+  sale_id: string | number;
+  created_at?: string;
+};
 
 // SALE
 export interface Sale {
@@ -34,6 +41,7 @@ export interface Sale {
   total_cost?: number;
   sales_rep_name?: string;
   table_id?: number;
+
   // Optional inventory relationship
   inventory?: {
     id: string;
@@ -44,6 +52,9 @@ export interface Sale {
       };
     };
   };
+
+  // Optional expenses relationship
+  expenses?: Expense[];
 }
 
 // SALE ITEM (used in normal sale and cart)

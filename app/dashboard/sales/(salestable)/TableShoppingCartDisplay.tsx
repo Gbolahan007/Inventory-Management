@@ -6,9 +6,14 @@ import type { Product, SaleItem, TableCart } from "../(sales)/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { CartContent } from "./CartContent";
 import { CartFooter } from "./CartFooter";
+import { Expense } from "@/app/(store)/useExpensesStore";
 
 interface TableShoppingCartDisplayProps {
   cartItems: SaleItem[];
+  currentExpenses: Expense[];
+  currentExpensesTotal: number;
+  finalTotal: number;
+
   removeFromCart: (productId: string, unitPrice: number) => void;
   updateCartItemQuantity: (
     productId: string,
@@ -28,6 +33,14 @@ interface TableShoppingCartDisplayProps {
   selectedTable: number;
   activeTables: number[];
   getAllTableCarts: () => TableCart[];
+
+  isPending: boolean;
+  setIsPending: React.Dispatch<React.SetStateAction<boolean>>;
+  pendingCustomer: string;
+  setPendingCustomer: React.Dispatch<React.SetStateAction<string>>;
+
+  handleAddExpense: (category: string, amount: number) => void;
+  handleRemoveExpense: (id: string) => void;
 }
 
 export default function TableShoppingCartDisplay({
@@ -44,6 +57,15 @@ export default function TableShoppingCartDisplay({
   isOpen,
   onClose,
   selectedTable,
+  isPending,
+  setIsPending,
+  pendingCustomer,
+  setPendingCustomer,
+  currentExpenses,
+  currentExpensesTotal,
+  finalTotal,
+  handleAddExpense,
+  handleRemoveExpense,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
@@ -102,6 +124,15 @@ export default function TableShoppingCartDisplay({
               createSaleMutation={createSaleMutation}
               isDarkMode={isDarkMode}
               cartItems={cartItems}
+              isPending={isPending}
+              setIsPending={setIsPending}
+              pendingCustomer={pendingCustomer}
+              setPendingCustomer={setPendingCustomer}
+              currentExpenses={currentExpenses}
+              currentExpensesTotal={currentExpensesTotal}
+              finalTotal={finalTotal}
+              handleAddExpense={handleAddExpense}
+              handleRemoveExpense={handleRemoveExpense}
             />
           </div>
         </div>
@@ -139,7 +170,6 @@ export default function TableShoppingCartDisplay({
             </div>
           </div>
 
-          {/* Status indicator - always ready for payment in simplified flow */}
           {cartItems.length > 0 && (
             <div
               className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
@@ -178,6 +208,15 @@ export default function TableShoppingCartDisplay({
             createSaleMutation={createSaleMutation}
             isDarkMode={isDarkMode}
             cartItems={cartItems}
+            isPending={isPending}
+            setIsPending={setIsPending}
+            pendingCustomer={pendingCustomer}
+            setPendingCustomer={setPendingCustomer}
+            currentExpenses={currentExpenses}
+            currentExpensesTotal={currentExpensesTotal}
+            finalTotal={finalTotal}
+            handleAddExpense={handleAddExpense}
+            handleRemoveExpense={handleRemoveExpense}
           />
         </div>
       </div>

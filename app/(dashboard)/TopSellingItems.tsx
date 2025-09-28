@@ -39,6 +39,25 @@ export function mapTopSellingProductToSaleItem(
   };
 }
 
+function mergeDuplicateItems(items: SaleItem[]): SaleItem[] {
+  const mergedMap = new Map<string, SaleItem>();
+
+  items.forEach((item) => {
+    if (mergedMap.has(item.name)) {
+      const existing = mergedMap.get(item.name)!;
+      existing.quantity += item.quantity;
+      existing.total_price += item.total_price;
+      existing.profit_amount += item.profit_amount;
+      existing.unit_price =
+        existing.quantity > 0 ? existing.total_price / existing.quantity : 0;
+    } else {
+      mergedMap.set(item.name, { ...item });
+    }
+  });
+
+  return Array.from(mergedMap.values());
+}
+
 // Get individual items (no grouping) - sorted by quantity sold
 export function getIndividualItemStats(items?: SaleItem[]): SaleItem[] {
   if (!items) return [];
@@ -54,7 +73,10 @@ interface TopSellingItemsProps {
 export function TopSellingItems({ topSellingProducts }: TopSellingItemsProps) {
   const saleItems =
     topSellingProducts?.map(mapTopSellingProductToSaleItem) || [];
-  const individualItems = getIndividualItemStats(saleItems);
+  const mergedItems = mergeDuplicateItems(saleItems);
+
+  // Sort and get top items
+  const individualItems = getIndividualItemStats(mergedItems);
 
   return (
     <Card className="lg:col-span-1">

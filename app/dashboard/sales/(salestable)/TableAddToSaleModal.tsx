@@ -55,6 +55,10 @@ export default function TableAddToSaleModal({
     currentTotalProfit,
     unitPrice,
     totalPrice,
+    isPending,
+    setIsPending,
+    pendingCustomer,
+    setPendingCustomer,
     setPaymentMethod,
     handleProductChange,
     handleQuantityChange,
@@ -64,12 +68,16 @@ export default function TableAddToSaleModal({
     updateCartItemQuantity,
     handleFinalizeSale,
     createSaleMutation,
+    currentExpenses,
+    currentExpensesTotal,
+    finalTotal,
+    handleAddExpense,
+    handleRemoveExpense,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
   const filteredProducts = products?.filter((item) => item.current_stock !== 0);
 
-  // Group products by category for better organization
   const groupedProducts = filteredProducts?.reduce((groups, product) => {
     const category = product.category || "Other";
     if (!groups[category]) {
@@ -188,7 +196,7 @@ export default function TableAddToSaleModal({
 
             {/* Sidebar: Shopping Cart */}
             <div
-              className={`w-full border border-green-800 md:w-[420px] border-l ${
+              className={`w-full md:w-[420px] border-l ${
                 isDarkMode
                   ? "border-slate-700 bg-slate-900"
                   : "border-gray-200 bg-gray-50"
@@ -217,6 +225,15 @@ export default function TableAddToSaleModal({
                     total: getTableTotal(id),
                   }))
                 }
+                isPending={isPending}
+                setIsPending={setIsPending}
+                pendingCustomer={pendingCustomer}
+                setPendingCustomer={setPendingCustomer}
+                currentExpenses={currentExpenses}
+                currentExpensesTotal={currentExpensesTotal}
+                finalTotal={finalTotal}
+                handleAddExpense={handleAddExpense}
+                handleRemoveExpense={handleRemoveExpense}
               />
             </div>
           </div>

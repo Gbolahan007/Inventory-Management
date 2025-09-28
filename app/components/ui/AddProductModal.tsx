@@ -15,40 +15,51 @@ interface AddProductFormProps {
 
 // Product to category mapping
 const PRODUCT_CATEGORIES = {
-  gulder: "beer",
+  // Beers
+  big_stout: "beer",
+  medium_stout: "beer",
   goldberg: "beer",
-  star: "beer",
-  guinness: "beer",
-  trophy: "beer",
-  "33_export": "beer",
+  gulder: "beer",
   heineken: "beer",
-  life: "beer",
-  hero: "beer",
-  budweiser: "beer",
+  legend: "beer",
+  "33_export": "beer",
+  tiger: "beer",
+  trophy: "beer",
+  radler: "beer",
+  desperado: "beer",
+  castle_lite: "beer",
+  small_legend: "beer",
+  small_heineken: "beer",
 
-  orijin: "alcoholic",
-  smirnoff_ice: "alcoholic",
+  // Alcoholic
+  big_orijin: "alcoholic",
+  smooth: "alcoholic",
+  fayrouz: "alcoholic",
+  plastic_orijin: "alcoholic",
   campari: "alcoholic",
   baileys: "alcoholic",
   red_label: "premium",
+  ace_root: "alcoholic",
+  best: "alcoholic",
 
-  coca_cola: "beverages",
-  fanta: "beverages",
-  sprite: "beverages",
-  "7up": "beverages",
-  bigi_apple: "beverages",
-  bigi_cola: "beverages",
-  mirinda: "beverages",
-  rc: "beverages",
+  // Soft drinks / Beverages
+  malta: "beverages",
+  big_ice: "beverages",
+  maltina: "beverages",
+  coke: "beverages",
+  black_trophy: "beverages",
   water: "beverages",
+  hollandia: "beverages",
+  exotic: "beverages",
+  salive: "beverages",
 
+  // Energy drinks
   fearless: "energy",
-  monster: "energy",
-  climax: "energy",
-  bullet: "energy",
   predator: "energy",
-  red_bull: "energy",
-  power_horse: "energy",
+  climax: "energy",
+  monster: "energy",
+  flying_fish: "energy",
+  bullet: "energy",
 };
 
 export default function AddProductModal({
@@ -151,42 +162,55 @@ export default function AddProductModal({
                   }`}
                 >
                   <option value="">Select a product</option>
+
                   <optgroup label="🍺 Beers">
-                    <option value="gulder">Gulder</option>
+                    <option value="big_stout">Big Stout</option>
+                    <option value="medium_stout">Medium Stout</option>
                     <option value="goldberg">Goldberg</option>
-                    <option value="star">Star</option>
-                    <option value="guinness">Guinness</option>
-                    <option value="trophy">Trophy</option>
-                    <option value="33_export">33 Export</option>
+                    <option value="gulder">Gulder</option>
                     <option value="heineken">Heineken</option>
-                    <option value="life">Life Beer</option>
-                    <option value="hero">Hero</option>
-                    <option value="budweiser">Budweiser</option>
+                    <option value="legend">Legend</option>
+                    <option value="33_export">33 Export</option>
+                    <option value="tiger">Tiger</option>
+                    <option value="trophy">Trophy</option>
+                    <option value="radler">Radler</option>
+                    <option value="desperado">Desperado</option>
+                    <option value="castle_lite">Castle Lite</option>
+                    <option value="small_legend">Small Legend</option>
+                    <option value="small_heineken">Small Heineken</option>
                   </optgroup>
+
                   <optgroup label="🍸 Alcoholic Drinks">
-                    <option value="orijin">Orijin</option>
-                    <option value="smirnoff_ice">Smirnoff Ice</option>
+                    <option value="big_orijin">Big Orijin</option>
+                    <option value="smooth">Smooth</option>
+                    <option value="fayrouz">Fayrouz</option>
+                    <option value="plastic_orijin">Plastic Orijin</option>
                     <option value="campari">Campari</option>
                     <option value="baileys">Baileys</option>
                     <option value="red_label">Johnnie Walker Red Label</option>
+                    <option value="ace_root">Ace Root</option>
+                    <option value="best">Best</option>
                   </optgroup>
+
                   <optgroup label="🥤 Soft Drinks">
-                    <option value="coca_cola">Coca-Cola</option>
-                    <option value="fanta">Fanta</option>
-                    <option value="sprite">Sprite</option>
-                    <option value="7up">7Up</option>
-                    <option value="bigi_apple">Bigi Apple</option>
-                    <option value="coca_cola">Coca-Cola</option>
+                    <option value="malta">Malta</option>
+                    <option value="big_ice">Big Ice</option>
+                    <option value="maltina">Maltina</option>
+                    <option value="coke">Coca-Cola</option>
+                    <option value="black_trophy">Black Trophy</option>
                     <option value="water">Water</option>
+                    <option value="hollandia">Hollandia</option>
+                    <option value="exotic">Exotic</option>
+                    <option value="salive">Salive</option>
                   </optgroup>
+
                   <optgroup label="⚡ Energy Drinks">
                     <option value="fearless">Fearless</option>
-                    <option value="monster">Monster</option>
-                    <option value="climax">Climax</option>
-                    <option value="bullet">Bullet</option>
                     <option value="predator">Predator</option>
-                    <option value="red_bull">Red Bull</option>
-                    <option value="power_horse">Power Horse</option>
+                    <option value="climax">Climax</option>
+                    <option value="monster">Monster</option>
+                    <option value="flying_fish">Flying Fish</option>
+                    <option value="bullet">Bullet</option>
                   </optgroup>
                 </select>
               </div>

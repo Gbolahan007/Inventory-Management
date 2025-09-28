@@ -13,13 +13,19 @@ interface SaleItem {
   total_price: number;
   profit_amount: number;
 }
-
+interface Expense {
+  category: string;
+  amount: number;
+  createdAt?: string;
+  tableId?: number;
+}
 interface SaleData {
   table_id: number;
   total_amount: number;
   payment_method: string;
   sales_rep_name: string;
   items: SaleItem[];
+  expenses?: Expense[];
 }
 
 export function useCreateSale() {
@@ -33,6 +39,7 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["sale_items"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
 
       toast.success("Sale completed successfully!");
     },

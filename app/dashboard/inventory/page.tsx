@@ -18,7 +18,6 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { FormatCurrency } from "../../hooks/useFormatCurrency";
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
 
-// ✅ Define product type
 interface Product {
   id?: number;
   name: string;
@@ -31,16 +30,13 @@ interface Product {
   created_at: string;
 }
 
-// ✅ Main Inventory Page - NOW MUCH SIMPLER!
 export default function Inventory() {
-  // Only use useAuth for loading state - middleware handles authentication
   const { loading } = useAuth();
 
   const { products, isLoading, error, refetch } = useProducts();
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
   const { mutate: deleteProduct, isPending: isDeleting } = useDeleteProduct();
 
-  // ✅ Modal states
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProductForDelete, setSelectedProductForDelete] =
@@ -72,7 +68,7 @@ export default function Inventory() {
       deleteProduct(productId, {
         onSuccess: () => {
           toast.success("Product deleted successfully");
-          refetch(); // Refresh the products list
+          refetch();
           resolve();
         },
         onError: (error) => {
@@ -275,10 +271,6 @@ export default function Inventory() {
     fontSize: "16px",
   };
 
-  // ✅ If we reach here, middleware has already verified:
-  // - User is authenticated
-  // - User has admin permissions
-  // - No need for manual redirects!
   return (
     <div className="flex flex-col">
       {/* <HeaderInventory name="Inventory" /> */}

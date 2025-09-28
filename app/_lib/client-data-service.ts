@@ -46,7 +46,6 @@ export async function withClientErrorHandling<T>(
   operationName = "Unknown Operation",
   requireAuth = true
 ): Promise<T> {
-  const startTime = Date.now();
   try {
     debugLog("info", `Starting ${operationName}`);
 
@@ -56,40 +55,21 @@ export async function withClientErrorHandling<T>(
         error: authError,
       } = await supabase.auth.getUser();
       if (authError) {
-        debugLog("error", `Auth error in ${operationName}`, authError);
         throw new Error(`Authentication failed: ${authError.message}`);
       }
       if (!user) {
-        debugLog("warning", `No verified user for ${operationName}`);
         throw new Error("No active session - please log in again");
       }
-      debugLog("success", `Verified user for ${operationName}`, {
-        userId: user.id,
-      });
     }
 
     const { data, error } = await withTimeout(operation(), TIMEOUT_MS);
-    const duration = Date.now() - startTime;
 
     if (error) {
-      debugLog("error", `${errorMessage} (${duration}ms)`, error);
       throw new Error(`${errorMessage}: ${error.message}`);
     }
 
-    debugLog("success", `${operationName} succeeded (${duration}ms)`, {
-      resultCount: Array.isArray(data) ? data.length : data ? 1 : 0,
-    });
-
     return (data as T) ?? ([] as unknown as T);
   } catch (err: any) {
-    debugLog(
-      "error",
-      `${operationName} failed after ${Date.now() - startTime}ms`,
-      {
-        message: err.message,
-        stack: err.stack?.substring(0, 500),
-      }
-    );
     throw err;
   }
 }
@@ -153,7 +133,18 @@ export const getTodaysProfitClient = (start: Date, end: Date) =>
 
 export const getRecentSalesClient = () =>
   withClientErrorHandling(
-    async () => await supabase.from("sales").select("*"),
+    async () =>
+      await supabase.from("sales").select(`
+          *,
+          expenses(*)
+        `),
+    "Sales could not be loaded",
+    "Get Recent Sales"
+  );
+
+export const getPendingSalesClient = () =>
+  withClientErrorHandling(
+    async () => await supabase.from("sales").select("*").eq("is_pending", true),
     "Sales could not be loaded",
     "Get Recent Sales"
   );
@@ -241,7 +232,9 @@ export const getStatsClient = async () => {
 // ---------- SALES CREATION ----------
 export async function createSalesClient(saleData: any) {
   let saleId: string | null = null;
+
   try {
+    // Create the main sale record
     const { data: sale, error: saleError } = await supabase
       .from("sales")
       .insert({
@@ -251,6 +244,8 @@ export async function createSalesClient(saleData: any) {
         sale_date: new Date().toISOString(),
         table_id: saleData.table_id,
         sales_rep_name: saleData.sales_rep_name,
+        is_pending: saleData.is_pending,
+        pending_customer_name: saleData.pending_customer_name,
       })
       .select()
       .single();
@@ -281,6 +276,26 @@ export async function createSalesClient(saleData: any) {
       throw new Error(`Could not create sale items: ${itemsError.message}`);
     }
 
+    // Insert expenses if they exist
+    if (saleData.expenses && saleData.expenses.length > 0) {
+      const expensesToInsert = saleData.expenses.map((expense: any) => ({
+        sale_id: sale.id,
+        amount: expense.amount,
+        category: expense.category,
+        created_at: expense.createdAt || new Date().toISOString(),
+        table_id: expense.tableId || saleData.table_id,
+      }));
+      console.log("Expenses to insert:", expensesToInsert);
+
+      const { error: expensesError } = await supabase
+        .from("expenses")
+        .insert(expensesToInsert);
+
+      if (expensesError) {
+        throw new Error(`Could not create expenses: ${expensesError.message}`);
+      }
+    }
+
     // Update product stock
     await Promise.all(
       saleData.items.map(async (item: any) => {
@@ -296,6 +311,7 @@ export async function createSalesClient(saleData: any) {
           0,
           (product?.current_stock ?? 0) - item.quantity
         );
+
         const { error: updateError } = await supabase
           .from("products")
           .update({ current_stock: newStock })
@@ -304,16 +320,15 @@ export async function createSalesClient(saleData: any) {
         if (updateError) throw new Error(updateError.message);
       })
     );
-
     return sale;
   } catch (error) {
     // Rollback sale if we failed after initial insert
     if (saleId) {
       try {
         await supabase.from("sales").delete().eq("id", saleId);
-      } catch {
-        /* ignore rollback errors */
-      }
+        // Also cleanup any expenses that might have been inserted
+        await supabase.from("expenses").delete().eq("sale_id", saleId);
+      } catch {}
     }
     throw error;
   }

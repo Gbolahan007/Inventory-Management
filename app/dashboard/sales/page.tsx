@@ -16,6 +16,7 @@ import TableAddToSaleModal from "./(salestable)/TableAddToSaleModal";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import BarRequestsPage from "./(barRequests)/BarRequestsPage";
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
+import { PendingSalesTable } from "./(barRequests)/PendingSalesTable";
 
 type SaleItem = {
   id?: string;
@@ -37,9 +38,9 @@ type SaleItem = {
 export default function SalesPage() {
   const { userData } = useAuth();
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "bar-requests">(
-    "dashboard"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "bar-requests" | "pending-sales"
+  >("dashboard");
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
   // Table cart store
   const { getActiveTables, getTableCart, getTableTotal } = useTableCartStore();
@@ -58,7 +59,6 @@ export default function SalesPage() {
   const { recentSales = [], isLoading: salesLoading } = useRecentSales();
   const { stats, isLoading: statsLoading } = useStats();
   const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
-
   // Transform the data to match SaleItem type
   const salesItems: SaleItem[] | undefined = rawSalesItems?.map(
     (item: any) => ({
@@ -186,11 +186,11 @@ export default function SalesPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-card rounded-lg shadow-sm border border-border">
-          <div className="flex border-b border-border">
+        <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
+          <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab("dashboard")}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === "dashboard"
                   ? "text-primary border-b-2 border-primary bg-muted/50"
                   : "text-muted-foreground hover:text-foreground"
@@ -201,7 +201,7 @@ export default function SalesPage() {
             </button>
             <button
               onClick={() => setActiveTab("bar-requests")}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === "bar-requests"
                   ? "text-primary border-b-2 border-primary bg-muted/50"
                   : "text-muted-foreground hover:text-foreground"
@@ -210,10 +210,20 @@ export default function SalesPage() {
               <Package className="w-5 h-5" />
               Bar Requests
             </button>
+            <button
+              onClick={() => setActiveTab("pending-sales")}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === "pending-sales"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              Pending Sales
+            </button>
           </div>
         </div>
 
-        {/* Conditional Rendering based on active tab */}
         {activeTab === "dashboard" ? (
           <>
             <StatsCards
@@ -221,7 +231,6 @@ export default function SalesPage() {
               salesItems={rawSalesItems}
               isDarkMode={isDarkMode}
             />
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RecentSalesTable
                 sales={recentSales}
@@ -234,8 +243,10 @@ export default function SalesPage() {
               />
             </div>
           </>
-        ) : (
+        ) : activeTab === "bar-requests" ? (
           <BarRequestsPage />
+        ) : (
+          <PendingSalesTable />
         )}
       </div>
 
