@@ -120,7 +120,14 @@ export function CartFooter({
       >
         <div className="flex justify-between items-center mb-2">
           <span className="font-semibold">Cart Total</span>
-          <span className="text-lg font-bold">₦{cartTotal.toFixed(2)}</span>
+          <span className="text-lg font-bold">
+            {" "}
+            {new Intl.NumberFormat("en-NG", {
+              style: "currency",
+              currency: "NGN",
+              minimumFractionDigits: 2,
+            }).format(cartTotal)}
+          </span>
         </div>
 
         {/* 🔹 Show Extra Expenses */}
@@ -135,7 +142,14 @@ export function CartFooter({
                 <span>{expense.category}</span>
 
                 <div className="flex items-center space-x-2">
-                  <span>₦{expense.amount.toFixed(2)}</span>
+                  <span>
+                    {" "}
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 2,
+                    }).format(expense.amount)}
+                  </span>
                   <button
                     onClick={() => removeExpense(expense.id)}
                     className="text-red-500 hover:text-red-600"
@@ -149,7 +163,14 @@ export function CartFooter({
             {/* Expenses subtotal */}
             <div className="flex justify-between items-center text-sm font-medium border-t pt-1">
               <span>Expenses Total</span>
-              <span>₦{currentExpensesTotal.toFixed(2)}</span>
+              <span>
+                {" "}
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 2,
+                }).format(currentExpensesTotal)}
+              </span>
             </div>
           </div>
         )}
@@ -157,7 +178,14 @@ export function CartFooter({
         {/* Final Total */}
         <div className="flex justify-between items-center border-t pt-2">
           <span className="font-semibold">Final Total</span>
-          <span className="text-xl font-bold">₦{finalTotal.toFixed(2)}</span>
+          <span className="text-xl font-bold">
+            {" "}
+            {new Intl.NumberFormat("en-NG", {
+              style: "currency",
+              currency: "NGN",
+              minimumFractionDigits: 2,
+            }).format(finalTotal)}
+          </span>
         </div>
       </div>
 

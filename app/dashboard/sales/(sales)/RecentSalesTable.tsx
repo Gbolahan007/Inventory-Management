@@ -270,7 +270,7 @@ export function RecentSalesTable({
               sx={{
                 minWidth: 150,
                 "& .MuiOutlinedInput-root": {
-                  color: isDarkMode ? "#f8fafc" : "#111827",
+                  color: isDarkMode ? "#f8fafc" : "#111827 ",
                   "& fieldset": {
                     borderColor: isDarkMode ? "#374151" : "#e5e7eb",
                   },
