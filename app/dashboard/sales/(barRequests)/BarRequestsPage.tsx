@@ -144,7 +144,6 @@ export default function BarRequestsPage() {
     return acc;
   }, {} as Record<string, { totalAmount: number; totalItems: number; orderCount: number }>);
 
-  console.log(salesRepSummary);
   const clearFilters = () => {
     setFilters({ salesRep: "", dateRange: "", searchTerm: "" });
   };
@@ -612,7 +611,7 @@ export default function BarRequestsPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
-                          {req.table_id || "?"}
+                          {req.quantity || "?"}
                         </div>
                         <div>
                           <h3 className="font-semibold text-slate-900 dark:text-slate-100">

@@ -60,7 +60,7 @@ export function MetricsGrid({
 
       <MetricCard
         title="Total Profit"
-        value={FormatCurrency(totalProfit)}
+        value={"*".repeat(String(FormatCurrency(totalProfit)).length)}
         icon={<TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />}
         trend={{ value: "+15.3%", isPositive: true, label: "from last month" }}
       />
