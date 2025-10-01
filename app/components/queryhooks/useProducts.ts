@@ -1,7 +1,9 @@
 import { getProductsClient } from "@/app/_lib/client-data-service";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useProducts() {
+  const queryClient = useQueryClient();
+
   const {
     data: products,
     isLoading,
@@ -14,5 +16,10 @@ export function useProducts() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
-  return { products, isLoading, error, refetch };
+
+  const invalidateProducts = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+  };
+
+  return { products, isLoading, error, refetch, invalidateProducts };
 }

@@ -1,11 +1,9 @@
 "use client";
 
-import { createProduct } from "@/app/_lib/actions";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { useCreateProduct } from "../queryhooks/useCreateProducts";
 import AddProductsSubmitButton from "./AddProductsSubmitButton";
-import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 
 interface AddProductFormProps {
   isOpen: boolean;
@@ -70,7 +68,7 @@ export default function AddProductModal({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
-  const router = useRouter();
+  const { mutate: createProduct } = useCreateProduct();
 
   const profit = sellingPrice - costPrice;
 
@@ -81,14 +79,11 @@ export default function AddProductModal({
     setSelectedCategory(category || "");
   };
   async function handleCreateProduct(formdata: FormData) {
-    try {
-      await createProduct(formdata);
-      onClose();
-      toast.success("new Products added");
-      router.refresh();
-    } catch (error) {
-      console.error("Failed to create product:", error);
-    }
+    createProduct(formdata, {
+      onSuccess: () => {
+        onClose();
+      },
+    });
   }
 
   if (!isOpen) return null;

@@ -1,22 +1,12 @@
 "use client";
 
 import { useBarRequestsQuery } from "@/app/components/queryhooks/useBarRequestsQuery";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Calendar,
-  ChevronDown,
-  Clock,
-  DollarSign,
-  Filter,
-  Loader2,
-  Package,
-  RefreshCw,
-  Search,
-  TrendingUp,
-  User,
-} from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { BarRequest } from "../(sales)/types";
+import { SalesRepSummary } from "./SalesRepSummary";
+import { RequestFilters } from "./RequestFilters";
+import { RequestsList } from "./RequestList";
 
 export default function BarRequestsPage() {
   const {
@@ -124,7 +114,7 @@ export default function BarRequestsPage() {
     return sortOrder === "asc" ? comparison : -comparison;
   });
 
-  // Calculate sales rep summaries - refactored to use product_price
+  // Calculate sales rep summaries
   const salesRepSummary = filteredRequests.reduce((acc, req) => {
     const rep = req.sales_rep_name || "Unknown";
     const total = (req.quantity || 0) * (req.product_price || 0);
@@ -235,425 +225,29 @@ export default function BarRequestsPage() {
           </div>
         )}
 
-        {/* Sales Rep Summary Cards - Updated to show money expected */}
-        {Object.keys(salesRepSummary).length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Object.entries(salesRepSummary).map(([rep, summary]) => {
-              const s = summary as {
-                totalAmount: number;
-                totalItems: number;
-                orderCount: number;
-              };
+        <SalesRepSummary salesRepSummary={salesRepSummary} />
 
-              return (
-                <Card
-                  key={rep}
-                  className="border-0 shadow-md bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">
-                        {rep}
-                      </h3>
-                      <User className="w-4 h-4 text-blue-500" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          Expected Amount:
-                        </span>
-                        <span className="font-bold text-green-600 dark:text-green-400">
-                          ₦{s.totalAmount.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          Orders:
-                        </span>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">
-                          {s.orderCount}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          Items Sold:
-                        </span>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">
-                          {s.totalItems}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        <RequestFilters
+          filters={filters}
+          setFilters={setFilters}
+          uniqueSalesReps={uniqueSalesReps}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          setSortBy={setSortBy}
+          setSortOrder={setSortOrder}
+          hasActiveFilters={hasActiveFilters}
+          clearFilters={clearFilters}
+        />
 
-        {/* Filters and Search */}
-        <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardContent className="p-4 lg:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">Filters & Search</h3>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="ml-auto text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Search */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  <Search className="w-4 h-4" />
-                  Search
-                </label>
-                <input
-                  type="text"
-                  placeholder="Product, rep, or table..."
-                  value={filters.searchTerm}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      searchTerm: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg px-3 py-2 text-sm
-                    bg-slate-50 dark:bg-slate-700 
-                    border border-slate-200 dark:border-slate-600
-                    text-slate-900 dark:text-slate-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    transition-all duration-200"
-                />
-              </div>
-
-              {/* Sales Rep Filter */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  <User className="w-4 h-4" />
-                  Sales Rep
-                </label>
-                <select
-                  value={filters.salesRep}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      salesRep: e.target.value === "all" ? "" : e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg px-3 py-2 text-sm
-                    bg-slate-50 dark:bg-slate-700 
-                    border border-slate-200 dark:border-slate-600
-                    text-slate-900 dark:text-slate-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    transition-all duration-200"
-                >
-                  <option value="all">All Reps</option>
-                  {uniqueSalesReps.map((rep) => (
-                    <option key={rep} value={rep}>
-                      {rep}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Range Filter */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  <Calendar className="w-4 h-4" />
-                  Period
-                </label>
-                <select
-                  value={filters.dateRange}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      dateRange: e.target.value === "all" ? "" : e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg px-3 py-2 text-sm
-                    bg-slate-50 dark:bg-slate-700 
-                    border border-slate-200 dark:border-slate-600
-                    text-slate-900 dark:text-slate-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    transition-all duration-200"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="week">Last 7 Days</option>
-                </select>
-              </div>
-
-              {/* Sort By */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  <TrendingUp className="w-4 h-4" />
-                  Sort By
-                </label>
-                <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [newSortBy, newSortOrder] = e.target.value.split(
-                      "-"
-                    ) as [typeof sortBy, typeof sortOrder];
-                    setSortBy(newSortBy);
-                    setSortOrder(newSortOrder);
-                  }}
-                  className="w-full rounded-lg px-3 py-2 text-sm
-                    bg-slate-50 dark:bg-slate-700 
-                    border border-slate-200 dark:border-slate-600
-                    text-slate-900 dark:text-slate-100
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                    transition-all duration-200"
-                >
-                  <option value="time-desc">Newest First</option>
-                  <option value="time-asc">Oldest First</option>
-                  <option value="salesRep-asc">Rep A-Z</option>
-                  <option value="salesRep-desc">Rep Z-A</option>
-                  <option value="total-desc">Highest Value</option>
-                  <option value="total-asc">Lowest Value</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Requests List */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4" />
-            <p className="text-slate-600 dark:text-slate-400">
-              Loading requests...
-            </p>
-          </div>
-        ) : sortedRequests.length === 0 ? (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                No requests found
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 text-center max-w-md">
-                {hasActiveFilters
-                  ? "Try adjusting your filters to see more results."
-                  : "There are no bar requests to display at the moment."}
-              </p>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Desktop Table View - Updated with Total column */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm hidden lg:block">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          <button
-                            onClick={() => handleSort("time")}
-                            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            <Clock className="w-4 h-4" />
-                            Time
-                            <ChevronDown
-                              className={`w-3 h-3 transition-transform ${
-                                sortBy === "time" && sortOrder === "desc"
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
-                            />
-                          </button>
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          Table
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          Product
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          Price
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          Qty
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          <button
-                            onClick={() => handleSort("total")}
-                            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            <DollarSign className="w-4 h-4" />
-                            Total
-                            <ChevronDown
-                              className={`w-3 h-3 transition-transform ${
-                                sortBy === "total" && sortOrder === "desc"
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
-                            />
-                          </button>
-                        </th>
-                        <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-300">
-                          <button
-                            onClick={() => handleSort("salesRep")}
-                            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            <User className="w-4 h-4" />
-                            Sales Rep
-                            <ChevronDown
-                              className={`w-3 h-3 transition-transform ${
-                                sortBy === "salesRep" && sortOrder === "desc"
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
-                            />
-                          </button>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedRequests.map((req: BarRequest, index) => (
-                        <tr
-                          key={req.id}
-                          className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors ${
-                            index % 2 === 0
-                              ? "bg-white dark:bg-slate-800"
-                              : "bg-slate-50/50 dark:bg-slate-900/30"
-                          }`}
-                        >
-                          <td className="p-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                {req.created_at
-                                  ? new Date(req.created_at).toLocaleTimeString(
-                                      [],
-                                      {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      }
-                                    )
-                                  : "N/A"}
-                              </span>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {req.created_at
-                                  ? new Date(
-                                      req.created_at
-                                    ).toLocaleDateString()
-                                  : ""}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-bold rounded-lg">
-                              {req.table_id || "?"}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="font-medium text-slate-900 dark:text-slate-100">
-                              {req.product_name || "N/A"}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="font-medium text-slate-900 dark:text-slate-100">
-                              ₦{(req.product_price || 0).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center justify-center px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 text-sm font-semibold rounded-md">
-                              {req.quantity || 0}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="font-bold text-green-600 dark:text-green-400">
-                              ₦
-                              {(
-                                (req.quantity || 0) * (req.product_price || 0)
-                              ).toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-slate-900 dark:text-slate-100 font-medium">
-                              {req.sales_rep_name || "Unknown"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Mobile Card View - Updated with Total */}
-            <div className="lg:hidden space-y-3">
-              {sortedRequests.map((req: BarRequest) => (
-                <Card
-                  key={req.id}
-                  className="border-0 shadow-md bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
-                          {req.quantity || "?"}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                            {req.product_name || "N/A"}
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">
-                            {req.sales_rep_name || "Unknown"}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500">
-                            ₦{(req.product_price || 0).toLocaleString()} ×{" "}
-                            {req.quantity || 0}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-green-600 dark:text-green-400 text-lg">
-                          ₦
-                          {(
-                            (req.quantity || 0) * (req.product_price || 0)
-                          ).toLocaleString()}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Total Amount
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {req.created_at
-                          ? new Date(req.created_at).toLocaleString()
-                          : "N/A"}
-                      </span>
-                      <span className="text-xs text-slate-600 dark:text-slate-400">
-                        Table {req.table_id || "N/A"}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
+        <RequestsList
+          isLoading={isLoading}
+          sortedRequests={sortedRequests}
+          hasActiveFilters={hasActiveFilters}
+          clearFilters={clearFilters}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          handleSort={handleSort}
+        />
       </div>
     </div>
   );

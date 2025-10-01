@@ -16,7 +16,7 @@ import TableAddToSaleModal from "./(salestable)/TableAddToSaleModal";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import BarRequestsPage from "./(barRequests)/BarRequestsPage";
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
-import { PendingSalesTable } from "./(barRequests)/PendingSalesTable";
+import { PendingSalesTable } from "./(pendingsales)/PendingSalesTable";
 
 type SaleItem = {
   id?: string;

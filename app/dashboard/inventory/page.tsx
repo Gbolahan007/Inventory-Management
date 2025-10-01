@@ -259,10 +259,16 @@ export default function Inventory() {
 
   // ✅ Process products data
   const filteredProducts = products.filter((item) => item.current_stock !== 0);
-  const processedProducts = filteredProducts.map((product, index) => ({
-    ...product,
-    id: product.id || index + 1,
-  }));
+  const processedProducts = filteredProducts
+    .map((product, index) => ({
+      ...product,
+      id: product.id || index + 1,
+    }))
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA;
+    });
 
   const debugStyles = {
     backgroundColor: isDarkMode ? "#1e293b" : "#ffffff",
