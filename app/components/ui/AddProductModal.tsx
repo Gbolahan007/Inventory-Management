@@ -28,6 +28,9 @@ const PRODUCT_CATEGORIES = {
   castle_lite: "beer",
   small_legend: "beer",
   small_heineken: "beer",
+  budweiser: "beer",
+  flying_fish: "beer",
+  black_trophy: "beer",
 
   // 🍸 Alcoholic
   big_orijin: "alcoholic",
@@ -43,24 +46,24 @@ const PRODUCT_CATEGORIES = {
   medium_gurana: "alcoholic",
   gurana: "alcoholic",
   action_bitters: "alcoholic",
+  gordons: "alcoholic",
 
   // 🥤 Beverages
   malta: "beverages",
   big_ice: "beverages",
   maltina: "beverages",
   coke: "beverages",
-  black_trophy: "beverages",
   water: "beverages",
   hollandia: "beverages",
   exotic: "beverages",
-  salive: "beverages",
+  "5_alive": "beverages",
 
   // ⚡ Energy Drinks
   fearless: "energy",
   predator: "energy",
   climax: "energy",
   monster: "energy",
-  flying_fish: "energy",
+
   bullet: "energy",
 };
 
@@ -177,6 +180,9 @@ export default function AddProductModal({
                     <option value="castle_lite">Castle Lite</option>
                     <option value="small_legend">Small Legend</option>
                     <option value="small_heineken">Small Heineken</option>
+                    <option value="budweiser">Budweiser</option>
+                    <option value="flying_fish">Flying Fish</option>
+                    <option value="black_trophy">Black Trophy</option>
                   </optgroup>
 
                   <optgroup label="🍸 Alcoholic Drinks">
@@ -193,6 +199,7 @@ export default function AddProductModal({
                     <option value="medium_gurana">Medium Gurana</option>
                     <option value="gurana">Gurana</option>
                     <option value="action_bitters">Action Bitters</option>
+                    <option value="gordons">Gordons</option>
                   </optgroup>
 
                   <optgroup label="🥤 Soft Drinks">
@@ -204,7 +211,7 @@ export default function AddProductModal({
                     <option value="water">Water</option>
                     <option value="hollandia">Hollandia</option>
                     <option value="exotic">Exotic</option>
-                    <option value="salive">Salive</option>
+                    <option value="5_alive">5 alive</option>
                   </optgroup>
 
                   <optgroup label="⚡ Energy Drinks">
@@ -212,7 +219,7 @@ export default function AddProductModal({
                     <option value="predator">Predator</option>
                     <option value="climax">Climax</option>
                     <option value="monster">Monster</option>
-                    <option value="flying_fish">Flying Fish</option>
+
                     <option value="bullet">Bullet</option>
                   </optgroup>
                 </select>
