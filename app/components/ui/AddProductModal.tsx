@@ -13,7 +13,7 @@ interface AddProductFormProps {
 
 // Product to category mapping
 const PRODUCT_CATEGORIES = {
-  // Beers
+  // 🍺 Beers
   big_stout: "beer",
   medium_stout: "beer",
   goldberg: "beer",
@@ -29,7 +29,7 @@ const PRODUCT_CATEGORIES = {
   small_legend: "beer",
   small_heineken: "beer",
 
-  // Alcoholic
+  // 🍸 Alcoholic
   big_orijin: "alcoholic",
   smooth: "alcoholic",
   fayrouz: "alcoholic",
@@ -44,7 +44,7 @@ const PRODUCT_CATEGORIES = {
   gurana: "alcoholic",
   action_bitters: "alcoholic",
 
-  // Soft drinks / Beverages
+  // 🥤 Beverages
   malta: "beverages",
   big_ice: "beverages",
   maltina: "beverages",
@@ -55,7 +55,7 @@ const PRODUCT_CATEGORIES = {
   exotic: "beverages",
   salive: "beverages",
 
-  // Energy drinks
+  // ⚡ Energy Drinks
   fearless: "energy",
   predator: "energy",
   climax: "energy",
