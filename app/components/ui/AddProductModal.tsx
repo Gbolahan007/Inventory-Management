@@ -39,6 +39,10 @@ const PRODUCT_CATEGORIES = {
   red_label: "premium",
   ace_root: "alcoholic",
   best: "alcoholic",
+  small_smirnof: "alcoholic",
+  medium_gorana: "alcoholic",
+  gorana: "alcoholic",
+  action_bitters: "alcoholic",
 
   // Soft drinks / Beverages
   malta: "beverages",
@@ -185,6 +189,10 @@ export default function AddProductModal({
                     <option value="red_label">Johnnie Walker Red Label</option>
                     <option value="ace_root">Ace Root</option>
                     <option value="best">Best</option>
+                    <option value="small_smirnof">Small Smirnof</option>
+                    <option value="medium_gorana">Medium Gorana</option>
+                    <option value="gorana">Gorana</option>
+                    <option value="action_bitters">Action Bitters</option>
                   </optgroup>
 
                   <optgroup label="🥤 Soft Drinks">
