@@ -189,9 +189,9 @@ export default function AddProductModal({
                     <option value="red_label">Johnnie Walker Red Label</option>
                     <option value="ace_root">Ace Root</option>
                     <option value="best">Best</option>
-                    <option value="small_smirnof">Small Smirnoff</option>
-                    <option value="medium_gorana">Medium Gurana</option>
-                    <option value="gorana">Gurana</option>
+                    <option value="small_smirnoff">Small Smirnoff</option>
+                    <option value="medium_gurana">Medium Gurana</option>
+                    <option value="gurana">Gurana</option>
                     <option value="action_bitters">Action Bitters</option>
                   </optgroup>
 
