@@ -18,7 +18,7 @@ export async function addUser(formData: FormData) {
       .select("*", { count: "exact", head: true })
       .eq("role", role);
 
-    const maxLimit = role === "admin" ? 2 : 4;
+    const maxLimit = role === "admin" ? 3 : 5;
 
     if (count && count >= maxLimit) {
       return { error: `Cannot create more than ${maxLimit} ${role}s.` };

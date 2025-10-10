@@ -103,7 +103,7 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL("/login", request.url));
         }
       } catch (error) {
-        console.error("[v0] Error fetching user role:", error);
+        console.error(" Error fetching user role:", error);
         userRole = "unknown";
       }
     }
@@ -125,6 +125,7 @@ export async function middleware(request: NextRequest) {
       const adminOnlyRoutes = [
         "/dashboard/inventory",
         "/dashboard/reports",
+        "/dashboard/room",
         "/admin",
       ];
       const salesrepRoutes = ["/dashboard/sales"];

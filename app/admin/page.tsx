@@ -63,8 +63,8 @@ export default function AdminDashboard() {
   }
 
   // Role-specific limits
-  const MAX_ADMINS = 2;
-  const MAX_SALESREP = 4;
+  const MAX_ADMINS = 3;
+  const MAX_SALESREP = 5;
 
   // Count users by role
   const admins = user?.filter((u) => u.role === "admin").length || 0;
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
               <CardTitle>Add New User</CardTitle>
               <CardDescription>
                 Create a new admin or sales staff member. Admins are limited to
-                2, sales staff to 4.
+                3, sales staff to 5.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

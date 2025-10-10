@@ -168,6 +168,13 @@ export const getBarRequestsClient = () =>
     "Get Bar Requests"
   );
 
+export const getRoomBookingClient = () =>
+  withClientErrorHandling(
+    async () => await supabase.from("room_bookings").select("*"),
+    "Could not fetch room bookings",
+    "Get Room Bookings"
+  );
+
 export const createBarRequestsClient = (barRequestItems: any[]) =>
   withClientErrorHandling(
     async () =>

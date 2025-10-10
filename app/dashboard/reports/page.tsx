@@ -16,7 +16,7 @@ import ReportMetricCardSection from "./ReportMetricCardSection";
 import ReportChartSection from "./ReportChartSection";
 import ProductAndProfitSection from "./ProductAndProfitSection";
 import DailySalesReports from "./DailySalesReports";
-import { BarChart3, CalendarDays } from "lucide-react";
+import { BarChart3, CalendarDays, Loader2 } from "lucide-react";
 
 export type ExtendedStats = {
   totalSales: number;
@@ -122,13 +122,14 @@ export default function ReportsDashboard() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-xl font-medium">
+        <Loader2 className="animate-spin h-5 w-5 mr-3 text-primary" />
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-background">
+    <div className="p-6 space-y-6 bg-background ">
       {/* Tabs Navigation */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
         <div className="flex border-b border-border overflow-x-auto scrollbar-hide">

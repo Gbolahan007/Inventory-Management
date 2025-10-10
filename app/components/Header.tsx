@@ -3,20 +3,19 @@
 import type { RootState } from "@/app/store";
 import {
   Bell,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Moon,
-  Search,
-  Sun,
   LogOut,
+  Moon,
+  Sun,
   User,
-  ChevronDown,
 } from "lucide-react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setIsCollapsed, setIsDarkMode } from "../state/global";
 import { useAuth } from "../(auth)/hooks/useAuth";
 import { handleLogout } from "../(auth)/logout-action";
-import { useState } from "react";
+import { setIsCollapsed, setIsDarkMode } from "../state/global";
 
 export function Header() {
   const { user, userRole, userData } = useAuth();
@@ -76,16 +75,6 @@ export function Header() {
 
         {/* Right section - Search, Bell, Profile */}
         <div className="flex items-center space-x-4">
-          {/* Search input */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4 transition-colors duration-200" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-4 py-2.5 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary w-64 bg-muted focus:bg-card transition-colors text-foreground placeholder-secondary"
-            />
-          </div>
-
           {/* Dark mode toggle */}
           <button
             onClick={handleThemeToggle}

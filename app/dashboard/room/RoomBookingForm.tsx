@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { addRoomBooking } from "@/app/_lib/actions";
-import { toast } from "react-hot-toast";
+import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "react-hot-toast";
 
 const CATEGORY_OPTIONS = ["Walk-In", "Regular"];
 const ROOM_TYPES = ["Classic", "Standard", "Hourly", "Quick To Stay"];
@@ -45,7 +45,6 @@ const RoomBookingForm = () => {
       await addRoomBooking(formData);
       toast.success("Booking saved successfully ✅", { id: toastId });
 
-      // ✅ Reset the form
       formRef.current?.reset();
       setPrice(0);
       setNumNights(1);
