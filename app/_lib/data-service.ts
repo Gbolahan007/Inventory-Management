@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { Sale, SaleItem } from "../dashboard/reports/page";
-import type { BarRequest } from "../dashboard/sales/(sales)/types";
+import type {
+  BarRequest,
+  Sale,
+  SaleItem,
+} from "../dashboard/sales/(sales)/types";
 import { supabaseServer } from "./supabaseServer";
 
 interface SaleData {
