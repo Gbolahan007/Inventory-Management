@@ -1,4 +1,4 @@
-import { SaleItem } from "@/app/dashboard/reports/page";
+import { SaleItem } from "@/app/dashboard/sales/(sales)/types";
 
 type ItemStat = {
   name: string;
