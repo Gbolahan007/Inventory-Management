@@ -3,7 +3,7 @@
 import { DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
 import { FormatCurrency } from "../hooks/useFormatCurrency";
 import { MetricCard } from "./MetricCard";
-import { Sale } from "../dashboard/reports/page";
+import { Sale } from "../dashboard/sales/(sales)/types";
 
 type ProfitData = {
   profit_amount: number;
