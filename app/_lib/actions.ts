@@ -128,17 +128,24 @@ export async function createSaleItems(saleItems: SaleItem[]) {
 
 export async function addRoomBooking(formData: FormData) {
   const supabase = await supabaseServer();
-  const customerType = formData.get("customer_type") as string;
-  const roomType = formData.get("room_type") as string;
-  const price = parseFloat(formData.get("price") as string);
+  console.log(formData);
   const category = formData.get("category") as string;
+  const customer_type = formData.get("customer_type") as string;
+  const room_type = formData.get("room_type") as string;
+  const discount_sale = formData.get("discount_sale") === "Yes";
+  const num_nights = parseInt(formData.get("num_nights") as string, 10);
+  const total_price = parseFloat(formData.get("total") as string);
 
-  const { error } = await supabase.from("room_bookings").insert({
-    customer_type: customerType,
-    room_type: roomType,
-    price,
-    category,
-  });
+  const { error } = await supabase.from("room_bookings").insert([
+    {
+      category,
+      customer_type,
+      room_type,
+      discount_sale,
+      num_nights,
+      total_price,
+    },
+  ]);
 
   if (error) throw new Error(error.message);
   return { success: true };

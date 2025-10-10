@@ -1,6 +1,7 @@
 import { ShoppingCart, DollarSign, Package, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Stats } from "./types";
+import { FormatCurrency } from "@/app/hooks/useFormatCurrency";
 
 type SaleItem = {
   id?: string;
@@ -92,7 +93,7 @@ export function StatsCards({ stats, isDarkMode, salesItems }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-green-600">
-            ₦{netProfit.toLocaleString() || 0}
+            {"*".repeat(String(FormatCurrency(netProfit)).length)}
           </div>
         </CardContent>
       </Card>

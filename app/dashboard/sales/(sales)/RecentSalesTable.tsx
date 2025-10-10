@@ -126,6 +126,7 @@ export function RecentSalesTable({
 
   const saleItems = selectedSale ? getSaleItems(selectedSale.id) : [];
 
+  console.log(saleItems);
   // Row click handler
   const handleRowClick = (params: any) => {
     const sale = sales.find((s) => s.id === params.row.id);

@@ -346,3 +346,62 @@ function generateSaleNumber(): number {
     ).padStart(3, "0")}`
   );
 }
+
+export const getDailySalesReportClient = () =>
+  withClientErrorHandling(
+    async () => {
+      const [salesRes, expensesRes] = await Promise.all([
+        supabase.from("sales").select("id, sale_date, total_amount"),
+        supabase.from("expenses").select("id, amount, category, created_at"),
+      ]);
+
+      if (salesRes.error) throw salesRes.error;
+      if (expensesRes.error) throw expensesRes.error;
+
+      const sales = salesRes.data || [];
+      const expenses = expensesRes.data || [];
+
+      // Initialize report object for each date
+      const report = sales.reduce<
+        Record<
+          string,
+          { totalSales: number; cigarette: number; drinkSales: number }
+        >
+      >((acc, sale) => {
+        const date = sale.sale_date.split("T")[0];
+        if (!acc[date]) {
+          acc[date] = { totalSales: 0, cigarette: 0, drinkSales: 0 };
+        }
+        acc[date].totalSales += Number(sale.total_amount);
+        return acc;
+      }, {});
+
+      // Add cigarette/ciggar expenses separately
+      expenses.forEach((exp) => {
+        const date = exp.created_at.split("T")[0];
+        const category = exp.category?.toLowerCase();
+        if (category === "ciggar" || category === "cigarette") {
+          if (!report[date]) {
+            report[date] = { totalSales: 0, cigarette: 0, drinkSales: 0 };
+          }
+          report[date].cigarette += Number(exp.amount);
+        }
+      });
+
+      // ✅ Compute drinkSales = totalSales - cigarette
+      for (const date in report) {
+        report[date].drinkSales =
+          report[date].totalSales - report[date].cigarette;
+      }
+
+      return {
+        data: Object.entries(report).map(([date, data]) => ({
+          date,
+          ...data,
+        })),
+        error: null,
+      };
+    },
+    "Could not fetch daily sales report",
+    "Get Daily Sales Report"
+  );
