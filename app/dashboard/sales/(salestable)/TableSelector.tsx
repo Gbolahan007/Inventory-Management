@@ -1,4 +1,4 @@
-import { SaleItem } from "@/app/dashboard/reports/page";
+import { SaleItem } from "@/app/(dashboard)/TopSellingItems";
 
 interface TableSelectorProps {
   isDarkMode: boolean;
