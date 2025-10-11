@@ -1,8 +1,9 @@
 import { useDailySalesReport } from "@/app/components/queryhooks/useDailySalesReport";
 import React, { useState, useMemo } from "react";
 import { Calendar, DollarSign, Filter } from "lucide-react";
+import { useRoomBookings } from "@/app/components/queryhooks/useRoomBookings";
 
-// ✅ Define type for each sales record
+// ✅ Types
 interface DailySalesRecord {
   date: string;
   drinkSales?: number;
@@ -10,23 +11,38 @@ interface DailySalesRecord {
   totalSales?: number;
 }
 
+interface Booking {
+  id: string | number;
+  room_type: string;
+  num_nights?: number;
+  customer_type?: string;
+  discount_sale?: boolean | string;
+  total_price?: number;
+  category: string;
+  created_at: string;
+}
+
 function DailySalesReports() {
   const { dailySalesReport } = useDailySalesReport() as {
     dailySalesReport: DailySalesRecord[] | undefined;
   };
 
+  const { room_bookings } = useRoomBookings() as { room_bookings: Booking[] };
+
   const [filterType, setFilterType] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
 
-  // Get current date info
-  const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
-    .toISOString()
-    .split("T")[0];
+  // ✅ Local date helpers (fixed timezone issue)
+  const getLocalDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  const today = new Date().toLocaleDateString("en-CA");
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toLocaleDateString(
+    "en-CA"
+  );
 
-  // Filter data based on selected filter
-  const filteredData = useMemo(() => {
+  // ✅ Filter drink/cigarette data
+  const filteredSalesData = useMemo(() => {
     if (!dailySalesReport) return [];
 
     let filtered = [...dailySalesReport];
@@ -44,11 +60,10 @@ function DailySalesReports() {
         );
         break;
       case "monthly":
-        if (selectedMonth) {
+        if (selectedMonth)
           filtered = filtered.filter((item) =>
             item.date.startsWith(selectedMonth)
           );
-        }
         break;
       default:
         break;
@@ -66,40 +81,114 @@ function DailySalesReports() {
     sevenDaysAgo,
   ]);
 
-  // Calculate totals
+  // ✅ Filter room bookings by date (fixed timezone)
+  const filteredBookings = useMemo(() => {
+    if (!room_bookings) return [];
+
+    let filtered = [...room_bookings];
+
+    switch (filterType) {
+      case "today":
+        filtered = filtered.filter((b) => getLocalDate(b.created_at) === today);
+        break;
+      case "yesterday":
+        filtered = filtered.filter(
+          (b) => getLocalDate(b.created_at) === yesterday
+        );
+        break;
+      case "weekly":
+        filtered = filtered.filter(
+          (b) =>
+            getLocalDate(b.created_at) >= sevenDaysAgo &&
+            getLocalDate(b.created_at) <= today
+        );
+        break;
+      case "monthly":
+        if (selectedMonth)
+          filtered = filtered.filter((b) =>
+            getLocalDate(b.created_at).startsWith(selectedMonth)
+          );
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  }, [
+    room_bookings,
+    filterType,
+    selectedMonth,
+    today,
+    yesterday,
+    sevenDaysAgo,
+  ]);
+
+  // ✅ Group bookings by date and category (Room / Short Rest)
+  const groupedRoomData = useMemo(() => {
+    const grouped: Record<
+      string,
+      { room: number; shortRest: number; total: number }
+    > = {};
+
+    filteredBookings.forEach((b) => {
+      const date = getLocalDate(b.created_at); // ✅ use local date
+      const price = b.total_price || 0;
+      if (!grouped[date]) grouped[date] = { room: 0, shortRest: 0, total: 0 };
+
+      if (b.category === "Room") grouped[date].room += price;
+      if (b.category === "Short Rest") grouped[date].shortRest += price;
+      grouped[date].total += price;
+    });
+
+    return grouped;
+  }, [filteredBookings]);
+
+  // ✅ Totals for Drinks, Cigarettes, Rooms
   const totals = useMemo(() => {
-    if (!filteredData.length) return { drinks: 0, cigarettes: 0, total: 0 };
-
-    return filteredData.reduce(
-      (acc, item) => ({
-        drinks: acc.drinks + (item.drinkSales || 0),
-        cigarettes: acc.cigarettes + (item.cigarette || 0),
-        total: acc.total + (item.totalSales || 0),
-      }),
-      { drinks: 0, cigarettes: 0, total: 0 }
+    const drink = filteredSalesData.reduce(
+      (acc, item) => acc + (item.drinkSales || 0),
+      0
     );
-  }, [filteredData]);
+    const cig = filteredSalesData.reduce(
+      (acc, item) => acc + (item.cigarette || 0),
+      0
+    );
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-NG", {
+    const room = Object.values(groupedRoomData).reduce(
+      (acc, day) => acc + day.room,
+      0
+    );
+    const shortRest = Object.values(groupedRoomData).reduce(
+      (acc, day) => acc + day.shortRest,
+      0
+    );
+
+    return {
+      drink,
+      cig,
+      room,
+      shortRest,
+      total: drink + cig + room + shortRest,
+    };
+  }, [filteredSalesData, groupedRoomData]);
+
+  // ✅ Format currency
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: "NGN",
     }).format(amount);
-  };
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("en-US", {
       weekday: "short",
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-  };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-1 md:p-2 lg:p-4 ">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -123,7 +212,6 @@ function DailySalesReports() {
           </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            {/* Quick Filters */}
             <div className="flex-1">
               <label className="text-sm font-medium text-card-foreground block mb-2">
                 Quick Filter
@@ -150,7 +238,6 @@ function DailySalesReports() {
               </div>
             </div>
 
-            {/* Monthly Filter */}
             <div className="flex-1 max-w-xs">
               <label className="text-sm font-medium text-card-foreground block mb-2">
                 Monthly Filter
@@ -168,63 +255,45 @@ function DailySalesReports() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Drink Sales
-              </h3>
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-primary" />
+        {/* ✅ Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            { label: "Room Sales", value: totals.room },
+            { label: "Short Rest", value: totals.shortRest },
+            { label: "Drink Sales", value: totals.drink },
+            { label: "Cigarette", value: totals.cig },
+            { label: "Grand Total", value: totals.total },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="bg-card border border-border rounded-lg p-4 shadow-sm"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {item.label}
+                </h3>
               </div>
+              <p className="text-xl font-bold text-card-foreground break-words">
+                {formatCurrency(item.value)}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-card-foreground">
-              {formatCurrency(totals.drinks)}
-            </p>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Cigarette Sales
-              </h3>
-              <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-accent" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-card-foreground">
-              {formatCurrency(totals.cigarettes)}
-            </p>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Total Sales
-              </h3>
-              <div className="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-secondary" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-card-foreground">
-              {formatCurrency(totals.total)}
-            </p>
-          </div>
+          ))}
         </div>
 
-        {/* Sales Table */}
+        {/* ✅ Sales Table */}
         <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-semibold text-card-foreground">
-                Sales Records
-              </h2>
-              <span className="ml-auto text-sm text-muted-foreground">
-                {filteredData.length} records
-              </span>
-            </div>
+          <div className="p-6 border-b border-border flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-card-foreground">
+              Sales Records
+            </h2>
+            <span className="ml-auto text-sm text-muted-foreground">
+              {filteredSalesData.length + Object.keys(groupedRoomData).length}{" "}
+              records
+            </span>
           </div>
 
           <div className="overflow-x-auto">
@@ -235,47 +304,56 @@ function DailySalesReports() {
                     Date
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Room Sales
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Short Rest
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Drink Sales
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Cigarette Sales
+                    Cigarette
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total Sales
+                    Total
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredData.length > 0 ? (
-                  filteredData.map((record, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-muted/50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-card-foreground">
-                        {formatDate(record.date)}
+                {Object.entries(groupedRoomData).map(([date, roomData]) => {
+                  const drink =
+                    filteredSalesData.find((d) => d.date === date)
+                      ?.drinkSales || 0;
+                  const cig =
+                    filteredSalesData.find((d) => d.date === date)?.cigarette ||
+                    0;
+                  const total =
+                    roomData.room + roomData.shortRest + drink + cig;
+
+                  return (
+                    <tr key={date} className="hover:bg-muted/50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {formatDate(date)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-card-foreground">
-                        {formatCurrency(record.drinkSales || 0)}
+                      <td className="px-6 py-4 text-right">
+                        {formatCurrency(roomData.room)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-card-foreground">
-                        {formatCurrency(record.cigarette || 0)}
+                      <td className="px-6 py-4 text-right">
+                        {formatCurrency(roomData.shortRest)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-card-foreground">
-                        {formatCurrency(record.totalSales || 0)}
+                      <td className="px-6 py-4 text-right">
+                        {formatCurrency(drink)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {formatCurrency(cig)}
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold">
+                        {formatCurrency(total)}
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-12 text-center text-muted-foreground"
-                    >
-                      No sales records found for the selected filter
-                    </td>
-                  </tr>
-                )}
+                  );
+                })}
               </tbody>
             </table>
           </div>
