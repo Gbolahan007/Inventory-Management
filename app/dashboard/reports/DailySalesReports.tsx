@@ -26,6 +26,7 @@ function DailySalesReports() {
   const { dailySalesReport } = useDailySalesReport() as {
     dailySalesReport: DailySalesRecord[] | undefined;
   };
+  console.log(dailySalesReport);
 
   const { room_bookings } = useRoomBookings() as { room_bookings: Booking[] };
 
@@ -321,39 +322,51 @@ function DailySalesReports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {Object.entries(groupedRoomData).map(([date, roomData]) => {
-                  const drink =
-                    filteredSalesData.find((d) => d.date === date)
-                      ?.drinkSales || 0;
-                  const cig =
-                    filteredSalesData.find((d) => d.date === date)?.cigarette ||
-                    0;
-                  const total =
-                    roomData.room + roomData.shortRest + drink + cig;
+                {Array.from(
+                  new Set([
+                    ...Object.keys(groupedRoomData),
+                    ...filteredSalesData.map((d) => d.date),
+                  ])
+                )
+                  .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+                  .map((date) => {
+                    const roomData = groupedRoomData[date] || {
+                      room: 0,
+                      shortRest: 0,
+                      total: 0,
+                    };
+                    const drink =
+                      filteredSalesData.find((d) => d.date === date)
+                        ?.drinkSales || 0;
+                    const cig =
+                      filteredSalesData.find((d) => d.date === date)
+                        ?.cigarette || 0;
+                    const total =
+                      roomData.room + roomData.shortRest + drink + cig;
 
-                  return (
-                    <tr key={date} className="hover:bg-muted/50 transition">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {formatDate(date)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {formatCurrency(roomData.room)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {formatCurrency(roomData.shortRest)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {formatCurrency(drink)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {formatCurrency(cig)}
-                      </td>
-                      <td className="px-6 py-4 text-right font-semibold">
-                        {formatCurrency(total)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={date} className="hover:bg-muted/50 transition">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {formatDate(date)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatCurrency(roomData.room)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatCurrency(roomData.shortRest)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatCurrency(drink)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {formatCurrency(cig)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold">
+                          {formatCurrency(total)}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
