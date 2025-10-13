@@ -43,14 +43,7 @@ export function SalesRepSummary({ salesRepSummary }: SalesRepSummaryProps) {
                     ₦{s.totalAmount.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Orders:
-                  </span>
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
-                    {s.orderCount}
-                  </span>
-                </div>
+
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-600 dark:text-slate-400">
                     Items Sold:

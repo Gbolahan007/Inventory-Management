@@ -1,7 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+"use client";
+
+import { useDailyExpenses } from "@/app/components/queryhooks/useDailyExpenses";
 import { useDailySalesReport } from "@/app/components/queryhooks/useDailySalesReport";
-import React, { useState, useMemo } from "react";
-import { Calendar, DollarSign, Filter } from "lucide-react";
 import { useRoomBookings } from "@/app/components/queryhooks/useRoomBookings";
+import { Calendar, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import ExpenseForm from "./ExpenseForm";
 
 // ✅ Types
 interface DailySalesRecord {
@@ -22,32 +28,30 @@ interface Booking {
   created_at: string;
 }
 
-function DailySalesReports() {
+export default function DailySalesReports() {
   const { dailySalesReport } = useDailySalesReport() as {
     dailySalesReport: DailySalesRecord[] | undefined;
   };
-  console.log(dailySalesReport);
-
   const { room_bookings } = useRoomBookings() as { room_bookings: Booking[] };
+  const { expenses } = useDailyExpenses();
 
   const [filterType, setFilterType] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
-  // ✅ Local date helpers (fixed timezone issue)
   const getLocalDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-CA"); // YYYY-MM-DD local
+    new Date(dateStr).toLocaleDateString("en-CA");
   const today = new Date().toLocaleDateString("en-CA");
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toLocaleDateString(
     "en-CA"
   );
 
-  // ✅ Filter drink/cigarette data
+  // ✅ Filter sales data
   const filteredSalesData = useMemo(() => {
     if (!dailySalesReport) return [];
 
     let filtered = [...dailySalesReport];
-
     switch (filterType) {
       case "today":
         filtered = filtered.filter((item) => item.date === today);
@@ -66,8 +70,6 @@ function DailySalesReports() {
             item.date.startsWith(selectedMonth)
           );
         break;
-      default:
-        break;
     }
 
     return filtered.sort(
@@ -82,12 +84,11 @@ function DailySalesReports() {
     sevenDaysAgo,
   ]);
 
-  // ✅ Filter room bookings by date (fixed timezone)
+  // ✅ Filtered Bookings
   const filteredBookings = useMemo(() => {
     if (!room_bookings) return [];
 
     let filtered = [...room_bookings];
-
     switch (filterType) {
       case "today":
         filtered = filtered.filter((b) => getLocalDate(b.created_at) === today);
@@ -110,8 +111,6 @@ function DailySalesReports() {
             getLocalDate(b.created_at).startsWith(selectedMonth)
           );
         break;
-      default:
-        break;
     }
 
     return filtered;
@@ -124,15 +123,14 @@ function DailySalesReports() {
     sevenDaysAgo,
   ]);
 
-  // ✅ Group bookings by date and category (Room / Short Rest)
+  // ✅ Group room data
   const groupedRoomData = useMemo(() => {
     const grouped: Record<
       string,
       { room: number; shortRest: number; total: number }
     > = {};
-
     filteredBookings.forEach((b) => {
-      const date = getLocalDate(b.created_at); // ✅ use local date
+      const date = getLocalDate(b.created_at);
       const price = b.total_price || 0;
       if (!grouped[date]) grouped[date] = { room: 0, shortRest: 0, total: 0 };
 
@@ -140,45 +138,74 @@ function DailySalesReports() {
       if (b.category === "Short Rest") grouped[date].shortRest += price;
       grouped[date].total += price;
     });
-
     return grouped;
   }, [filteredBookings]);
 
-  // ✅ Totals for Drinks, Cigarettes, Rooms
+  // ✅ Helper: Get expenses for each date
+  const getExpensesByDate = (date: string) => {
+    if (!expenses) return [];
+    return expenses.filter((exp: any) => exp.expense_date?.startsWith(date));
+  };
+
+  // ✅ Totals (after deducting expenses)
   const totals = useMemo(() => {
-    const drink = filteredSalesData.reduce(
-      (acc, item) => acc + (item.drinkSales || 0),
-      0
-    );
-    const cig = filteredSalesData.reduce(
-      (acc, item) => acc + (item.cigarette || 0),
-      0
+    const allDates = Array.from(
+      new Set([
+        ...Object.keys(groupedRoomData),
+        ...filteredSalesData.map((d) => d.date),
+      ])
     );
 
-    const room = Object.values(groupedRoomData).reduce(
-      (acc, day) => acc + day.room,
-      0
-    );
-    const shortRest = Object.values(groupedRoomData).reduce(
-      (acc, day) => acc + day.shortRest,
-      0
-    );
+    let totalRoom = 0;
+    let totalShortRest = 0;
+    let totalDrink = 0;
+    let totalCig = 0;
+    let totalExpenses = 0;
+    let grandTotal = 0;
+
+    allDates.forEach((date) => {
+      const roomData = groupedRoomData[date] || {
+        room: 0,
+        shortRest: 0,
+        total: 0,
+      };
+      const drink =
+        filteredSalesData.find((d) => d.date === date)?.drinkSales || 0;
+      const cig =
+        filteredSalesData.find((d) => d.date === date)?.cigarette || 0;
+
+      const dailyExpenses = getExpensesByDate(date);
+      const dailyExpenseTotal = dailyExpenses.reduce(
+        (sum, exp) => sum + (exp.amount || 0),
+        0
+      );
+
+      const gross = roomData.room + roomData.shortRest + drink + cig;
+      const net = gross - dailyExpenseTotal;
+
+      totalRoom += roomData.room;
+      totalShortRest += roomData.shortRest;
+      totalDrink += drink;
+      totalCig += cig;
+      totalExpenses += dailyExpenseTotal;
+      grandTotal += net;
+    });
 
     return {
-      drink,
-      cig,
-      room,
-      shortRest,
-      total: drink + cig + room + shortRest,
+      room: totalRoom,
+      shortRest: totalShortRest,
+      drink: totalDrink,
+      cig: totalCig,
+      expenses: totalExpenses,
+      total: grandTotal,
     };
-  }, [filteredSalesData, groupedRoomData]);
+  }, [filteredSalesData, groupedRoomData, expenses]);
 
-  // ✅ Format currency
-  const formatCurrency = (amount: number) =>
+  const formatCurrency = (n: number) =>
     new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: "NGN",
-    }).format(amount);
+    }).format(n);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-US", {
@@ -189,97 +216,108 @@ function DailySalesReports() {
     });
 
   return (
-    <div className="min-h-screen bg-background p-1 md:p-2 lg:p-4 ">
+    <div className="min-h-screen bg-background p-2 md:p-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* ✅ Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Daily Sales Report
-            </h1>
+            <h1 className="text-3xl font-bold">Daily Sales Report</h1>
             <p className="text-muted-foreground mt-1">
-              Track and analyze your sales performance
+              Track and analyze your daily performance
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-card-foreground">
-              Filters
-            </h2>
-          </div>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-card-foreground block mb-2">
-                Quick Filter
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {["all", "today", "yesterday", "weekly"].map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => {
-                      setFilterType(filter);
-                      if (filter !== "monthly") setSelectedMonth("");
-                    }}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      filterType === filter
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    }`}
-                  >
-                    {filter === "weekly"
-                      ? "Last 7 Days"
-                      : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 max-w-xs">
-              <label className="text-sm font-medium text-card-foreground block mb-2">
-                Monthly Filter
-              </label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value);
-                  setFilterType("monthly");
+        {/* ✅ Filters */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={() => setFilterType("today")}
+            className={`px-3 py-2 rounded-md text-sm border ${
+              filterType === "today"
+                ? "bg-primary text-white"
+                : "bg-card text-foreground"
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setFilterType("yesterday")}
+            className={`px-3 py-2 rounded-md text-sm border ${
+              filterType === "yesterday"
+                ? "bg-primary text-white"
+                : "bg-card text-foreground"
+            }`}
+          >
+            Yesterday
+          </button>
+          <button
+            onClick={() => setFilterType("weekly")}
+            className={`px-3 py-2 rounded-md text-sm border ${
+              filterType === "weekly"
+                ? "bg-primary text-white"
+                : "bg-card text-foreground"
+            }`}
+          >
+            This Week
+          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setFilterType("monthly");
+              }}
+              className="border rounded-md p-2 text-sm bg-card"
+            />
+            {selectedMonth && (
+              <button
+                onClick={() => {
+                  setSelectedMonth("");
+                  setFilterType("all");
                 }}
-                className="w-full px-4 py-2 bg-background border border-input rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+                className="text-xs text-muted-foreground underline"
+              >
+                Clear
+              </button>
+            )}
           </div>
+          <button
+            onClick={() => {
+              setFilterType("all");
+              setSelectedMonth("");
+            }}
+            className={`px-3 py-2 rounded-md text-sm border ${
+              filterType === "all"
+                ? "bg-primary text-white"
+                : "bg-card text-foreground"
+            }`}
+          >
+            All
+          </button>
         </div>
 
         {/* ✅ Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {[
             { label: "Room Sales", value: totals.room },
             { label: "Short Rest", value: totals.shortRest },
             { label: "Drink Sales", value: totals.drink },
             { label: "Cigarette", value: totals.cig },
-            { label: "Grand Total", value: totals.total },
+            { label: "Total Expenses", value: totals.expenses },
+            { label: "Net Total", value: totals.total },
           ].map((item) => (
             <div
               key={item.label}
               className="bg-card border border-border rounded-lg p-4 shadow-sm"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                </div>
+              <div className="flex items-center gap-3 mb-2">
+                <DollarSign className="w-5 h-5 text-primary" />
                 <h3 className="text-sm font-medium text-muted-foreground">
                   {item.label}
                 </h3>
               </div>
-              <p className="text-xl font-bold text-card-foreground break-words">
-                {formatCurrency(item.value)}
-              </p>
+              <p className="text-xl font-bold">{formatCurrency(item.value)}</p>
             </div>
           ))}
         </div>
@@ -288,39 +326,35 @@ function DailySalesReports() {
         <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
           <div className="p-6 border-b border-border flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-card-foreground">
-              Sales Records
-            </h2>
-            <span className="ml-auto text-sm text-muted-foreground">
-              {filteredSalesData.length + Object.keys(groupedRoomData).length}{" "}
-              records
-            </span>
+            <h2 className="text-lg font-semibold">Sales Records</h2>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase">
                     Room Sales
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase">
                     Short Rest
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase">
                     Drink Sales
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase">
                     Cigarette
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase">
+                    Net Total
                   </th>
+                  <th></th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-border">
                 {Array.from(
                   new Set([
@@ -341,30 +375,127 @@ function DailySalesReports() {
                     const cig =
                       filteredSalesData.find((d) => d.date === date)
                         ?.cigarette || 0;
-                    const total =
+
+                    const dailyExpenses = getExpensesByDate(date);
+                    const totalExpenses = dailyExpenses.reduce(
+                      (sum, exp) => sum + (exp.amount || 0),
+                      0
+                    );
+
+                    const grossTotal =
                       roomData.room + roomData.shortRest + drink + cig;
+                    const netTotal = grossTotal - totalExpenses;
+
+                    const isExpanded = expandedDate === date;
 
                     return (
-                      <tr key={date} className="hover:bg-muted/50 transition">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {formatDate(date)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {formatCurrency(roomData.room)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {formatCurrency(roomData.shortRest)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {formatCurrency(drink)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {formatCurrency(cig)}
-                        </td>
-                        <td className="px-6 py-4 text-right font-semibold">
-                          {formatCurrency(total)}
-                        </td>
-                      </tr>
+                      <React.Fragment key={date}>
+                        <tr className="hover:bg-muted/50 transition">
+                          <td className="px-6 py-4 text-sm">
+                            {formatDate(date)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {formatCurrency(roomData.room)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {formatCurrency(roomData.shortRest)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {formatCurrency(drink)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {formatCurrency(cig)}
+                          </td>
+                          <td className="px-6 py-4 text-right font-semibold">
+                            {formatCurrency(netTotal)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() =>
+                                setExpandedDate(isExpanded ? null : date)
+                              }
+                              className="text-primary text-sm flex items-center gap-1"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  Hide <ChevronUp className="w-4 h-4" />
+                                </>
+                              ) : (
+                                <>
+                                  Show <ChevronDown className="w-4 h-4" />
+                                </>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* ✅ Expanded Row for Expenses */}
+                        {isExpanded && (
+                          <tr className="bg-muted/20">
+                            <td colSpan={7} className="p-4">
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-lg">
+                                  Expenses for {formatDate(date)}
+                                </h4>
+
+                                {(() => {
+                                  // ✅ Group expenses by category
+                                  const groupedByCategory: Record<
+                                    string,
+                                    number
+                                  > = {};
+                                  dailyExpenses.forEach((exp: any) => {
+                                    if (!groupedByCategory[exp.category])
+                                      groupedByCategory[exp.category] = 0;
+                                    groupedByCategory[exp.category] +=
+                                      exp.amount || 0;
+                                  });
+
+                                  const groupedExpenses =
+                                    Object.entries(groupedByCategory);
+
+                                  return groupedExpenses.length > 0 ? (
+                                    <ul className="space-y-1">
+                                      {groupedExpenses.map(
+                                        ([category, total]) => (
+                                          <li
+                                            key={category}
+                                            className="flex justify-between border-b border-border py-1"
+                                          >
+                                            <span className="text-sm">
+                                              {category}
+                                            </span>
+                                            <span className="text-sm font-medium">
+                                              {formatCurrency(total)}
+                                            </span>
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-muted-foreground text-sm">
+                                      No expenses added for this date.
+                                    </p>
+                                  );
+                                })()}
+
+                                {/* ✅ Show total expenses and net profit */}
+                                <div className="flex justify-between border-t border-border pt-2 font-semibold">
+                                  <span>Total Expenses:</span>
+                                  <span>{formatCurrency(totalExpenses)}</span>
+                                </div>
+                                <div className="flex justify-between text-green-600 font-semibold">
+                                  <span>Net Profit:</span>
+                                  <span>{formatCurrency(netTotal)}</span>
+                                </div>
+
+                                {/* ✅ Add Expense Form */}
+                                <ExpenseForm selectedDate={date} />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
               </tbody>
@@ -375,5 +506,3 @@ function DailySalesReports() {
     </div>
   );
 }
-
-export default DailySalesReports;

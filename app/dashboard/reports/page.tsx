@@ -16,7 +16,8 @@ import ReportMetricCardSection from "./ReportMetricCardSection";
 import ReportChartSection from "./ReportChartSection";
 import ProductAndProfitSection from "./ProductAndProfitSection";
 import DailySalesReports from "./DailySalesReports";
-import { BarChart3, CalendarDays, Loader2 } from "lucide-react";
+import CashAndTransferReport from "./CashAndTransferReport"; // ✅ new component
+import { BarChart3, CalendarDays, CreditCard, Loader2 } from "lucide-react";
 
 export type ExtendedStats = {
   totalSales: number;
@@ -46,9 +47,9 @@ export default function ReportsDashboard() {
   const { recentSales = [] } = useRecentSales();
   const { saleItemsWithCategories = [] } = useSaleItemsWithCategories();
   const { topSellingProducts = [] } = useTopSellingProducts();
-  const [activeTab, setActiveTab] = useState<"overview" | "dailyReport">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "dailyReport" | "cashTransfer"
+  >("overview");
 
   const profitDate = useMemo(
     () =>
@@ -129,7 +130,7 @@ export default function ReportsDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-background ">
+    <div className="p-6 space-y-6 bg-background">
       {/* Tabs Navigation */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
         <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
@@ -156,6 +157,19 @@ export default function ReportsDashboard() {
             <CalendarDays className="w-5 h-5" />
             Daily Report
           </button>
+
+          {/* ✅ NEW TAB */}
+          <button
+            onClick={() => setActiveTab("cashTransfer")}
+            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+              activeTab === "cashTransfer"
+                ? "text-primary border-b-2 border-primary bg-muted/50"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CreditCard className="w-5 h-5" />
+            Cash & Transfer Report
+          </button>
         </div>
       </div>
 
@@ -172,8 +186,10 @@ export default function ReportsDashboard() {
             profitChartData={profitChartData}
           />
         </>
-      ) : (
+      ) : activeTab === "dailyReport" ? (
         <DailySalesReports />
+      ) : (
+        <CashAndTransferReport />
       )}
     </div>
   );

@@ -205,3 +205,26 @@ export async function updateMultipleBarRequestsStatus(
     };
   return { success: true };
 }
+
+export async function addExpense(formData: FormData) {
+  const supabase = await supabaseServer();
+
+  const expense_date = formData.get("expense_date") as string;
+  const category = formData.get("category") as string;
+  const amount = Number(formData.get("amount"));
+  console.log(formData);
+
+  if (!expense_date || !category || !amount) {
+    throw new Error("All fields are required");
+  }
+
+  const { data, error } = await supabase
+    .from("daily_expenses")
+    .insert([{ expense_date, category, amount }])
+    .select()
+    .single();
+
+  if (error) throw new Error("Could not add expense");
+
+  return data;
+}

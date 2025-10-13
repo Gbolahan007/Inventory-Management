@@ -189,6 +189,17 @@ export const getAllUsersClient = () =>
     "Users data could not be loaded",
     "Get All Users"
   );
+export const getExpensesClient = () =>
+  withClientErrorHandling(
+    async () =>
+      await supabase
+        .from("daily_expenses")
+        .select("*")
+        .order("expense_date", { ascending: false }),
+
+    "Could not fetch daily expenses",
+    "Get Expenses"
+  );
 
 export const getSaleItemsWithCategoriesClient = () =>
   withClientErrorHandling(
