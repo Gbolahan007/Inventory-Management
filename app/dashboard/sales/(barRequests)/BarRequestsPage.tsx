@@ -156,7 +156,6 @@ export default function BarRequestsPage() {
 
     return sortOrder === "asc" ? comparison : -comparison;
   });
-  console.log(filteredRequests);
 
   // ✅ Calculate sales rep summaries (fixed)
   const salesRepSummary = filteredRequests.reduce((acc, sale) => {
@@ -195,8 +194,6 @@ export default function BarRequestsPage() {
     return acc;
   }, {} as Record<string, { totalAmount: number; totalExpenses: number; totalItems: number; orderCount: number }>);
 
-  console.log(salesRepSummary);
-
   const clearFilters = () => {
     setFilters({ salesRep: "", dateRange: "", searchTerm: "" });
   };
@@ -210,11 +207,6 @@ export default function BarRequestsPage() {
     } catch (error) {
       console.error("Error refreshing data:", error);
     }
-  };
-
-  const clearOldRequests = async (type: "yesterday" | "week") => {
-    console.log(`Clearing ${type} requests...`);
-    await handleRefresh();
   };
 
   const handleSort = (newSortBy: typeof sortBy) => {
@@ -241,10 +233,6 @@ export default function BarRequestsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-            <div className="text-sm text-slate-500 dark:text-slate-400 order-last sm:order-first">
-              {filteredRequests.length} of {barRequests.length} requests
-            </div>
-
             <div className="flex items-center gap-2">
               <button
                 onClick={handleRefresh}
@@ -258,23 +246,6 @@ export default function BarRequestsPage() {
                   {isFetching ? "Refreshing..." : "Refresh"}
                 </span>
               </button>
-
-              <div className="flex gap-1">
-                <button
-                  onClick={() => clearOldRequests("yesterday")}
-                  className="px-2 py-2 text-xs bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-700 dark:text-orange-300 rounded-md transition-colors"
-                >
-                  <span className="hidden sm:inline">Clear Yesterday</span>
-                  <span className="sm:hidden">Y</span>
-                </button>
-                <button
-                  onClick={() => clearOldRequests("week")}
-                  className="px-2 py-2 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded-md transition-colors"
-                >
-                  <span className="hidden sm:inline">Clear Week+</span>
-                  <span className="sm:hidden">W+</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>

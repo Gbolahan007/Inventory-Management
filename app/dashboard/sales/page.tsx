@@ -83,9 +83,6 @@ export default function SalesPage() {
     })
   );
 
-  console.log(recentSales);
-  console.log(salesItems);
-
   const handleAddSale = () => {
     setIsAddSaleOpen(true);
   };

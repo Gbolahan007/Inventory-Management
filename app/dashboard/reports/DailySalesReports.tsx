@@ -5,7 +5,7 @@
 import { useDailyExpenses } from "@/app/components/queryhooks/useDailyExpenses";
 import { useDailySalesReport } from "@/app/components/queryhooks/useDailySalesReport";
 import { useRoomBookings } from "@/app/components/queryhooks/useRoomBookings";
-import { Calendar, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
+import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import ExpenseForm from "./ExpenseForm";
 
@@ -297,8 +297,8 @@ export default function DailySalesReports() {
           </button>
         </div>
 
-        {/* ✅ Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        {/* ✅ Summary Cards (Improved Design) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {[
             { label: "Room Sales", value: totals.room },
             { label: "Short Rest", value: totals.shortRest },
@@ -309,15 +309,16 @@ export default function DailySalesReports() {
           ].map((item) => (
             <div
               key={item.label}
-              className="bg-card border border-border rounded-lg p-4 shadow-sm"
+              className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              <div className="flex items-center gap-3 mb-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  {item.label}
-                </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{item.label}</p>
+                  <p className="text-2xl font-semibold mt-1 tracking-tight">
+                    {formatCurrency(item.value)}
+                  </p>
+                </div>
               </div>
-              <p className="text-xl font-bold">{formatCurrency(item.value)}</p>
             </div>
           ))}
         </div>
@@ -480,7 +481,7 @@ export default function DailySalesReports() {
                                 })()}
 
                                 {/* ✅ Show total expenses and net profit */}
-                                <div className="flex justify-between border-t border-border pt-2 font-semibold">
+                                <div className="flex justify-between border-border pt-2 font-semibold">
                                   <span>Total Expenses:</span>
                                   <span>{formatCurrency(totalExpenses)}</span>
                                 </div>

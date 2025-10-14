@@ -59,7 +59,7 @@ export function useTableCartLogic({
   const currentExpensesTotal = getTotalExpenses(selectedTable);
 
   // ✅ New: exclude kitchen/asun from sale total calculation
-  const excludedCategories = ["kitchen", "asun"];
+  const excludedCategories = ["kitchen", "asun", "suya"];
   const includedExpenses = currentExpenses.filter(
     (exp) => !excludedCategories.includes(exp.category.toLowerCase())
   );
@@ -67,7 +67,6 @@ export function useTableCartLogic({
     (sum, exp) => sum + exp.amount,
     0
   );
-  // ✅ Final total for the sale (cart total + non-excluded expenses)
   const finalTotal = currentTotal + includedExpensesTotal;
   // Initialize user
   useEffect(() => {

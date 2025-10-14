@@ -56,7 +56,7 @@ export function CartFooter({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
 
-  const categories = ["Kitchen", "Cigarette", "Asun"];
+  const categories = ["Kitchen", "Cigarette", "Asun", "Suya"];
 
   const addExpense = () => {
     if (!selectedCategory || !expenseAmount) {
