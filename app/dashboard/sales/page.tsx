@@ -42,23 +42,19 @@ export default function SalesPage() {
     "dashboard" | "bar-requests" | "pending-sales"
   >("dashboard");
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
-  // Table cart store
   const { getActiveTables, getTableCart, getTableTotal } = useTableCartStore();
   const activeTables = getActiveTables();
   const totalActiveItems = activeTables.reduce(
     (sum, tableId) => sum + getTableCart(tableId).length,
     0
   );
-  // const totalActiveAmount = activeTables.reduce(
-  //   (sum, tableId) => sum + getTableTotal(tableId),
-  //   0
-  // );
 
   // Use React Query hooks
   const { products = [], isLoading: productsLoading } = useProducts();
   const { recentSales = [], isLoading: salesLoading } = useRecentSales();
   const { stats, isLoading: statsLoading } = useStats();
   const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
+
   // Transform the data to match SaleItem type
   const salesItems: SaleItem[] | undefined = rawSalesItems?.map(
     (item: any) => ({
@@ -87,6 +83,9 @@ export default function SalesPage() {
     })
   );
 
+  console.log(recentSales);
+  console.log(salesItems);
+
   const handleAddSale = () => {
     setIsAddSaleOpen(true);
   };
@@ -98,7 +97,6 @@ export default function SalesPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Enhanced POS Header with Table Info */}
         <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

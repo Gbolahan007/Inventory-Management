@@ -189,6 +189,13 @@ export const getAllUsersClient = () =>
     "Users data could not be loaded",
     "Get All Users"
   );
+
+export const getExpensesRepClient = () =>
+  withClientErrorHandling(
+    async () => await supabase.from("expenses").select("*"),
+    "Users data could not be loaded",
+    "Get All Users"
+  );
 export const getExpensesClient = () =>
   withClientErrorHandling(
     async () =>
@@ -302,6 +309,7 @@ export async function createSalesClient(saleData: any) {
         category: expense.category,
         created_at: expense.createdAt || new Date().toISOString(),
         table_id: expense.tableId || saleData.table_id,
+        sales_rep_id: expense.sales_rep_id || saleData.sales_rep_id,
       }));
       console.log("Expenses to insert:", expensesToInsert);
 

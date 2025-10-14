@@ -55,11 +55,20 @@ export function useTableCartLogic({
   const currentTotalCost = getTableTotalCost(selectedTable);
   const currentTotalProfit = getTableTotalProfit(selectedTable);
 
-  // 🔹 Get expenses for current table (or global if no table selected)
   const currentExpenses = getExpenses(selectedTable);
   const currentExpensesTotal = getTotalExpenses(selectedTable);
-  const finalTotal = currentTotal + currentExpensesTotal;
 
+  // ✅ New: exclude kitchen/asun from sale total calculation
+  const excludedCategories = ["kitchen", "asun"];
+  const includedExpenses = currentExpenses.filter(
+    (exp) => !excludedCategories.includes(exp.category.toLowerCase())
+  );
+  const includedExpensesTotal = includedExpenses.reduce(
+    (sum, exp) => sum + exp.amount,
+    0
+  );
+  // ✅ Final total for the sale (cart total + non-excluded expenses)
+  const finalTotal = currentTotal + includedExpensesTotal;
   // Initialize user
   useEffect(() => {
     if (currentUserId) {
@@ -191,7 +200,9 @@ export function useTableCartLogic({
         is_pending: isPending,
         pending_customer_name: isPending ? pendingCustomer : null,
       };
-      console.log(saleData);
+
+      console.log("SALE DATA RECEIVED:", saleData);
+
       // Create sale record
       await createSaleMutation.mutateAsync(saleData);
 

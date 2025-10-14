@@ -16,11 +16,8 @@ import { useSales } from "../components/queryhooks/useSales";
 import { useTodaysProfit } from "../components/queryhooks/useTodaysProfit";
 import { useTopSellingProducts } from "../components/queryhooks/useTopSellingProducts";
 import { useTotalInventory } from "../components/queryhooks/useTotalInventory";
-
-// Import the TopSellingProduct type
 import type { TopSellingProduct } from "../(dashboard)/TopSellingItems";
 
-// Header component for better organization
 const DashboardHeader = () => {
   const currentDate = new Date();
 
@@ -59,7 +56,6 @@ const DashboardHeader = () => {
 };
 
 export default function Dashboard() {
-  // Memoize date calculations to prevent unnecessary re-renders
   const { start, end } = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -68,19 +64,16 @@ export default function Dashboard() {
     return { start, end };
   }, []);
 
-  // Fetch data using hooks
   const { salesData } = useSales(start, end);
   const { totalInventory } = useTotalInventory();
   const { monthlySales } = useAllSales();
   const { topSellingProducts: rawTopSellingProducts } = useTopSellingProducts();
   const { salesProfit } = useTodaysProfit(start, end);
 
-  // Transform top selling products data to match expected type
   const topSellingProducts: TopSellingProduct[] | undefined = useMemo(() => {
     if (!rawTopSellingProducts) return undefined;
 
     return rawTopSellingProducts.map((item: any) => {
-      // Extract product name from the products array or use fallback
       const productName =
         Array.isArray(item.products) && item.products.length > 0
           ? item.products[0].name

@@ -7,6 +7,7 @@ export interface Expense {
   amount: number;
   createdAt: Date;
   tableId?: number;
+  sales_rep_id?: string;
 }
 
 interface ExpensesState {
@@ -29,13 +30,19 @@ export const useExpensesStore = create<ExpensesState>()(
     (set, get) => ({
       expenses: [],
 
-      addExpense: (category: string, amount: number, tableId?: number) => {
+      addExpense: (
+        category: string,
+        amount: number,
+        tableId?: number,
+        sales_rep_id?: string
+      ) => {
         const newExpense: Expense = {
           id: crypto.randomUUID(),
           category,
           amount,
           createdAt: new Date(),
           tableId,
+          sales_rep_id,
         };
 
         set((state) => ({

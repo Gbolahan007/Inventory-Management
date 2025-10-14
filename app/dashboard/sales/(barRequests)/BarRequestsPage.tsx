@@ -1,12 +1,33 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use client";
 
 import { useBarRequestsQuery } from "@/app/components/queryhooks/useBarRequestsQuery";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { BarRequest } from "../(sales)/types";
-import { SalesRepSummary } from "./SalesRepSummary";
 import { RequestFilters } from "./RequestFilters";
 import { RequestsList } from "./RequestList";
+import { SalesRepSummary } from "./SalesRepSummary";
+import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
+import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
+
+type SaleItem = {
+  id?: string;
+  sale_id: number;
+  product_id: number;
+  quantity: number;
+  unit_price?: number;
+  unit_cost?: number;
+  total_price: number;
+  total_cost: number;
+  profit_amount: number;
+  created_at?: string;
+  products: {
+    name: string;
+    category?: string;
+  };
+};
 
 export default function BarRequestsPage() {
   const {
@@ -15,7 +36,33 @@ export default function BarRequestsPage() {
     refetch,
     isFetching,
   } = useBarRequestsQuery();
+  const { recentSales = [] } = useRecentSales();
+  const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
 
+  const salesItems: SaleItem[] = (rawSalesItems ?? []).map((item: any) => ({
+    id: item.id,
+    sale_id: Number(item.sale_id ?? 0),
+    product_id: Number(item.product_id),
+    quantity: Number(item.quantity),
+    unit_price: item.unit_price ? Number(item.unit_price) : undefined,
+    unit_cost: item.unit_cost ? Number(item.unit_cost) : undefined,
+    total_price: Number(item.total_price),
+    total_cost: Number(item.total_cost),
+    profit_amount: Number(item.profit_amount),
+    created_at: item.created_at || new Date().toISOString(), // ← Provide default
+    products:
+      Array.isArray(item.products) && item.products.length > 0
+        ? {
+            name: item.products[0].name,
+            category: item.products[0].category,
+          }
+        : item.products && typeof item.products === "object"
+        ? {
+            name: item.products.name,
+            category: item.products.category,
+          }
+        : { name: "Unknown", category: "Unknown" }, // ← Provide default
+  }));
   const [filters, setFilters] = useState({
     salesRep: "",
     dateRange: "",
@@ -60,28 +107,26 @@ export default function BarRequestsPage() {
   };
 
   // Apply filters and search
-  const filteredRequests = barRequests.filter((req: BarRequest) => {
+  const filteredRequests = recentSales.filter((sale) => {
     const matchesSalesRep = filters.salesRep
-      ? req.sales_rep_name === filters.salesRep
+      ? sale.sales_rep_name === filters.salesRep
       : true;
 
     const matchesSearch = filters.searchTerm
-      ? req.product_name
+      ? sale.sales_rep_name
           ?.toLowerCase()
           .includes(filters.searchTerm.toLowerCase()) ||
-        req.sales_rep_name
-          ?.toLowerCase()
-          .includes(filters.searchTerm.toLowerCase()) ||
-        req.table_id?.toString().includes(filters.searchTerm)
+        sale.table_id?.toString().includes(filters.searchTerm)
       : true;
 
     let matchesDate = true;
     if (filters.dateRange) {
       const dateRange = getDateRange(filters.dateRange);
       if (dateRange) {
-        const reqDate = req.created_at?.split("T")[0];
-        if (reqDate) {
-          matchesDate = reqDate >= dateRange.start && reqDate <= dateRange.end;
+        const saleDate = sale.sale_date?.split("T")[0];
+        if (saleDate) {
+          matchesDate =
+            saleDate >= dateRange.start && saleDate <= dateRange.end;
         }
       }
     }
@@ -96,8 +141,8 @@ export default function BarRequestsPage() {
     switch (sortBy) {
       case "time":
         comparison =
-          new Date(a.created_at || "").getTime() -
-          new Date(b.created_at || "").getTime();
+          new Date(a.sale_date || "").getTime() -
+          new Date(b.sale_date || "").getTime();
         break;
       case "salesRep":
         comparison = (a.sales_rep_name || "").localeCompare(
@@ -105,34 +150,52 @@ export default function BarRequestsPage() {
         );
         break;
       case "total":
-        const aTotal = (a.quantity || 0) * (a.product_price || 0);
-        const bTotal = (b.quantity || 0) * (b.product_price || 0);
-        comparison = aTotal - bTotal;
+        comparison = (a.total_amount || 0) - (b.total_amount || 0);
         break;
     }
 
     return sortOrder === "asc" ? comparison : -comparison;
   });
+  console.log(filteredRequests);
 
-  // Calculate sales rep summaries
-  const salesRepSummary = filteredRequests.reduce((acc, req) => {
-    const rep = req.sales_rep_name || "Unknown";
-    const total = (req.quantity || 0) * (req.product_price || 0);
+  // ✅ Calculate sales rep summaries (fixed)
+  const salesRepSummary = filteredRequests.reduce((acc, sale) => {
+    const rep = sale.sales_rep_name || "Unknown";
+    const totalAmount = sale.total_amount || 0;
+
+    const totalExpenses = Array.isArray(sale.expenses)
+      ? sale.expenses.reduce((sum: number, exp: { amount?: number }) => {
+          return sum + (exp.amount || 0);
+        }, 0)
+      : 0;
+
+    // total items = sum of sale_items quantity
+    const totalItems = Array.isArray(sale.sale_items)
+      ? sale.sale_items.reduce(
+          (sum: number, item: { quantity?: number }) =>
+            sum + (item.quantity || 0),
+          0
+        )
+      : 0;
 
     if (!acc[rep]) {
       acc[rep] = {
         totalAmount: 0,
+        totalExpenses: 0,
         totalItems: 0,
         orderCount: 0,
       };
     }
 
-    acc[rep].totalAmount += total;
-    acc[rep].totalItems += req.quantity || 0;
+    acc[rep].totalAmount += totalAmount;
+    acc[rep].totalExpenses += totalExpenses;
+    acc[rep].totalItems += totalItems;
     acc[rep].orderCount += 1;
 
     return acc;
-  }, {} as Record<string, { totalAmount: number; totalItems: number; orderCount: number }>);
+  }, {} as Record<string, { totalAmount: number; totalExpenses: number; totalItems: number; orderCount: number }>);
+
+  console.log(salesRepSummary);
 
   const clearFilters = () => {
     setFilters({ salesRep: "", dateRange: "", searchTerm: "" });
@@ -247,6 +310,7 @@ export default function BarRequestsPage() {
           sortBy={sortBy}
           sortOrder={sortOrder}
           handleSort={handleSort}
+          salesItems={salesItems}
         />
       </div>
     </div>
