@@ -28,7 +28,6 @@ interface CartFooterProps {
   setPendingCustomer: (customer: string) => void;
 
   currentExpensesTotal: number;
-  finalTotal: number;
 
   handleAddExpense: (category: string, amount: number) => void;
   handleRemoveExpense: (id: string) => void;
@@ -48,7 +47,6 @@ export function CartFooter({
   setPendingCustomer,
   currentExpenses,
   currentExpensesTotal,
-  finalTotal,
   handleAddExpense,
   handleRemoveExpense,
 }: CartFooterProps) {
@@ -57,6 +55,8 @@ export function CartFooter({
   const [expenseAmount, setExpenseAmount] = useState("");
 
   const categories = ["Kitchen", "Cigarette", "Asun", "Suya"];
+
+  const finalTotal = cartTotal + currentExpensesTotal;
 
   const addExpense = () => {
     if (!selectedCategory || !expenseAmount) {
@@ -86,7 +86,6 @@ export function CartFooter({
         setTimeout(() => reject(new Error("Request timeout")), 15000)
       );
 
-      // Wait for the sale to complete
       await Promise.race([handleFinalizeSale(), timeoutPromise]);
     } catch (error) {
       console.log(error);
@@ -121,7 +120,6 @@ export function CartFooter({
         <div className="flex justify-between items-center mb-2">
           <span className="font-semibold">Cart Total</span>
           <span className="text-lg font-bold">
-            {" "}
             {new Intl.NumberFormat("en-NG", {
               style: "currency",
               currency: "NGN",
@@ -143,7 +141,6 @@ export function CartFooter({
 
                 <div className="flex items-center space-x-2">
                   <span>
-                    {" "}
                     {new Intl.NumberFormat("en-NG", {
                       style: "currency",
                       currency: "NGN",
@@ -164,7 +161,6 @@ export function CartFooter({
             <div className="flex justify-between items-center text-sm font-medium border-t pt-1">
               <span>Expenses Total</span>
               <span>
-                {" "}
                 {new Intl.NumberFormat("en-NG", {
                   style: "currency",
                   currency: "NGN",
@@ -175,11 +171,10 @@ export function CartFooter({
           </div>
         )}
 
-        {/* Final Total */}
+        {/* ✅ Final Total now includes cart + expenses */}
         <div className="flex justify-between items-center border-t pt-2">
           <span className="font-semibold">Final Total</span>
           <span className="text-xl font-bold">
-            {" "}
             {new Intl.NumberFormat("en-NG", {
               style: "currency",
               currency: "NGN",

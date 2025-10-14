@@ -63,7 +63,6 @@ export default function TableShoppingCartDisplay({
   setPendingCustomer,
   currentExpenses,
   currentExpensesTotal,
-  finalTotal,
   handleAddExpense,
   handleRemoveExpense,
 }: TableShoppingCartDisplayProps) {
@@ -130,7 +129,6 @@ export default function TableShoppingCartDisplay({
               setPendingCustomer={setPendingCustomer}
               currentExpenses={currentExpenses}
               currentExpensesTotal={currentExpensesTotal}
-              finalTotal={finalTotal}
               handleAddExpense={handleAddExpense}
               handleRemoveExpense={handleRemoveExpense}
             />
@@ -214,7 +212,6 @@ export default function TableShoppingCartDisplay({
             setPendingCustomer={setPendingCustomer}
             currentExpenses={currentExpenses}
             currentExpensesTotal={currentExpensesTotal}
-            finalTotal={finalTotal}
             handleAddExpense={handleAddExpense}
             handleRemoveExpense={handleRemoveExpense}
           />
