@@ -41,6 +41,10 @@ interface TableShoppingCartDisplayProps {
 
   handleAddExpense: (category: string, amount: number) => void;
   handleRemoveExpense: (id: string) => void;
+
+  tableBarRequestStatus: "pending" | "approved" | "none";
+  handleSendToBar: () => Promise<void> | void;
+  isSendingToBar: boolean;
 }
 
 export default function TableShoppingCartDisplay({
@@ -65,6 +69,9 @@ export default function TableShoppingCartDisplay({
   currentExpensesTotal,
   handleAddExpense,
   handleRemoveExpense,
+  tableBarRequestStatus,
+  handleSendToBar,
+  isSendingToBar,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
@@ -131,6 +138,9 @@ export default function TableShoppingCartDisplay({
               currentExpensesTotal={currentExpensesTotal}
               handleAddExpense={handleAddExpense}
               handleRemoveExpense={handleRemoveExpense}
+              tableBarRequestStatus={tableBarRequestStatus}
+              handleSendToBar={handleSendToBar}
+              isSendingToBar={isSendingToBar}
             />
           </div>
         </div>
@@ -214,6 +224,9 @@ export default function TableShoppingCartDisplay({
             currentExpensesTotal={currentExpensesTotal}
             handleAddExpense={handleAddExpense}
             handleRemoveExpense={handleRemoveExpense}
+            tableBarRequestStatus={tableBarRequestStatus}
+            handleSendToBar={handleSendToBar}
+            isSendingToBar={isSendingToBar}
           />
         </div>
       </div>

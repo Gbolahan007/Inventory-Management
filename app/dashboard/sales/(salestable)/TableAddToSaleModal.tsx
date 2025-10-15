@@ -73,6 +73,9 @@ export default function TableAddToSaleModal({
     finalTotal,
     handleAddExpense,
     handleRemoveExpense,
+    tableBarRequestStatus,
+    handleSendToBar,
+    isSendingToBar,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
@@ -234,6 +237,9 @@ export default function TableAddToSaleModal({
                 finalTotal={finalTotal}
                 handleAddExpense={handleAddExpense}
                 handleRemoveExpense={handleRemoveExpense}
+                tableBarRequestStatus={tableBarRequestStatus}
+                handleSendToBar={handleSendToBar}
+                isSendingToBar={isSendingToBar}
               />
             </div>
           </div>

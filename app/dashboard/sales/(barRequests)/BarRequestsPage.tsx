@@ -3,7 +3,7 @@
 "use client";
 
 import { useBarRequestsQuery } from "@/app/components/queryhooks/useBarRequestsQuery";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useState } from "react";
 import type { BarRequest } from "../(sales)/types";
 import { RequestFilters } from "./RequestFilters";
@@ -11,6 +11,8 @@ import { RequestsList } from "./RequestList";
 import { SalesRepSummary } from "./SalesRepSummary";
 import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
 import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
+import { supabase } from "@/app/_lib/supabase";
+import toast from "react-hot-toast";
 
 type SaleItem = {
   id?: string;
@@ -39,6 +41,10 @@ export default function BarRequestsPage() {
   const { recentSales = [] } = useRecentSales();
   const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
 
+  const [processingRequests, setProcessingRequests] = useState<Set<string>>(
+    new Set()
+  );
+
   const salesItems: SaleItem[] = (rawSalesItems ?? []).map((item: any) => ({
     id: item.id,
     sale_id: Number(item.sale_id ?? 0),
@@ -49,7 +55,7 @@ export default function BarRequestsPage() {
     total_price: Number(item.total_price),
     total_cost: Number(item.total_cost),
     profit_amount: Number(item.profit_amount),
-    created_at: item.created_at || new Date().toISOString(), // ← Provide default
+    created_at: item.created_at || new Date().toISOString(),
     products:
       Array.isArray(item.products) && item.products.length > 0
         ? {
@@ -61,12 +67,14 @@ export default function BarRequestsPage() {
             name: item.products.name,
             category: item.products.category,
           }
-        : { name: "Unknown", category: "Unknown" }, // ← Provide default
+        : { name: "Unknown", category: "Unknown" },
   }));
+
   const [filters, setFilters] = useState({
     salesRep: "",
     dateRange: "",
     searchTerm: "",
+    status: "all", // Add status filter
   });
   const [sortBy, setSortBy] = useState<"time" | "salesRep" | "total">("time");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -76,6 +84,94 @@ export default function BarRequestsPage() {
       barRequests.map((req: BarRequest) => req.sales_rep_name).filter(Boolean)
     )
   ).sort();
+
+  // Group pending requests by table and sales rep
+  const pendingRequests = barRequests
+    .filter((req: BarRequest) => req.status === "pending")
+    .reduce((acc: any, req: BarRequest) => {
+      const key = `${req.table_id}-${req.sales_rep_id}`;
+      if (!acc[key]) {
+        acc[key] = {
+          table_id: req.table_id,
+          sales_rep_name: req.sales_rep_name,
+          sales_rep_id: req.sales_rep_id,
+          created_at: req.created_at,
+          items: [],
+          totalAmount: 0,
+        };
+      }
+      acc[key].items.push(req);
+      acc[key].totalAmount += (req.product_price || 0) * (req.quantity || 0);
+      return acc;
+    }, {});
+
+  const pendingRequestsArray = Object.values(pendingRequests);
+
+  // Handle approve request
+  const handleApprove = async (
+    tableId: number,
+    salesRepId: string,
+    items: BarRequest[]
+  ) => {
+    const requestIds = items.map((item) => item.id);
+    const key = `${tableId}-${salesRepId}`;
+
+    setProcessingRequests((prev) => new Set([...prev, key]));
+
+    try {
+      const { error } = await supabase
+        .from("bar_requests")
+        .update({ status: "accepted" })
+        .in("id", requestIds);
+
+      if (error) throw error;
+
+      toast.success(`Request for Table ${tableId} approved!`);
+      await refetch();
+    } catch (error: any) {
+      console.error("Error approving request:", error);
+      toast.error(`Failed to approve: ${error.message}`);
+    } finally {
+      setProcessingRequests((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(key);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle reject request
+  const handleReject = async (
+    tableId: number,
+    salesRepId: string,
+    items: BarRequest[]
+  ) => {
+    const requestIds = items.map((item) => item.id);
+    const key = `${tableId}-${salesRepId}`;
+
+    setProcessingRequests((prev) => new Set([...prev, key]));
+
+    try {
+      const { error } = await supabase
+        .from("bar_requests")
+        .update({ status: "rejected" })
+        .in("id", requestIds);
+
+      if (error) throw error;
+
+      toast.success(`Request for Table ${tableId} rejected`);
+      await refetch();
+    } catch (error: any) {
+      console.error("Error rejecting request:", error);
+      toast.error(`Failed to reject: ${error.message}`);
+    } finally {
+      setProcessingRequests((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(key);
+        return newSet;
+      });
+    }
+  };
 
   // Date filter logic
   const getDateRange = (range: string) => {
@@ -157,7 +253,7 @@ export default function BarRequestsPage() {
     return sortOrder === "asc" ? comparison : -comparison;
   });
 
-  // ✅ Calculate sales rep summaries (fixed)
+  // Calculate sales rep summaries
   const salesRepSummary = filteredRequests.reduce((acc, sale) => {
     const rep = sale.sales_rep_name || "Unknown";
     const totalAmount = sale.total_amount || 0;
@@ -168,7 +264,6 @@ export default function BarRequestsPage() {
         }, 0)
       : 0;
 
-    // total items = sum of sale_items quantity
     const totalItems = Array.isArray(sale.sale_items)
       ? sale.sale_items.reduce(
           (sum: number, item: { quantity?: number }) =>
@@ -195,7 +290,7 @@ export default function BarRequestsPage() {
   }, {} as Record<string, { totalAmount: number; totalExpenses: number; totalItems: number; orderCount: number }>);
 
   const clearFilters = () => {
-    setFilters({ salesRep: "", dateRange: "", searchTerm: "" });
+    setFilters({ salesRep: "", dateRange: "", searchTerm: "", status: "all" });
   };
 
   const hasActiveFilters =
@@ -216,6 +311,14 @@ export default function BarRequestsPage() {
       setSortBy(newSortBy);
       setSortOrder("desc");
     }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-NG", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -255,6 +358,124 @@ export default function BarRequestsPage() {
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800">
               <Loader2 className="animate-spin w-4 h-4" />
               <span className="text-sm">Updating data...</span>
+            </div>
+          </div>
+        )}
+
+        {/* 🔔 PENDING REQUESTS SECTION */}
+        {pendingRequestsArray.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 border-yellow-300 dark:border-yellow-700 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+                Pending Approvals ({pendingRequestsArray.length})
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {pendingRequestsArray.map((request: any, index: number) => {
+                const key = `${request.table_id}-${request.sales_rep_id}`;
+                const isProcessing = processingRequests.has(key);
+
+                return (
+                  <div
+                    key={`${key}-${index}`}
+                    className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                          <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                            Table {request.table_id}
+                          </span>
+                        </div>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                          {request.sales_rep_name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {formatTime(request.created_at)}
+                      </span>
+                    </div>
+
+                    {/* Items */}
+                    <div className="space-y-2 mb-3">
+                      {request.items.map((item: BarRequest) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {item.product_name} × {item.quantity}
+                          </span>
+                          <span className="font-medium text-slate-800 dark:text-white">
+                            ₦
+                            {(
+                              (item.product_price || 0) * (item.quantity || 0)
+                            ).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between border-t border-slate-300 dark:border-slate-700 pt-3 mb-3">
+                      <span className="font-semibold text-slate-800 dark:text-white">
+                        Total
+                      </span>
+                      <span className="text-lg font-bold text-slate-800 dark:text-white">
+                        {new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 2,
+                        }).format(request.totalAmount)}
+                      </span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          handleApprove(
+                            request.table_id,
+                            request.sales_rep_id,
+                            request.items
+                          )
+                        }
+                        disabled={isProcessing}
+                        className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            Approve
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleReject(
+                            request.table_id,
+                            request.sales_rep_id,
+                            request.items
+                          )
+                        }
+                        disabled={isProcessing}
+                        className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

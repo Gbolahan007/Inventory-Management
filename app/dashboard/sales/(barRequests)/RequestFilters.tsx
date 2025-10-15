@@ -10,12 +10,14 @@ interface RequestFiltersProps {
     salesRep: string;
     dateRange: string;
     searchTerm: string;
+    status: string;
   };
   setFilters: React.Dispatch<
     React.SetStateAction<{
       salesRep: string;
       dateRange: string;
       searchTerm: string;
+      status: string;
     }>
   >;
   uniqueSalesReps: string[];

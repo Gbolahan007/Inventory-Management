@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { BarRequest } from "../dashboard/sales/(sales)/types";
-import { supabaseServer } from "@/app/_lib/supabaseServer"; // ✅ point to actual helper file
+import { supabaseServer } from "@/app/_lib/supabaseServer";
 
 // ---------------- TYPES ----------------
 interface SaleData {
@@ -32,7 +34,7 @@ export interface BarRequestItem {
   product_price: number;
   sales_rep_id: string;
   sales_rep_name: string;
-  status: "completed";
+  status: "completed" | "pending";
 }
 
 // ---------------- PRODUCT ACTIONS ----------------
@@ -157,19 +159,22 @@ export async function addRoomBooking(formData: FormData) {
 
 export async function createBarRequestRecords(
   barRequestItems: Omit<BarRequest, "id">[]
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; data?: any[]; error?: string }> {
   const supabase = await supabaseServer();
-  const { error } = await supabase
+
+  const { data, error } = await supabase
     .from("bar_requests")
     .insert(barRequestItems)
-    .select();
+    .select(); // ✅ include .select() to get inserted rows
+
   if (error) {
     return {
       success: false,
       error: `Failed to create bar request records: ${error.message}`,
     };
   }
-  return { success: true };
+
+  return { success: true, data }; // ✅ include data
 }
 
 export async function updateBarRequestStatus(

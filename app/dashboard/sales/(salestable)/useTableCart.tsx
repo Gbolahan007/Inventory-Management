@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+"use client";
+
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useExpensesStore } from "@/app/(store)/useExpensesStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
+import { supabase } from "@/app/_lib/supabase";
 import toast from "react-hot-toast";
 import type { Product } from "../(sales)/types";
 import { BarRequestItem, createBarRequestRecords } from "@/app/_lib/actions";
+import { subscribeToTable } from "@/app/_lib/client-data-service";
 
 interface UseTableCartLogicProps {
   products?: Product[];
@@ -19,15 +24,27 @@ export function useTableCartLogic({
   currentUser,
   currentUserId,
 }: UseTableCartLogicProps) {
+  // ---------- STATES ----------
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [customSellingPrice, setCustomSellingPrice] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("transfer");
   const [isPending, setIsPending] = useState(false);
   const [pendingCustomer, setPendingCustomer] = useState("");
+  const [isSendingToBar, setIsSendingToBar] = useState(false);
+
+  // Bar request status tracking
+  const [tableBarRequestStatus, setTableBarRequestStatus] = useState<
+    "none" | "pending" | "approved"
+  >("none");
+  const [pendingBarRequestId, setPendingBarRequestId] = useState<string | null>(
+    null
+  );
 
   const createSaleMutation = useCreateSale();
+  const queryClient = useQueryClient();
 
+  // ---------- STORE HOOKS ----------
   const {
     selectedTable,
     setCurrentUser,
@@ -41,7 +58,6 @@ export function useTableCartLogic({
     getTableTotalProfit,
   } = useTableCartStore();
 
-  // 🔹 Add expenses store integration
   const {
     addExpense,
     removeExpense,
@@ -50,6 +66,7 @@ export function useTableCartLogic({
     getTotalExpenses,
   } = useExpensesStore();
 
+  // ---------- CURRENT TABLE DATA ----------
   const currentCart = getTableCart(selectedTable);
   const currentTotal = getTableTotal(selectedTable);
   const currentTotalCost = getTableTotalCost(selectedTable);
@@ -58,7 +75,7 @@ export function useTableCartLogic({
   const currentExpenses = getExpenses(selectedTable);
   const currentExpensesTotal = getTotalExpenses(selectedTable);
 
-  // ✅ New: exclude kitchen/asun from sale total calculation
+  // ---------- CALCULATIONS ----------
   const excludedCategories = ["kitchen", "asun", "suya"];
   const includedExpenses = currentExpenses.filter(
     (exp) => !excludedCategories.includes(exp.category.toLowerCase())
@@ -67,15 +84,94 @@ export function useTableCartLogic({
     (sum, exp) => sum + exp.amount,
     0
   );
+
   const finalTotal = currentTotal + includedExpensesTotal;
-  // Initialize user
+
+  // ---------- INITIALIZE USER ----------
   useEffect(() => {
-    if (currentUserId) {
-      setCurrentUser(currentUserId);
-    }
+    if (currentUserId) setCurrentUser(currentUserId);
   }, [currentUserId, setCurrentUser]);
 
-  const handleAddToCart = () => {
+  // ---------- CHECK BAR REQUEST STATUS ----------
+  useEffect(() => {
+    const checkBarRequestStatus = async () => {
+      if (!selectedTable || currentCart.length === 0) {
+        setTableBarRequestStatus("none");
+        setPendingBarRequestId(null);
+        return;
+      }
+
+      try {
+        // Only look for active requests (not cancelled)
+        const { data, error } = await supabase
+          .from("bar_requests")
+          .select("*")
+          .eq("table_id", selectedTable)
+          .in("status", ["pending", "accepted"]) // Exclude cancelled
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error checking bar request status:", error);
+          return;
+        }
+
+        if (data) {
+          if (data.status === "accepted") {
+            setTableBarRequestStatus("approved");
+            setPendingBarRequestId(data.id);
+          } else if (data.status === "pending") {
+            setTableBarRequestStatus("pending");
+            setPendingBarRequestId(data.id);
+          }
+        } else {
+          setTableBarRequestStatus("none");
+          setPendingBarRequestId(null);
+        }
+      } catch (error) {
+        console.error("Error checking bar request status:", error);
+      }
+    };
+
+    checkBarRequestStatus();
+  }, [selectedTable, currentCart.length]);
+
+  // ---------- REALTIME UPDATES ----------
+  useEffect(() => {
+    const tables = ["sales", "products", "expenses", "bar_requests"];
+
+    const channels = tables.map((table) => {
+      const channel = subscribeToTable(table, (payload) => {
+        console.log(`🔁 ${table} updated:`, payload);
+        queryClient.invalidateQueries({ queryKey: [table] });
+
+        // Update bar request status when bar_requests table changes
+        if (table === "bar_requests" && payload.new) {
+          const data = payload.new as any;
+          if (data.table_id === selectedTable) {
+            if (data.status === "accepted") {
+              setTableBarRequestStatus("approved");
+              setPendingBarRequestId(data.id);
+              toast.success("Bar has approved your request!");
+            } else if (data.status === "rejected") {
+              setTableBarRequestStatus("none");
+              setPendingBarRequestId(null);
+              toast.error("Bar rejected your request");
+            }
+          }
+        }
+      });
+      return channel;
+    });
+
+    return () => {
+      channels.forEach((ch) => supabase.removeChannel(ch));
+    };
+  }, [queryClient, selectedTable]);
+
+  // ---------- HANDLERS ----------
+  const handleAddToCart = async () => {
     if (!selectedProduct || quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity");
       return;
@@ -89,7 +185,6 @@ export function useTableCartLogic({
       return;
     }
 
-    // Stock check
     const existingCartQuantity = currentCart
       .filter((item) => item.product_id === selectedProductData.id)
       .reduce((sum, item) => sum + item.quantity, 0);
@@ -105,11 +200,10 @@ export function useTableCartLogic({
     const totalPrice = unitPrice * quantity;
     const profitAmount = totalPrice - unitCost * quantity;
 
-    // Create item for cart
     const newItem = {
       product_id: selectedProductData.id,
       name: selectedProductData.name,
-      quantity: quantity,
+      quantity,
       unit_price: unitPrice,
       unit_cost: unitCost,
       total_price: totalPrice,
@@ -122,18 +216,36 @@ export function useTableCartLogic({
     try {
       addToTableCart(selectedTable, newItem);
       toast.success(`${newItem.name} added to cart!`);
-
-      // Reset form
       setSelectedProduct("");
       setQuantity(1);
       setCustomSellingPrice(0);
+
+      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
+      if (
+        tableBarRequestStatus === "approved" ||
+        tableBarRequestStatus === "pending"
+      ) {
+        // Cancel/invalidate existing bar requests for this table
+        if (pendingBarRequestId) {
+          await supabase
+            .from("bar_requests")
+            .update({ status: "cancelled" })
+            .eq("table_id", selectedTable)
+            .in("status", ["pending", "accepted"]);
+        }
+
+        setTableBarRequestStatus("none");
+        setPendingBarRequestId(null);
+        toast("⚠️ Cart modified. Please send to bar again for approval.", {
+          icon: "⚠️",
+        });
+      }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
       toast.error(`Failed to add item: ${error.message}`);
     }
   };
 
-  // 🔹 Add expense handler
   const handleAddExpense = (category: string, amount: number) => {
     if (!category || amount <= 0) {
       toast.error("Please select a category and enter a valid amount");
@@ -149,7 +261,6 @@ export function useTableCartLogic({
     }
   };
 
-  // 🔹 Remove expense handler
   const handleRemoveExpense = (expenseId: string) => {
     try {
       removeExpense(expenseId);
@@ -160,13 +271,87 @@ export function useTableCartLogic({
     }
   };
 
+  // ---------- SEND TO BAR ----------
+  const handleSendToBar = async () => {
+    if (currentCart.length === 0) {
+      toast.error("Cart is empty. Add items before sending to bar.");
+      return;
+    }
+
+    if (!currentUser || !currentUserId) {
+      toast.error("User information not available");
+      return;
+    }
+
+    if (tableBarRequestStatus === "pending") {
+      toast.error("Request already sent to bar. Waiting for approval.");
+      return;
+    }
+
+    if (tableBarRequestStatus === "approved") {
+      toast.error("Request already approved. You can complete the sale.");
+      return;
+    }
+
+    setIsSendingToBar(true);
+
+    try {
+      // First, cancel any existing requests for this table
+      await supabase
+        .from("bar_requests")
+        .update({ status: "cancelled" })
+        .eq("table_id", selectedTable)
+        .in("status", ["pending", "accepted"]);
+
+      // Then create new bar request for ALL current cart items
+      const barRequestItems: BarRequestItem[] = currentCart.map((item) => ({
+        table_id: selectedTable,
+        product_id: item.product_id,
+        product_name: item.name,
+        quantity: item.quantity,
+        product_price: item.selling_price,
+        sales_rep_id: currentUserId,
+        sales_rep_name: currentUser.name,
+        status: "pending",
+      }));
+
+      const result = await createBarRequestRecords(barRequestItems);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to send request to bar");
+      }
+
+      setTableBarRequestStatus("pending");
+      if (result.data && result.data.length > 0) {
+        setPendingBarRequestId(result.data[0].id);
+      }
+
+      toast.success(
+        `Request sent to bar for Table ${selectedTable}. Waiting for approval...`
+      );
+
+      await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
+    } catch (error: any) {
+      console.error("Error sending to bar:", error);
+      toast.error(`Failed to send to bar: ${error.message}`);
+    } finally {
+      setIsSendingToBar(false);
+    }
+  };
+
+  // ---------- FINALIZE SALE (Only after bar approval) ----------
   const handleFinalizeSale = async () => {
-    // Check if we have items in cart or expenses
     const hasCartItems = currentCart.length > 0;
     const hasExpenses = currentExpenses.length > 0;
 
     if (!hasCartItems && !hasExpenses) {
       toast.error("Cart is empty and no expenses added");
+      return;
+    }
+
+    // Check if cart items need bar approval
+    if (hasCartItems && tableBarRequestStatus !== "approved") {
+      toast.error("Please send items to bar and wait for approval first");
       return;
     }
 
@@ -202,73 +387,72 @@ export function useTableCartLogic({
 
       console.log("SALE DATA RECEIVED:", saleData);
 
-      // Create sale record
       await createSaleMutation.mutateAsync(saleData);
 
-      // Only create bar request if we have cart items
-      if (hasCartItems) {
-        const barRequestItems: BarRequestItem[] = currentCart.map((item) => ({
-          table_id: selectedTable,
-          product_id: item.product_id,
-          product_name: item.name,
-          quantity: item.quantity,
-          product_price: item.selling_price,
-          sales_rep_id: currentUserId,
-          sales_rep_name: currentUser.name,
-          status: "completed",
-        }));
-
-        const barRequestResult = await createBarRequestRecords(barRequestItems);
-
-        if (!barRequestResult.success) {
-          console.error(
-            "Failed to create bar request records:",
-            barRequestResult.error
-          );
-          toast.error("Sale completed but tracking record failed");
-        } else {
-          console.log("Bar request records created successfully");
-        }
+      // Update bar request status to completed
+      if (hasCartItems && pendingBarRequestId) {
+        await supabase
+          .from("bar_requests")
+          .update({ status: "completed" })
+          .eq("id", pendingBarRequestId);
       }
 
-      // 🔹 Clear both cart and expenses
       clearTableCart(selectedTable);
       clearExpenses(selectedTable);
-
-      const successMessage =
-        hasCartItems && hasExpenses
-          ? `Sale with expenses completed for Table ${selectedTable}!`
-          : hasExpenses
-          ? `Expenses recorded for Table ${selectedTable}!`
-          : `Sale completed for Table ${selectedTable}!`;
+      setTableBarRequestStatus("none");
+      setPendingBarRequestId(null);
 
       toast.success(
         isPending
           ? `Pending sale recorded for ${pendingCustomer || "Customer"}`
-          : successMessage
+          : hasCartItems && hasExpenses
+          ? `Sale with expenses completed for Table ${selectedTable}!`
+          : hasExpenses
+          ? `Expenses recorded for Table ${selectedTable}!`
+          : `Sale completed for Table ${selectedTable}!`
       );
 
-      // reset pending states
       setIsPending(false);
       setPendingCustomer("");
+
+      await queryClient.invalidateQueries({ queryKey: ["sales"] });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
     } catch (error: any) {
       console.error("Error finalizing sale:", error);
       toast.error(`Failed to complete sale: ${error.message}`);
     }
   };
 
-  // Remove from cart
-  const removeFromCart = (productId: string, unitPrice: number) => {
+  const removeFromCart = async (productId: string, unitPrice: number) => {
     try {
       removeFromTableCart(selectedTable, productId, unitPrice);
       toast.success("Item removed from cart");
+
+      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
+      if (
+        tableBarRequestStatus === "approved" ||
+        tableBarRequestStatus === "pending"
+      ) {
+        // Cancel existing bar requests for this table
+        await supabase
+          .from("bar_requests")
+          .update({ status: "cancelled" })
+          .eq("table_id", selectedTable)
+          .in("status", ["pending", "accepted"]);
+
+        setTableBarRequestStatus("none");
+        setPendingBarRequestId(null);
+        toast("⚠️ Cart modified. Please send to bar again for approval.", {
+          icon: "⚠️",
+        });
+      }
     } catch (error: any) {
       toast.error(`Failed to remove item: ${error.message}`);
     }
   };
 
-  // Update cart item quantity
-  const updateCartItemQuantity = (
+  const updateCartItemQuantity = async (
     productId: string,
     unitPrice: number,
     newQuantity: number
@@ -304,12 +488,31 @@ export function useTableCartLogic({
         unitPrice,
         newQuantity
       );
+
+      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
+      if (
+        tableBarRequestStatus === "approved" ||
+        tableBarRequestStatus === "pending"
+      ) {
+        // Cancel existing bar requests for this table
+        await supabase
+          .from("bar_requests")
+          .update({ status: "cancelled" })
+          .eq("table_id", selectedTable)
+          .in("status", ["pending", "accepted"]);
+
+        setTableBarRequestStatus("none");
+        setPendingBarRequestId(null);
+        toast("⚠️ Cart modified. Please send to bar again for approval.", {
+          icon: "⚠️",
+        });
+      }
     } catch (error: any) {
       toast.error(`Failed to update quantity: ${error.message}`);
     }
   };
 
-  // Helper calculations
+  // ---------- UI HELPERS ----------
   const selectedProductData = products?.find(
     (product) => product.name === selectedProduct
   );
@@ -317,10 +520,11 @@ export function useTableCartLogic({
     customSellingPrice || selectedProductData?.selling_price || 0;
   const totalPrice = unitPrice * quantity;
 
-  // 🔹 Updated condition to include expenses
-  const canFinalizeSale = currentCart.length > 0 || currentExpenses.length > 0;
+  // Can only finalize if cart items are approved OR only expenses exist
+  const canFinalizeSale =
+    (currentCart.length > 0 && tableBarRequestStatus === "approved") ||
+    (currentCart.length === 0 && currentExpenses.length > 0);
 
-  // Event handlers
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const productName = e.target.value;
     setSelectedProduct(productName);
@@ -339,15 +543,21 @@ export function useTableCartLogic({
       return;
     }
     const numValue = Number(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setQuantity(numValue);
-    }
+    if (!isNaN(numValue) && numValue >= 0) setQuantity(numValue);
   };
 
   const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCustomSellingPrice(Number(e.target.value));
   };
 
+  // Separate pending and approved items
+  const hasPendingItems = tableBarRequestStatus === "pending";
+  const approvedItems = tableBarRequestStatus === "approved" ? currentCart : [];
+  const pendingItems = tableBarRequestStatus === "pending" ? currentCart : [];
+  const approvedTotal = tableBarRequestStatus === "approved" ? currentTotal : 0;
+  const pendingTotal = tableBarRequestStatus === "pending" ? currentTotal : 0;
+
+  // ---------- RETURN ----------
   return {
     selectedProduct,
     quantity,
@@ -373,23 +583,19 @@ export function useTableCartLogic({
     updateCartItemQuantity,
     handleFinalizeSale,
     createSaleMutation,
-
-    // 🔹 Expense-related returns
     currentExpenses,
     currentExpensesTotal,
     finalTotal,
     handleAddExpense,
     handleRemoveExpense,
-
-    // Legacy props for compatibility (no longer used)
-    tableBarRequestStatus: "none" as const,
-    hasPendingItems: false,
-    approvedItems: currentCart,
-    pendingItems: [],
-    approvedTotal: currentTotal,
-    pendingTotal: 0,
-    handleSendToBar: () => {},
-    isSendingToBar: false,
+    tableBarRequestStatus,
+    hasPendingItems,
+    approvedItems,
+    pendingItems,
+    approvedTotal,
+    pendingTotal,
+    handleSendToBar,
+    isSendingToBar,
     isPending,
     setIsPending,
     pendingCustomer,

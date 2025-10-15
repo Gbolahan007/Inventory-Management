@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CreditCard, Banknote, Plus, Trash2 } from "lucide-react";
+import {
+  CreditCard,
+  Banknote,
+  Plus,
+  Trash2,
+  Send,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { useState } from "react";
 import type { SaleItem } from "../(sales)/types";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -31,6 +39,11 @@ interface CartFooterProps {
 
   handleAddExpense: (category: string, amount: number) => void;
   handleRemoveExpense: (id: string) => void;
+
+  // Bar approval props
+  tableBarRequestStatus: "none" | "pending" | "approved";
+  handleSendToBar: () => void;
+  isSendingToBar: boolean;
 }
 
 export function CartFooter({
@@ -49,6 +62,9 @@ export function CartFooter({
   currentExpensesTotal,
   handleAddExpense,
   handleRemoveExpense,
+  tableBarRequestStatus,
+  handleSendToBar,
+  isSendingToBar,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -105,10 +121,70 @@ export function CartFooter({
   };
 
   const isProcessing = createSaleMutation.isPending || isRetrying;
-  const canFinalizeSale = cartItems.length > 0 || currentExpenses.length > 0;
+
+  // Can finalize if approved OR only expenses exist (no cart items)
+  const canFinalizeSale =
+    (cartItems.length > 0 && tableBarRequestStatus === "approved") ||
+    (cartItems.length === 0 && currentExpenses.length > 0);
+
+  // Can send to bar if there are items and not already sent
+  const canSendToBar = cartItems.length > 0 && tableBarRequestStatus === "none";
 
   return (
     <div className="space-y-4">
+      {/* Bar Status Banner */}
+      {cartItems.length > 0 && (
+        <div
+          className={`p-3 rounded-lg border ${
+            tableBarRequestStatus === "pending"
+              ? "bg-yellow-50 border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700"
+              : tableBarRequestStatus === "approved"
+              ? "bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700"
+              : "bg-blue-50 border-blue-300 dark:bg-blue-900/20 dark:border-blue-700"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {tableBarRequestStatus === "pending" ? (
+              <>
+                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                <div>
+                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                    Waiting for Bar Approval
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    Your request has been sent to the bar
+                  </p>
+                </div>
+              </>
+            ) : tableBarRequestStatus === "approved" ? (
+              <>
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                    Approved by Bar
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    You can now complete the sale
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                    Ready to Send
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    Send items to bar for approval
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Totals */}
       <div
         className={`p-4 rounded-lg border ${
@@ -128,7 +204,7 @@ export function CartFooter({
           </span>
         </div>
 
-        {/* 🔹 Show Extra Expenses */}
+        {/* Extra Expenses */}
         {currentExpenses.length > 0 && (
           <div className="space-y-1 mb-2">
             <div className="text-xs text-gray-500 mb-1">Extra Expenses:</div>
@@ -171,7 +247,7 @@ export function CartFooter({
           </div>
         )}
 
-        {/* ✅ Final Total now includes cart + expenses */}
+        {/* Final Total */}
         <div className="flex justify-between items-center border-t pt-2">
           <span className="font-semibold">Final Total</span>
           <span className="text-xl font-bold">
@@ -229,7 +305,7 @@ export function CartFooter({
       </div>
 
       {/* Payment Method */}
-      {cartItems.length > 0 && (
+      {cartItems.length > 0 && tableBarRequestStatus === "approved" && (
         <div className="space-y-3">
           <label
             className={`block text-sm font-medium ${
@@ -265,71 +341,103 @@ export function CartFooter({
       )}
 
       {/* Pending Sale */}
-      {(cartItems.length > 0 || currentExpenses.length > 0) && (
-        <div className="space-y-2">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={isPending}
-              onChange={(e) => setIsPending(e.target.checked)}
-            />
-            <span className="text-sm">Mark as Pending</span>
-          </label>
+      {(cartItems.length > 0 || currentExpenses.length > 0) &&
+        tableBarRequestStatus === "approved" && (
+          <div className="space-y-2">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={isPending}
+                onChange={(e) => setIsPending(e.target.checked)}
+              />
+              <span className="text-sm">Mark as Pending</span>
+            </label>
 
-          {isPending && (
-            <select
-              value={pendingCustomer}
-              onChange={(e) => setPendingCustomer(e.target.value)}
-              className={`w-full p-2 border rounded-md ${
-                isDarkMode
-                  ? "bg-slate-800 border-slate-700"
-                  : "bg-gray-50 border-gray-200"
-              }`}
-            >
-              <option value="">Select Customer</option>
-              {[
-                "daddy yo",
-                "kola",
-                "customer",
-                "canada",
-                "baba cocky",
-                "dammy",
-                "attitude",
-                "bro deji",
-                "wole",
-              ].map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            {isPending && (
+              <select
+                value={pendingCustomer}
+                onChange={(e) => setPendingCustomer(e.target.value)}
+                className={`w-full p-2 border rounded-md ${
+                  isDarkMode
+                    ? "bg-slate-800 border-slate-700"
+                    : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <option value="">Select Customer</option>
+                {[
+                  "daddy yo",
+                  "kola",
+                  "customer",
+                  "canada",
+                  "baba cocky",
+                  "dammy",
+                  "attitude",
+                  "bro deji",
+                  "wole",
+                ].map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+
+      {/* Send to Bar Button */}
+      {canSendToBar && (
+        <button
+          onClick={handleSendToBar}
+          disabled={isSendingToBar}
+          className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+            isSendingToBar
+              ? isDarkMode
+                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : isDarkMode
+              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+              : "bg-blue-500 hover:bg-blue-600 text-white shadow-lg"
+          }`}
+        >
+          {isSendingToBar ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Sending to Bar...</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center space-x-2">
+              <Send className="w-4 h-4" />
+              <span>Send to Bar</span>
+            </div>
           )}
-        </div>
+        </button>
       )}
 
       {/* Complete Sale Button */}
-      <button
-        onClick={handleSaleWithTimeout}
-        disabled={!canFinalizeSale || isProcessing}
-        className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-          !canFinalizeSale || isProcessing
-            ? isDarkMode
-              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            : isDarkMode
-            ? "bg-green-600 hover:bg-green-700 text-white shadow-lg"
-            : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
-        }`}
-      >
-        {isProcessing ? (
-          <div className="flex items-center justify-center space-x-2">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span>{isRetrying ? "Retrying..." : "Processing..."}</span>
-          </div>
-        ) : (
-          "Complete Sale"
-        )}
-      </button>
+      {(canFinalizeSale || tableBarRequestStatus === "approved") && (
+        <button
+          onClick={handleSaleWithTimeout}
+          disabled={!canFinalizeSale || isProcessing}
+          className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+            !canFinalizeSale || isProcessing
+              ? isDarkMode
+                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : isDarkMode
+              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+              : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
+          }`}
+        >
+          {isProcessing ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>{isRetrying ? "Retrying..." : "Processing..."}</span>
+            </div>
+          ) : (
+            "Complete Sale"
+          )}
+        </button>
+      )}
     </div>
   );
 }

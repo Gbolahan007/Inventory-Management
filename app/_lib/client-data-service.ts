@@ -3,6 +3,9 @@
 
 import { supabase } from "./supabase";
 
+// ---------- REALTIME SUBSCRIPTIONS ----------
+import { RealtimeChannel } from "@supabase/supabase-js";
+
 const TIMEOUT_MS = 10000; // 10 seconds
 
 // ---------- ERROR HANDLER ----------
@@ -431,3 +434,19 @@ export const getDailySalesReportClient = () =>
     "Could not fetch daily sales report",
     "Get Daily Sales Report"
   );
+
+export function subscribeToTable(
+  table: string,
+  onChange: (payload: any) => void
+): RealtimeChannel {
+  const channel = supabase
+    .channel(`${table}-changes`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table },
+      (payload) => onChange(payload)
+    )
+    .subscribe();
+
+  return channel;
+}
