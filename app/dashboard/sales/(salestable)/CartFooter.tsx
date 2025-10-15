@@ -7,10 +7,15 @@ import {
   Send,
   CheckCircle,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 import type { SaleItem } from "../(sales)/types";
-import type { UseMutationResult } from "@tanstack/react-query";
+import type {
+  QueryObserverResult,
+  RefetchOptions,
+  UseMutationResult,
+} from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 interface Expense {
@@ -40,10 +45,14 @@ interface CartFooterProps {
   handleAddExpense: (category: string, amount: number) => void;
   handleRemoveExpense: (id: string) => void;
 
-  // Bar approval props
   tableBarRequestStatus: "none" | "pending" | "approved";
   handleSendToBar: () => void;
   isSendingToBar: boolean;
+
+  refetch?: (
+    options?: RefetchOptions
+  ) => Promise<QueryObserverResult<any[], Error>>;
+  isRefetching: boolean;
 }
 
 export function CartFooter({
@@ -65,6 +74,8 @@ export function CartFooter({
   tableBarRequestStatus,
   handleSendToBar,
   isSendingToBar,
+  refetch,
+  isRefetching,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -132,6 +143,22 @@ export function CartFooter({
 
   return (
     <div className="space-y-4">
+      {refetch && (
+        <button
+          onClick={() => refetch()}
+          className={`p-2 rounded-full transition ${
+            isDarkMode
+              ? "hover:bg-slate-700 text-blue-400"
+              : "hover:bg-blue-50 text-blue-600"
+          }`}
+          title="Refresh"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`}
+          />
+        </button>
+      )}
+
       {/* Bar Status Banner */}
       {cartItems.length > 0 && (
         <div

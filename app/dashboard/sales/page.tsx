@@ -50,7 +50,12 @@ export default function SalesPage() {
   );
 
   // Use React Query hooks
-  const { products = [], isLoading: productsLoading } = useProducts();
+  const {
+    products = [],
+    isLoading: productsLoading,
+    refetch,
+    isRefetching,
+  } = useProducts();
   const { recentSales = [], isLoading: salesLoading } = useRecentSales();
   const { stats, isLoading: statsLoading } = useStats();
   const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
@@ -252,6 +257,8 @@ export default function SalesPage() {
           isDarkMode={isDarkMode}
           currentUser={userData?.name ? { name: userData.name } : undefined}
           currentUserId={userData?.id}
+          refetch={refetch}
+          isRefetching={isRefetching}
         />
       )}
     </div>

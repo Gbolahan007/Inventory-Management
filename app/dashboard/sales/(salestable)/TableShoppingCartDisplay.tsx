@@ -3,7 +3,11 @@
 import { X } from "lucide-react";
 import type React from "react";
 import type { Product, SaleItem, TableCart } from "../(sales)/types";
-import type { UseMutationResult } from "@tanstack/react-query";
+import type {
+  QueryObserverResult,
+  RefetchOptions,
+  UseMutationResult,
+} from "@tanstack/react-query";
 import { CartContent } from "./CartContent";
 import { CartFooter } from "./CartFooter";
 import { Expense } from "@/app/(store)/useExpensesStore";
@@ -45,6 +49,12 @@ interface TableShoppingCartDisplayProps {
   tableBarRequestStatus: "pending" | "approved" | "none";
   handleSendToBar: () => Promise<void> | void;
   isSendingToBar: boolean;
+
+  refetch?: (
+    options?: RefetchOptions
+  ) => Promise<QueryObserverResult<any[], Error>>;
+
+  isRefetching: boolean;
 }
 
 export default function TableShoppingCartDisplay({
@@ -72,6 +82,8 @@ export default function TableShoppingCartDisplay({
   tableBarRequestStatus,
   handleSendToBar,
   isSendingToBar,
+  refetch,
+  isRefetching,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
@@ -141,6 +153,8 @@ export default function TableShoppingCartDisplay({
               tableBarRequestStatus={tableBarRequestStatus}
               handleSendToBar={handleSendToBar}
               isSendingToBar={isSendingToBar}
+              refetch={refetch}
+              isRefetching={isRefetching}
             />
           </div>
         </div>
@@ -227,6 +241,8 @@ export default function TableShoppingCartDisplay({
             tableBarRequestStatus={tableBarRequestStatus}
             handleSendToBar={handleSendToBar}
             isSendingToBar={isSendingToBar}
+            refetch={refetch}
+            isRefetching={isRefetching}
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ export function useProducts() {
     isLoading,
     error,
     refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ["products", "list"],
     queryFn: () => getProductsClient(),
@@ -21,5 +22,12 @@ export function useProducts() {
     await queryClient.invalidateQueries({ queryKey: ["products"] });
   };
 
-  return { products, isLoading, error, refetch, invalidateProducts };
+  return {
+    products,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+    invalidateProducts,
+  };
 }

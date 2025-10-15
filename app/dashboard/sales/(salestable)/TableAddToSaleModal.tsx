@@ -13,6 +13,7 @@ import type { Product } from "../(sales)/types";
 import ModalHeader from "./ModalHeader";
 import TableSelector from "./TableSelector";
 import { useTableCartLogic } from "./useTableCart";
+import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 
 interface TableAddToSaleModalProps {
   isOpen: boolean;
@@ -22,6 +23,11 @@ interface TableAddToSaleModalProps {
     name: string;
   };
   currentUserId?: string;
+  refetch?: (
+    options?: RefetchOptions
+  ) => Promise<QueryObserverResult<any[], Error>>;
+
+  isRefetching: boolean;
 }
 
 export default function TableAddToSaleModal({
@@ -29,6 +35,8 @@ export default function TableAddToSaleModal({
   onClose,
   isDarkMode = false,
   currentUser,
+  refetch,
+  isRefetching,
   currentUserId,
 }: TableAddToSaleModalProps) {
   const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
@@ -240,6 +248,8 @@ export default function TableAddToSaleModal({
                 tableBarRequestStatus={tableBarRequestStatus}
                 handleSendToBar={handleSendToBar}
                 isSendingToBar={isSendingToBar}
+                refetch={refetch}
+                isRefetching={isRefetching}
               />
             </div>
           </div>
