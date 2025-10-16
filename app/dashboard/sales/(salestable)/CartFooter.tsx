@@ -381,32 +381,17 @@ export function CartFooter({
             </label>
 
             {isPending && (
-              <select
+              <input
+                type="text"
                 value={pendingCustomer}
                 onChange={(e) => setPendingCustomer(e.target.value)}
+                placeholder="Enter customer name"
                 className={`w-full p-2 border rounded-md ${
                   isDarkMode
-                    ? "bg-slate-800 border-slate-700"
-                    : "bg-gray-50 border-gray-200"
+                    ? "bg-slate-800 border-slate-700 text-slate-200"
+                    : "bg-gray-50 border-gray-200 text-gray-800"
                 }`}
-              >
-                <option value="">Select Customer</option>
-                {[
-                  "daddy yo",
-                  "kola",
-                  "customer",
-                  "canada",
-                  "baba cocky",
-                  "dammy",
-                  "attitude",
-                  "bro deji",
-                  "wole",
-                ].map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              />
             )}
           </div>
         )}
