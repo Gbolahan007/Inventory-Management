@@ -67,7 +67,6 @@ export function RecentSalesTable({
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSalesRep, setSelectedSalesRep] = useState<string>("all");
-  console.log(sales);
 
   // Get unique sales rep names for filter dropdown
   const salesRepNames = useMemo(() => {
@@ -126,7 +125,6 @@ export function RecentSalesTable({
 
   const saleItems = selectedSale ? getSaleItems(selectedSale.id) : [];
 
-  console.log(saleItems);
   // Row click handler
   const handleRowClick = (params: any) => {
     const sale = sales.find((s) => s.id === params.row.id);

@@ -57,6 +57,9 @@ interface TableShoppingCartDisplayProps {
   isRefetching: boolean;
 
   checkBarRequestStatus: () => Promise<void>;
+
+  hasBarApprovalItems: boolean;
+  canFinalizeSale: boolean;
 }
 
 export default function TableShoppingCartDisplay({
@@ -87,6 +90,8 @@ export default function TableShoppingCartDisplay({
   refetch,
   isRefetching,
   checkBarRequestStatus,
+  hasBarApprovalItems,
+  canFinalizeSale,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
@@ -159,6 +164,8 @@ export default function TableShoppingCartDisplay({
               refetch={refetch}
               isRefetching={isRefetching}
               checkBarRequestStatus={checkBarRequestStatus}
+              hasBarApprovalItems={hasBarApprovalItems}
+              canFinalizeSale={canFinalizeSale}
             />
           </div>
         </div>
@@ -248,6 +255,8 @@ export default function TableShoppingCartDisplay({
             refetch={refetch}
             isRefetching={isRefetching}
             checkBarRequestStatus={checkBarRequestStatus}
+            hasBarApprovalItems={hasBarApprovalItems}
+            canFinalizeSale={canFinalizeSale}
           />
         </div>
       </div>

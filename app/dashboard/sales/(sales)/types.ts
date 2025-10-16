@@ -86,7 +86,7 @@ export interface SaleItemWithBarStatus extends SaleItem {
 export interface BarRequest {
   id: string; // UUID (PK)
   table_id: number | string;
-  product_id: string;
+  product_id: string | null;
   product_name: string;
   product_price: number;
   quantity: number;

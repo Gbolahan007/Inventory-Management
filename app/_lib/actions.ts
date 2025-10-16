@@ -28,7 +28,7 @@ interface SaleItem {
 
 export interface BarRequestItem {
   table_id: number;
-  product_id: string;
+  product_id: string | null;
   product_name: string;
   quantity: number;
   product_price: number;
@@ -165,7 +165,7 @@ export async function createBarRequestRecords(
   const { data, error } = await supabase
     .from("bar_requests")
     .insert(barRequestItems)
-    .select(); // ✅ include .select() to get inserted rows
+    .select();
 
   if (error) {
     return {
@@ -174,7 +174,10 @@ export async function createBarRequestRecords(
     };
   }
 
-  return { success: true, data }; // ✅ include data
+  return {
+    success: true,
+    data,
+  };
 }
 
 export async function updateBarRequestStatus(

@@ -54,6 +54,8 @@ interface CartFooterProps {
   ) => Promise<QueryObserverResult<any[], Error>>;
   isRefetching: boolean;
   checkBarRequestStatus: () => Promise<void>;
+  hasBarApprovalItems: boolean;
+  canFinalizeSale: boolean;
 }
 
 export function CartFooter({
@@ -78,6 +80,8 @@ export function CartFooter({
   refetch,
   isRefetching,
   checkBarRequestStatus,
+  hasBarApprovalItems,
+  canFinalizeSale,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -135,13 +139,8 @@ export function CartFooter({
 
   const isProcessing = createSaleMutation.isPending || isRetrying;
 
-  // Can finalize if approved OR only expenses exist (no cart items)
-  const canFinalizeSale =
-    (cartItems.length > 0 && tableBarRequestStatus === "approved") ||
-    (cartItems.length === 0 && currentExpenses.length > 0);
-
-  // Can send to bar if there are items and not already sent
-  const canSendToBar = cartItems.length > 0 && tableBarRequestStatus === "none";
+  // Can send to bar if there are items that need approval and not already sent
+  const canSendToBar = hasBarApprovalItems && tableBarRequestStatus === "none";
 
   return (
     <div className="space-y-4">
@@ -165,7 +164,7 @@ export function CartFooter({
       )}
 
       {/* Bar Status Banner */}
-      {cartItems.length > 0 && (
+      {hasBarApprovalItems && (
         <div
           className={`p-3 rounded-lg border ${
             tableBarRequestStatus === "pending"
@@ -184,7 +183,7 @@ export function CartFooter({
                     Waiting for Bar Approval
                   </p>
                   <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                    Your request has been sent to the bar
+                    Drinks/cigarettes sent to bar
                   </p>
                 </div>
               </>
@@ -208,7 +207,7 @@ export function CartFooter({
                     Ready to Send
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Send items to bar for approval
+                    Send drinks/cigarettes to bar for approval
                   </p>
                 </div>
               </>
@@ -337,44 +336,45 @@ export function CartFooter({
       </div>
 
       {/* Payment Method */}
-      {cartItems.length > 0 && tableBarRequestStatus === "approved" && (
-        <div className="space-y-3">
-          <label
-            className={`block text-sm font-medium ${
-              isDarkMode ? "text-slate-300" : "text-gray-700"
-            }`}
-          >
-            Payment Method
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { value: "transfer", label: "Transfer", icon: CreditCard },
-              { value: "cash", label: "Cash", icon: Banknote },
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setPaymentMethod(value)}
-                className={`p-3 rounded-lg border-2 flex items-center justify-center space-x-2 transition-all ${
-                  paymentMethod === value
-                    ? isDarkMode
-                      ? "border-blue-500 bg-blue-500/20 text-blue-400"
-                      : "border-blue-500 bg-blue-50 text-blue-600"
-                    : isDarkMode
-                    ? "border-slate-600 hover:border-slate-500 text-slate-300"
-                    : "border-gray-300 hover:border-gray-400 text-gray-600"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
+      {(cartItems.length > 0 || currentExpenses.length > 0) &&
+        (!hasBarApprovalItems || tableBarRequestStatus === "approved") && (
+          <div className="space-y-3">
+            <label
+              className={`block text-sm font-medium ${
+                isDarkMode ? "text-slate-300" : "text-gray-700"
+              }`}
+            >
+              Payment Method
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: "transfer", label: "Transfer", icon: CreditCard },
+                { value: "cash", label: "Cash", icon: Banknote },
+              ].map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setPaymentMethod(value)}
+                  className={`p-3 rounded-lg border-2 flex items-center justify-center space-x-2 transition-all ${
+                    paymentMethod === value
+                      ? isDarkMode
+                        ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                        : "border-blue-500 bg-blue-50 text-blue-600"
+                      : isDarkMode
+                      ? "border-slate-600 hover:border-slate-500 text-slate-300"
+                      : "border-gray-300 hover:border-gray-400 text-gray-600"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Pending Sale */}
       {(cartItems.length > 0 || currentExpenses.length > 0) &&
-        tableBarRequestStatus === "approved" && (
+        (!hasBarApprovalItems || tableBarRequestStatus === "approved") && (
           <div className="space-y-2">
             <label className="flex items-center space-x-2">
               <input
@@ -424,37 +424,35 @@ export function CartFooter({
           ) : (
             <div className="flex items-center justify-center space-x-2">
               <Send className="w-4 h-4" />
-              <span>Send to Bar</span>
+              <span>Send Drinks/Cigarettes to Bar</span>
             </div>
           )}
         </button>
       )}
 
       {/* Complete Sale Button */}
-      {(canFinalizeSale || tableBarRequestStatus === "approved") && (
-        <button
-          onClick={handleSaleWithTimeout}
-          disabled={!canFinalizeSale || isProcessing}
-          className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-            !canFinalizeSale || isProcessing
-              ? isDarkMode
-                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : isDarkMode
-              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg"
-              : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
-          }`}
-        >
-          {isProcessing ? (
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>{isRetrying ? "Retrying..." : "Processing..."}</span>
-            </div>
-          ) : (
-            "Complete Sale"
-          )}
-        </button>
-      )}
+      <button
+        onClick={handleSaleWithTimeout}
+        disabled={!canFinalizeSale || isProcessing}
+        className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+          !canFinalizeSale || isProcessing
+            ? isDarkMode
+              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            : isDarkMode
+            ? "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+            : "bg-green-500 hover:bg-green-600 text-white shadow-lg"
+        }`}
+      >
+        {isProcessing ? (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span>{isRetrying ? "Retrying..." : "Processing..."}</span>
+          </div>
+        ) : (
+          "Complete Sale"
+        )}
+      </button>
     </div>
   );
 }

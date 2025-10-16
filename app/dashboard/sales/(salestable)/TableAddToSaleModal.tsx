@@ -85,10 +85,14 @@ export default function TableAddToSaleModal({
     handleSendToBar,
     isSendingToBar,
     checkBarRequestStatus,
+    hasBarApprovalItems,
+    canFinalizeSale,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
   const filteredProducts = products?.filter((item) => item.current_stock !== 0);
+
+  console.log(currentCart);
 
   const groupedProducts = filteredProducts?.reduce((groups, product) => {
     const category = product.category || "Other";
@@ -252,6 +256,8 @@ export default function TableAddToSaleModal({
                 refetch={refetch}
                 isRefetching={isRefetching}
                 checkBarRequestStatus={checkBarRequestStatus}
+                hasBarApprovalItems={hasBarApprovalItems}
+                canFinalizeSale={canFinalizeSale}
               />
             </div>
           </div>

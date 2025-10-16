@@ -19,6 +19,33 @@ interface UseTableCartLogicProps {
   currentUserId?: string;
 }
 
+// Helper function to check if product needs bar approval
+const needsBarApproval = (
+  productName: string,
+  productCategory?: string
+): boolean => {
+  const name = productName.toLowerCase();
+  const category = productCategory?.toLowerCase() || "";
+
+  // Check if it's a cigarette
+  if (
+    name.includes("cigarette") ||
+    name.includes("cigar") ||
+    category === "cigarette"
+  ) {
+    return true;
+  }
+
+  // Check if it's a drink (exclude food categories)
+  const foodCategories = ["kitchen", "asun", "suya", "food"];
+  if (foodCategories.some((cat) => category.includes(cat))) {
+    return false;
+  }
+
+  // Default to requiring approval for anything else
+  return true;
+};
+
 export function useTableCartLogic({
   products,
   currentUser,
@@ -75,6 +102,8 @@ export function useTableCartLogic({
   const currentExpenses = getExpenses(selectedTable);
   const currentExpensesTotal = getTotalExpenses(selectedTable);
 
+  console.log(currentExpenses);
+
   // ---------- CALCULATIONS ----------
   const excludedCategories = ["kitchen", "asun", "suya"];
   const includedExpenses = currentExpenses.filter(
@@ -87,6 +116,31 @@ export function useTableCartLogic({
 
   const finalTotal = currentTotal + includedExpensesTotal;
 
+  // ---------- FILTER BAR APPROVAL ITEMS ----------
+  // Include both cart drinks/cigars and expenses with category "Cigarette"
+  const barApprovalItems = [
+    // Cart items needing bar approval
+    ...currentCart.filter((item) => {
+      const product = products?.find((p) => p.id === item.product_id);
+      return needsBarApproval(item.name, product?.category);
+    }),
+
+    // Cigarette expenses
+    ...currentExpenses
+      .filter((exp) => exp.category?.toLowerCase().trim() === "cigarette")
+      .map((exp) => ({
+        id: exp.id,
+        name: exp.category,
+        quantity: 1,
+        selling_price: exp.amount,
+        total_price: exp.amount,
+        product_id: null,
+        table_id: exp.tableId,
+      })),
+  ];
+
+  const hasBarApprovalItems = barApprovalItems.length > 0;
+
   // ---------- INITIALIZE USER ----------
   useEffect(() => {
     if (currentUserId) setCurrentUser(currentUserId);
@@ -94,7 +148,7 @@ export function useTableCartLogic({
 
   // ---------- CHECK BAR REQUEST STATUS (MEMOIZED) ----------
   const checkBarRequestStatus = useCallback(async () => {
-    if (!selectedTable || currentCart.length === 0) {
+    if (!selectedTable || barApprovalItems.length === 0) {
       setTableBarRequestStatus("none");
       setPendingBarRequestId(null);
       return;
@@ -133,7 +187,7 @@ export function useTableCartLogic({
     } catch (error) {
       console.error("Error checking bar request status:", error);
     }
-  }, [selectedTable, currentCart.length]);
+  }, [selectedTable, barApprovalItems.length]);
 
   // Initial check on mount and when dependencies change
   useEffect(() => {
@@ -226,15 +280,28 @@ export function useTableCartLogic({
 
     try {
       addToTableCart(selectedTable, newItem);
-      toast.success(`${newItem.name} added to cart!`);
+
+      // Check if this is a bar approval item
+      const isBarItem = needsBarApproval(
+        newItem.name,
+        selectedProductData.category
+      );
+
+      toast.success(
+        `${newItem.name} added to cart!${
+          isBarItem ? " (Requires bar approval)" : ""
+        }`
+      );
+
       setSelectedProduct("");
       setQuantity(1);
       setCustomSellingPrice(0);
 
-      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
+      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified with bar items
       if (
-        tableBarRequestStatus === "approved" ||
-        tableBarRequestStatus === "pending"
+        isBarItem &&
+        (tableBarRequestStatus === "approved" ||
+          tableBarRequestStatus === "pending")
       ) {
         // Cancel/invalidate existing bar requests for this table
         if (pendingBarRequestId) {
@@ -284,8 +351,8 @@ export function useTableCartLogic({
 
   // ---------- SEND TO BAR ----------
   const handleSendToBar = async () => {
-    if (currentCart.length === 0) {
-      toast.error("Cart is empty. Add items before sending to bar.");
+    if (barApprovalItems.length === 0) {
+      toast.error("No drinks or cigarettes to send to bar.");
       return;
     }
 
@@ -314,17 +381,19 @@ export function useTableCartLogic({
         .eq("table_id", selectedTable)
         .in("status", ["pending", "accepted"]);
 
-      // Then create new bar request for ALL current cart items
-      const barRequestItems: BarRequestItem[] = currentCart.map((item) => ({
-        table_id: selectedTable,
-        product_id: item.product_id,
-        product_name: item.name,
-        quantity: item.quantity,
-        product_price: item.selling_price,
-        sales_rep_id: currentUserId,
-        sales_rep_name: currentUser.name,
-        status: "pending",
-      }));
+      // Create bar request ONLY for drinks and cigarettes
+      const barRequestItems: BarRequestItem[] = barApprovalItems.map(
+        (item) => ({
+          table_id: selectedTable,
+          product_id: item.product_id,
+          product_name: item.name,
+          quantity: item.quantity,
+          product_price: item.selling_price,
+          sales_rep_id: currentUserId,
+          sales_rep_name: currentUser.name,
+          status: "pending",
+        })
+      );
 
       const result = await createBarRequestRecords(barRequestItems);
 
@@ -338,7 +407,7 @@ export function useTableCartLogic({
       }
 
       toast.success(
-        `Request sent to bar for Table ${selectedTable}. Waiting for approval...`
+        `${barApprovalItems.length} drink/cigarette item(s) sent to bar for Table ${selectedTable}. Waiting for approval...`
       );
 
       await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
@@ -363,9 +432,11 @@ export function useTableCartLogic({
       return;
     }
 
-    // Check if cart items need bar approval
-    if (hasCartItems && tableBarRequestStatus !== "approved") {
-      toast.error("Please send items to bar and wait for approval first");
+    // Check if cart has items that need bar approval
+    if (hasBarApprovalItems && tableBarRequestStatus !== "approved") {
+      toast.error(
+        "Please send drinks/cigarettes to bar and wait for approval first"
+      );
       return;
     }
 
@@ -404,7 +475,7 @@ export function useTableCartLogic({
       await createSaleMutation.mutateAsync(saleData);
 
       // Update bar request status to completed
-      if (hasCartItems && pendingBarRequestId) {
+      if (hasBarApprovalItems && pendingBarRequestId) {
         await supabase
           .from("bar_requests")
           .update({ status: "completed" })
@@ -440,26 +511,39 @@ export function useTableCartLogic({
 
   const removeFromCart = async (productId: string, unitPrice: number) => {
     try {
+      const itemToRemove = currentCart.find(
+        (item) => item.product_id === productId && item.unit_price === unitPrice
+      );
+
       removeFromTableCart(selectedTable, productId, unitPrice);
       toast.success("Item removed from cart");
 
-      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
-      if (
-        tableBarRequestStatus === "approved" ||
-        tableBarRequestStatus === "pending"
-      ) {
-        // Cancel existing bar requests for this table
-        await supabase
-          .from("bar_requests")
-          .update({ status: "cancelled" })
-          .eq("table_id", selectedTable)
-          .in("status", ["pending", "accepted"]);
+      // Only invalidate bar approval if removing a bar item
+      if (itemToRemove) {
+        const product = products?.find((p) => p.id === productId);
+        const isBarItem = needsBarApproval(
+          itemToRemove.name,
+          product?.category
+        );
 
-        setTableBarRequestStatus("none");
-        setPendingBarRequestId(null);
-        toast("⚠️ Cart modified. Please send to bar again for approval.", {
-          icon: "⚠️",
-        });
+        if (
+          isBarItem &&
+          (tableBarRequestStatus === "approved" ||
+            tableBarRequestStatus === "pending")
+        ) {
+          // Cancel existing bar requests for this table
+          await supabase
+            .from("bar_requests")
+            .update({ status: "cancelled" })
+            .eq("table_id", selectedTable)
+            .in("status", ["pending", "accepted"]);
+
+          setTableBarRequestStatus("none");
+          setPendingBarRequestId(null);
+          toast("⚠️ Cart modified. Please send to bar again for approval.", {
+            icon: "⚠️",
+          });
+        }
       }
     } catch (error: any) {
       toast.error(`Failed to remove item: ${error.message}`);
@@ -496,6 +580,10 @@ export function useTableCartLogic({
     }
 
     try {
+      const cartItem = currentCart.find(
+        (item) => item.product_id === productId && item.unit_price === unitPrice
+      );
+
       updateTableCartItemQuantity(
         selectedTable,
         productId,
@@ -503,23 +591,28 @@ export function useTableCartLogic({
         newQuantity
       );
 
-      // ⚠️ CRITICAL: Invalidate bar approval when cart is modified
-      if (
-        tableBarRequestStatus === "approved" ||
-        tableBarRequestStatus === "pending"
-      ) {
-        // Cancel existing bar requests for this table
-        await supabase
-          .from("bar_requests")
-          .update({ status: "cancelled" })
-          .eq("table_id", selectedTable)
-          .in("status", ["pending", "accepted"]);
+      // Only invalidate bar approval if modifying a bar item
+      if (cartItem) {
+        const isBarItem = needsBarApproval(cartItem.name, product?.category);
 
-        setTableBarRequestStatus("none");
-        setPendingBarRequestId(null);
-        toast("⚠️ Cart modified. Please send to bar again for approval.", {
-          icon: "⚠️",
-        });
+        if (
+          isBarItem &&
+          (tableBarRequestStatus === "approved" ||
+            tableBarRequestStatus === "pending")
+        ) {
+          // Cancel existing bar requests for this table
+          await supabase
+            .from("bar_requests")
+            .update({ status: "cancelled" })
+            .eq("table_id", selectedTable)
+            .in("status", ["pending", "accepted"]);
+
+          setTableBarRequestStatus("none");
+          setPendingBarRequestId(null);
+          toast("⚠️ Cart modified. Please send to bar again for approval.", {
+            icon: "⚠️",
+          });
+        }
       }
     } catch (error: any) {
       toast.error(`Failed to update quantity: ${error.message}`);
@@ -534,10 +627,13 @@ export function useTableCartLogic({
     customSellingPrice || selectedProductData?.selling_price || 0;
   const totalPrice = unitPrice * quantity;
 
-  // Can only finalize if cart items are approved OR only expenses exist
+  // Can finalize if:
+  // - Bar items are approved (if any exist)
+  // - OR only non-bar items + expenses exist
   const canFinalizeSale =
-    (currentCart.length > 0 && tableBarRequestStatus === "approved") ||
-    (currentCart.length === 0 && currentExpenses.length > 0);
+    (hasBarApprovalItems && tableBarRequestStatus === "approved") ||
+    (!hasBarApprovalItems &&
+      (currentCart.length > 0 || currentExpenses.length > 0));
 
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const productName = e.target.value;
@@ -615,5 +711,7 @@ export function useTableCartLogic({
     pendingCustomer,
     setPendingCustomer,
     checkBarRequestStatus,
+    hasBarApprovalItems, // Export this for UI
+    barApprovalItems, // Export this for UI
   };
 }
