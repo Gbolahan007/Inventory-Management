@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useExpensesStore } from "@/app/(store)/useExpensesStore";
@@ -92,72 +92,83 @@ export function useTableCartLogic({
     if (currentUserId) setCurrentUser(currentUserId);
   }, [currentUserId, setCurrentUser]);
 
-  // ---------- CHECK BAR REQUEST STATUS ----------
-  useEffect(() => {
-    const checkBarRequestStatus = async () => {
-      if (!selectedTable || currentCart.length === 0) {
-        setTableBarRequestStatus("none");
-        setPendingBarRequestId(null);
+  // ---------- CHECK BAR REQUEST STATUS (MEMOIZED) ----------
+  const checkBarRequestStatus = useCallback(async () => {
+    if (!selectedTable || currentCart.length === 0) {
+      setTableBarRequestStatus("none");
+      setPendingBarRequestId(null);
+      return;
+    }
+
+    try {
+      // Only look for active requests (not cancelled)
+      const { data, error } = await supabase
+        .from("bar_requests")
+        .select("*")
+        .eq("table_id", selectedTable)
+        .in("status", ["pending", "accepted"]) // Exclude cancelled
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error checking bar request status:", error);
         return;
       }
 
-      try {
-        // Only look for active requests (not cancelled)
-        const { data, error } = await supabase
-          .from("bar_requests")
-          .select("*")
-          .eq("table_id", selectedTable)
-          .in("status", ["pending", "accepted"]) // Exclude cancelled
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error checking bar request status:", error);
-          return;
+      if (data) {
+        if (data.status === "accepted") {
+          console.log("✅ Bar request approved:", data.id);
+          setTableBarRequestStatus("approved");
+          setPendingBarRequestId(data.id);
+        } else if (data.status === "pending") {
+          console.log("⏳ Bar request pending:", data.id);
+          setTableBarRequestStatus("pending");
+          setPendingBarRequestId(data.id);
         }
-
-        if (data) {
-          if (data.status === "accepted") {
-            setTableBarRequestStatus("approved");
-            setPendingBarRequestId(data.id);
-          } else if (data.status === "pending") {
-            setTableBarRequestStatus("pending");
-            setPendingBarRequestId(data.id);
-          }
-        } else {
-          setTableBarRequestStatus("none");
-          setPendingBarRequestId(null);
-        }
-      } catch (error) {
-        console.error("Error checking bar request status:", error);
+      } else {
+        setTableBarRequestStatus("none");
+        setPendingBarRequestId(null);
       }
-    };
-
-    checkBarRequestStatus();
+    } catch (error) {
+      console.error("Error checking bar request status:", error);
+    }
   }, [selectedTable, currentCart.length]);
+
+  // Initial check on mount and when dependencies change
+  useEffect(() => {
+    checkBarRequestStatus();
+  }, [checkBarRequestStatus]);
 
   // ---------- REALTIME UPDATES ----------
   useEffect(() => {
     const tables = ["sales", "products", "expenses", "bar_requests"];
 
     const channels = tables.map((table) => {
-      const channel = subscribeToTable(table, (payload) => {
+      const channel = subscribeToTable(table, async (payload) => {
         console.log(`🔁 ${table} updated:`, payload);
-        queryClient.invalidateQueries({ queryKey: [table] });
 
-        // Update bar request status when bar_requests table changes
-        if (table === "bar_requests" && payload.new) {
-          const data = payload.new as any;
-          if (data.table_id === selectedTable) {
-            if (data.status === "accepted") {
-              setTableBarRequestStatus("approved");
-              setPendingBarRequestId(data.id);
-              toast.success("Bar has approved your request!");
-            } else if (data.status === "rejected") {
-              setTableBarRequestStatus("none");
-              setPendingBarRequestId(null);
-              toast.error("Bar rejected your request");
+        // Invalidate queries for all tables
+        await queryClient.invalidateQueries({ queryKey: [table] });
+
+        // Handle bar_requests updates specifically
+        if (table === "bar_requests") {
+          // Get the record data (could be in 'new' for INSERT/UPDATE or 'old' for DELETE)
+          const data = payload.new || payload.old;
+
+          if (data && data.table_id === selectedTable) {
+            console.log("🔔 Bar request update for current table:", data);
+
+            // Re-check status immediately when bar_requests change
+            await checkBarRequestStatus();
+
+            // Show toast notifications
+            if (payload.eventType === "UPDATE" && payload.new) {
+              if (payload.new.status === "accepted") {
+                toast.success("✅ Bar has approved your request!");
+              } else if (payload.new.status === "rejected") {
+                toast.error("❌ Bar rejected your request");
+              }
             }
           }
         }
@@ -168,7 +179,7 @@ export function useTableCartLogic({
     return () => {
       channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [queryClient, selectedTable]);
+  }, [queryClient, selectedTable, checkBarRequestStatus]);
 
   // ---------- HANDLERS ----------
   const handleAddToCart = async () => {
@@ -331,6 +342,9 @@ export function useTableCartLogic({
       );
 
       await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
+
+      // Check status immediately after sending
+      setTimeout(() => checkBarRequestStatus(), 500);
     } catch (error: any) {
       console.error("Error sending to bar:", error);
       toast.error(`Failed to send to bar: ${error.message}`);
@@ -600,5 +614,6 @@ export function useTableCartLogic({
     setIsPending,
     pendingCustomer,
     setPendingCustomer,
+    checkBarRequestStatus,
   };
 }

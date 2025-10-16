@@ -84,6 +84,7 @@ export default function TableAddToSaleModal({
     tableBarRequestStatus,
     handleSendToBar,
     isSendingToBar,
+    checkBarRequestStatus,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
@@ -250,6 +251,7 @@ export default function TableAddToSaleModal({
                 isSendingToBar={isSendingToBar}
                 refetch={refetch}
                 isRefetching={isRefetching}
+                checkBarRequestStatus={checkBarRequestStatus}
               />
             </div>
           </div>

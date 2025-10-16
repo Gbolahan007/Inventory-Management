@@ -55,6 +55,8 @@ interface TableShoppingCartDisplayProps {
   ) => Promise<QueryObserverResult<any[], Error>>;
 
   isRefetching: boolean;
+
+  checkBarRequestStatus: () => Promise<void>;
 }
 
 export default function TableShoppingCartDisplay({
@@ -84,6 +86,7 @@ export default function TableShoppingCartDisplay({
   isSendingToBar,
   refetch,
   isRefetching,
+  checkBarRequestStatus,
 }: TableShoppingCartDisplayProps) {
   if (isOpen) {
     return (
@@ -155,6 +158,7 @@ export default function TableShoppingCartDisplay({
               isSendingToBar={isSendingToBar}
               refetch={refetch}
               isRefetching={isRefetching}
+              checkBarRequestStatus={checkBarRequestStatus}
             />
           </div>
         </div>
@@ -243,6 +247,7 @@ export default function TableShoppingCartDisplay({
             isSendingToBar={isSendingToBar}
             refetch={refetch}
             isRefetching={isRefetching}
+            checkBarRequestStatus={checkBarRequestStatus}
           />
         </div>
       </div>

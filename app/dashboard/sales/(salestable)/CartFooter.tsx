@@ -53,6 +53,7 @@ interface CartFooterProps {
     options?: RefetchOptions
   ) => Promise<QueryObserverResult<any[], Error>>;
   isRefetching: boolean;
+  checkBarRequestStatus: () => Promise<void>;
 }
 
 export function CartFooter({
@@ -76,6 +77,7 @@ export function CartFooter({
   isSendingToBar,
   refetch,
   isRefetching,
+  checkBarRequestStatus,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -145,7 +147,10 @@ export function CartFooter({
     <div className="space-y-4">
       {refetch && (
         <button
-          onClick={() => refetch()}
+          onClick={async () => {
+            await refetch();
+            await checkBarRequestStatus();
+          }}
           className={`p-2 rounded-full transition ${
             isDarkMode
               ? "hover:bg-slate-700 text-blue-400"
