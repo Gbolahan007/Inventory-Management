@@ -193,8 +193,11 @@ export function RequestsList({
               </thead>
               <tbody>
                 {sortedRequests.map((sale, index) => {
+                  // Exclude cigarette from expenses total
                   const totalExpenses =
-                    sale.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
+                    sale.expenses
+                      ?.filter((e) => e.category.toLowerCase() !== "cigarette")
+                      .reduce((sum, e) => sum + e.amount, 0) || 0;
 
                   const breakdown = (sale.expenses || []).reduce((acc, exp) => {
                     const category = exp.category.toLowerCase();
@@ -230,8 +233,18 @@ export function RequestsList({
                           {sale.table_id}
                         </span>
                       </td>
-                      <td className="p-4 font-bold text-green-600 dark:text-green-400">
-                        ₦{sale.total_amount.toLocaleString()}
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="font-bold text-green-600 dark:text-green-400">
+                            ₦{sale.total_amount.toLocaleString()}
+                          </div>
+                          {breakdown.cigarette && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400 italic">
+                              (incl. cigarette: ₦
+                              {breakdown.cigarette.toLocaleString()})
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-slate-900 dark:text-slate-100 font-medium">
                         {sale.sales_rep_name}
@@ -243,16 +256,18 @@ export function RequestsList({
                               ₦{totalExpenses.toLocaleString()}
                             </div>
                             <div className="text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
-                              {Object.entries(breakdown).map(
-                                ([category, amount]) => (
+                              {Object.entries(breakdown)
+                                .filter(
+                                  ([category]) => category !== "cigarette"
+                                )
+                                .map(([category, amount]) => (
                                   <div key={category} className="capitalize">
                                     {category}:{" "}
                                     <span className="font-medium text-red-600 dark:text-red-400">
                                       ₦{amount.toLocaleString()}
                                     </span>
                                   </div>
-                                )
-                              )}
+                                ))}
                             </div>
                           </div>
                         ) : (
@@ -273,8 +288,11 @@ export function RequestsList({
       {/* Mobile View */}
       <div className="lg:hidden space-y-3">
         {sortedRequests.map((sale) => {
+          // Exclude cigarette from expenses total
           const totalExpenses =
-            sale.expenses?.reduce((sum, e) => sum + e.amount, 0) || 0;
+            sale.expenses
+              ?.filter((e) => e.category.toLowerCase() !== "cigarette")
+              .reduce((sum, e) => sum + e.amount, 0) || 0;
           const breakdown = (sale.expenses || []).reduce((acc, exp) => {
             acc[exp.category.toLowerCase()] =
               (acc[exp.category.toLowerCase()] || 0) + exp.amount;
@@ -297,9 +315,16 @@ export function RequestsList({
                       {sale.sales_rep_name}
                     </p>
                   </div>
-                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    ₦{sale.total_amount.toLocaleString()}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      ₦{sale.total_amount.toLocaleString()}
+                    </p>
+                    {breakdown.cigarette && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                        (incl. cig: ₦{breakdown.cigarette.toLocaleString()})
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {totalExpenses > 0 && (
@@ -308,17 +333,19 @@ export function RequestsList({
                       Expenses: ₦{totalExpenses.toLocaleString()}
                     </p>
                     <div className="space-y-1 text-xs">
-                      {Object.entries(breakdown).map(([cat, amt]) => (
-                        <div
-                          key={cat}
-                          className="flex justify-between text-slate-700 dark:text-slate-300"
-                        >
-                          <span className="capitalize">{cat}</span>
-                          <span className="text-red-600 dark:text-red-400 font-medium">
-                            ₦{amt.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
+                      {Object.entries(breakdown)
+                        .filter(([cat]) => cat !== "cigarette")
+                        .map(([cat, amt]) => (
+                          <div
+                            key={cat}
+                            className="flex justify-between text-slate-700 dark:text-slate-300"
+                          >
+                            <span className="capitalize">{cat}</span>
+                            <span className="text-red-600 dark:text-red-400 font-medium">
+                              ₦{amt.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}

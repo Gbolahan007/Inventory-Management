@@ -72,9 +72,9 @@ export default function BarRequestsPage() {
 
   const [filters, setFilters] = useState({
     salesRep: "",
-    dateRange: "",
+    dateRange: "today",
     searchTerm: "",
-    status: "all", // Add status filter
+    status: "all",
   });
   const [sortBy, setSortBy] = useState<"time" | "salesRep" | "total">("time");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -252,42 +252,69 @@ export default function BarRequestsPage() {
 
     return sortOrder === "asc" ? comparison : -comparison;
   });
+  const salesRepSummary = filteredRequests.reduce(
+    (acc, sale) => {
+      const rep = sale.sales_rep_name || "Unknown";
+      const totalAmount = sale.total_amount || 0;
 
-  // Calculate sales rep summaries
-  const salesRepSummary = filteredRequests.reduce((acc, sale) => {
-    const rep = sale.sales_rep_name || "Unknown";
-    const totalAmount = sale.total_amount || 0;
+      // Exclude cigarette from expenses total
+      const totalExpenses = Array.isArray(sale.expenses)
+        ? sale.expenses
+            .filter(
+              (exp: { category?: string }) =>
+                exp.category?.toLowerCase() !== "cigarette"
+            )
+            .reduce((sum: number, exp: { amount?: number }) => {
+              return sum + (exp.amount || 0);
+            }, 0)
+        : 0;
 
-    const totalExpenses = Array.isArray(sale.expenses)
-      ? sale.expenses.reduce((sum: number, exp: { amount?: number }) => {
-          return sum + (exp.amount || 0);
-        }, 0)
-      : 0;
+      const totalItems = Array.isArray(sale.sale_items)
+        ? sale.sale_items.reduce(
+            (sum: number, item: { quantity?: number }) =>
+              sum + (item.quantity || 0),
+            0
+          )
+        : 0;
 
-    const totalItems = Array.isArray(sale.sale_items)
-      ? sale.sale_items.reduce(
-          (sum: number, item: { quantity?: number }) =>
-            sum + (item.quantity || 0),
-          0
-        )
-      : 0;
+      if (!acc[rep]) {
+        acc[rep] = {
+          totalAmount: 0,
+          totalExpenses: 0,
+          totalItems: 0,
+          orderCount: 0,
+          expenseDetails: [],
+        };
+      }
 
-    if (!acc[rep]) {
-      acc[rep] = {
-        totalAmount: 0,
-        totalExpenses: 0,
-        totalItems: 0,
-        orderCount: 0,
-      };
-    }
+      acc[rep].totalAmount += totalAmount;
+      acc[rep].totalExpenses += totalExpenses;
+      acc[rep].totalItems += totalItems;
+      acc[rep].orderCount += 1;
 
-    acc[rep].totalAmount += totalAmount;
-    acc[rep].totalExpenses += totalExpenses;
-    acc[rep].totalItems += totalItems;
-    acc[rep].orderCount += 1;
+      // Collect ALL expense details (including cigarette for display reference)
+      if (Array.isArray(sale.expenses)) {
+        acc[rep].expenseDetails.push(
+          ...sale.expenses.map((exp: any) => ({
+            category: exp.category || "Uncategorized",
+            amount: exp.amount || 0,
+          }))
+        );
+      }
 
-    return acc;
-  }, {} as Record<string, { totalAmount: number; totalExpenses: number; totalItems: number; orderCount: number }>);
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        totalAmount: number;
+        totalExpenses: number;
+        totalItems: number;
+        orderCount: number;
+        expenseDetails: { category: string; amount: number }[];
+      }
+    >
+  );
 
   const clearFilters = () => {
     setFilters({ salesRep: "", dateRange: "", searchTerm: "", status: "all" });
