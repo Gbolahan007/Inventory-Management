@@ -635,9 +635,12 @@ export function useTableCartLogic({
     (!hasBarApprovalItems &&
       (currentCart.length > 0 || currentExpenses.length > 0));
 
-  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleProductChange = (
+    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
+  ) => {
     const productName = e.target.value;
     setSelectedProduct(productName);
+
     if (productName) {
       const product = products?.find((p) => p.name === productName);
       setCustomSellingPrice(product?.selling_price || 0);
@@ -711,7 +714,7 @@ export function useTableCartLogic({
     pendingCustomer,
     setPendingCustomer,
     checkBarRequestStatus,
-    hasBarApprovalItems, // Export this for UI
-    barApprovalItems, // Export this for UI
+    hasBarApprovalItems,
+    barApprovalItems,
   };
 }

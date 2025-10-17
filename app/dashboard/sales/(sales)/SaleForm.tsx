@@ -58,7 +58,7 @@ export default function SaleForm({
               type="text"
               placeholder="Search product..."
               value={selectedProduct}
-              onChange={handleProductChange}
+              onChange={(e) => handleProductChange(e)} // ✅ supports input
               list="product-list"
               className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 isDarkMode
@@ -86,7 +86,7 @@ export default function SaleForm({
             <select
               id="productName"
               value={selectedProduct}
-              onChange={handleProductChange}
+              onChange={(e) => handleProductChange(e)} // ✅ supports select
               className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 isDarkMode
                   ? "bg-slate-700 border-slate-600 text-slate-100"
