@@ -16,8 +16,15 @@ import ReportMetricCardSection from "./ReportMetricCardSection";
 import ReportChartSection from "./ReportChartSection";
 import ProductAndProfitSection from "./ProductAndProfitSection";
 import DailySalesReports from "./DailySalesReports";
-import CashAndTransferReport from "./CashAndTransferReport"; // ✅ new component
-import { BarChart3, CalendarDays, CreditCard, Loader2 } from "lucide-react";
+import CashAndTransferReport from "./CashAndTransferReport";
+import {
+  BarChart3,
+  CalendarDays,
+  CreditCard,
+  Loader2,
+  RotateCcw, // ✅ icon for Recoveries
+} from "lucide-react";
+import { PendingSalesPayment } from "../sales/(pendingsales)/PendingSalesPayment";
 
 export type ExtendedStats = {
   totalSales: number;
@@ -47,8 +54,10 @@ export default function ReportsDashboard() {
   const { recentSales = [] } = useRecentSales();
   const { saleItemsWithCategories = [] } = useSaleItemsWithCategories();
   const { topSellingProducts = [] } = useTopSellingProducts();
+
+  // ✅ Added "recoveries" to the union type
   const [activeTab, setActiveTab] = useState<
-    "overview" | "dailyReport" | "cashTransfer"
+    "overview" | "dailyReport" | "cashTransfer" | "recoveries"
   >("overview");
 
   const profitDate = useMemo(
@@ -134,6 +143,7 @@ export default function ReportsDashboard() {
       {/* Tabs Navigation */}
       <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
         <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
+          {/* Overview */}
           <button
             onClick={() => setActiveTab("overview")}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -146,6 +156,7 @@ export default function ReportsDashboard() {
             Overview
           </button>
 
+          {/* Daily Report */}
           <button
             onClick={() => setActiveTab("dailyReport")}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -158,7 +169,7 @@ export default function ReportsDashboard() {
             Daily Report
           </button>
 
-          {/* ✅ NEW TAB */}
+          {/* Cash & Transfer Report */}
           <button
             onClick={() => setActiveTab("cashTransfer")}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -169,6 +180,19 @@ export default function ReportsDashboard() {
           >
             <CreditCard className="w-5 h-5" />
             Cash & Transfer Report
+          </button>
+
+          {/* ✅ NEW Recoveries Tab */}
+          <button
+            onClick={() => setActiveTab("recoveries")}
+            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+              activeTab === "recoveries"
+                ? "text-primary border-b-2 border-primary bg-muted/50"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <RotateCcw className="w-5 h-5" />
+            Recoveries
           </button>
         </div>
       </div>
@@ -188,8 +212,10 @@ export default function ReportsDashboard() {
         </>
       ) : activeTab === "dailyReport" ? (
         <DailySalesReports />
-      ) : (
+      ) : activeTab === "cashTransfer" ? (
         <CashAndTransferReport />
+      ) : (
+        <PendingSalesPayment />
       )}
     </div>
   );

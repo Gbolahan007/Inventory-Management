@@ -252,12 +252,13 @@ export default function BarRequestsPage() {
 
     return sortOrder === "asc" ? comparison : -comparison;
   });
+  // Build the salesRepSummary for each sales rep
   const salesRepSummary = filteredRequests.reduce(
     (acc, sale) => {
       const rep = sale.sales_rep_name || "Unknown";
       const totalAmount = sale.total_amount || 0;
 
-      // Exclude cigarette from expenses total
+      // Exclude cigarette from totalExpenses
       const totalExpenses = Array.isArray(sale.expenses)
         ? sale.expenses
             .filter(
@@ -292,7 +293,7 @@ export default function BarRequestsPage() {
       acc[rep].totalItems += totalItems;
       acc[rep].orderCount += 1;
 
-      // Collect ALL expense details (including cigarette for display reference)
+      // Collect ALL expense details (including cigarette for display)
       if (Array.isArray(sale.expenses)) {
         acc[rep].expenseDetails.push(
           ...sale.expenses.map((exp: any) => ({
@@ -315,6 +316,34 @@ export default function BarRequestsPage() {
       }
     >
   );
+
+  // Calculate the total expected amount across all sales reps
+  const totalExpectedForDay = Object.values(
+    salesRepSummary as Record<
+      string,
+      {
+        totalAmount: number;
+        totalExpenses: number;
+        totalItems: number;
+        orderCount: number;
+        expenseDetails: { category: string; amount: number }[];
+      }
+    >
+  ).reduce((sum: number, summary) => {
+    const totalNonCigaretteExpenses = summary.expenseDetails
+      .filter(
+        (exp: { category: string }) =>
+          exp.category.toLowerCase() !== "cigarette"
+      )
+      .reduce(
+        (subSum: number, exp: { amount: number }) => subSum + exp.amount,
+        0
+      );
+
+    const expectedAmount = summary.totalAmount + totalNonCigaretteExpenses;
+
+    return sum + expectedAmount;
+  }, 0);
 
   const clearFilters = () => {
     setFilters({ salesRep: "", dateRange: "", searchTerm: "", status: "all" });
@@ -507,7 +536,10 @@ export default function BarRequestsPage() {
           </div>
         )}
 
-        <SalesRepSummary salesRepSummary={salesRepSummary} />
+        <SalesRepSummary
+          totalExpectedForDay={totalExpectedForDay}
+          salesRepSummary={salesRepSummary}
+        />
 
         <RequestFilters
           filters={filters}

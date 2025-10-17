@@ -23,10 +23,12 @@ interface SalesTableViewProps {
   isMarkingPaid: boolean;
 }
 
-export function PendingSalesTableView({
+export function PendingSalesTablePayment({
   sales,
   paymentInputs,
   onPaymentInputChange,
+  onPartialPayment,
+  onMarkAsPaid,
   isAddingPayment,
   isMarkingPaid,
 }: SalesTableViewProps) {
@@ -125,6 +127,9 @@ export function PendingSalesTableView({
                             text-slate-900 dark:text-slate-100"
                         />
                         <button
+                          onClick={() =>
+                            onPartialPayment(sale.id, sale.total_amount)
+                          }
                           disabled={isAddingPayment || !paymentInputs[sale.id]}
                           className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
                         >
@@ -133,6 +138,7 @@ export function PendingSalesTableView({
                         </button>
                       </div>
                       <button
+                        onClick={() => onMarkAsPaid(sale.id)}
                         disabled={isMarkingPaid}
                         className="w-full px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
                       >

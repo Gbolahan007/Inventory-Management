@@ -138,6 +138,7 @@ export async function addRoomBooking(formData: FormData) {
   const num_nights = parseInt(formData.get("num_nights") as string, 10);
   const total_price = parseFloat(formData.get("total") as string);
   const price = parseFloat(formData.get("price") as string);
+  const customer_name = formData.get("customer_name") as string;
 
   const { error } = await supabase.from("room_bookings").insert([
     {
@@ -148,6 +149,7 @@ export async function addRoomBooking(formData: FormData) {
       num_nights,
       total_price,
       price,
+      customer_name,
     },
   ]);
 

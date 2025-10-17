@@ -71,6 +71,24 @@ const RoomBookingForm = () => {
           {/* Form */}
           <div className="p-5">
             <form ref={formRef} action={handleSubmit} className="space-y-4">
+              {/* ✅ Customer Name */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="customer_name"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Customer Name
+                </label>
+                <input
+                  id="customer_name"
+                  type="text"
+                  name="customer_name"
+                  placeholder="Enter customer name"
+                  className="w-full px-3 py-2 bg-background border border-input rounded-md text-foreground text-sm"
+                  required
+                />
+              </div>
+
               {/* Category & Customer Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
