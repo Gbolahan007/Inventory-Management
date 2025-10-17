@@ -24,6 +24,7 @@ interface SaleFormProps {
 }
 
 export default function SaleForm({
+  products,
   selectedProduct,
   quantity,
   customSellingPrice,
@@ -38,6 +39,24 @@ export default function SaleForm({
   categoryDisplayNames,
   isDarkMode,
 }: SaleFormProps) {
+  // 🔍 Filter products dynamically as user types
+  const filteredProducts =
+    products?.filter((product) =>
+      product.name.toLowerCase().includes(selectedProduct.toLowerCase())
+    ) || [];
+
+  // ✅ Quantity handler: remove leading zeros
+  const handleQuantity = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/^0+/, ""); // remove leading zeros
+    const num = Number(value);
+    if (!isNaN(num) && num >= 0) {
+      handleQuantityChange({
+        ...e,
+        target: { ...e.target, value: num.toString() },
+      } as React.ChangeEvent<HTMLInputElement>);
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -53,7 +72,7 @@ export default function SaleForm({
           </label>
 
           {/* Mobile Searchable Input */}
-          <div className="block lg:hidden">
+          <div className="block lg:hidden relative">
             <input
               type="text"
               placeholder="Search product..."
@@ -66,18 +85,14 @@ export default function SaleForm({
                   : "bg-gray-50 border-gray-300 text-gray-900"
               }`}
             />
+
+            {/* 🔍 Filtered products */}
             <datalist id="product-list">
-              {groupedProducts &&
-                Object.entries(groupedProducts).map(([, categoryProducts]) =>
-                  categoryProducts.map((product) => (
-                    <option key={product.id} value={product.name}>
-                      {product.name
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
-                      - ₦{product.selling_price}
-                    </option>
-                  ))
-                )}
+              {filteredProducts.map((product) => (
+                <option key={product.id} value={product.name.toLowerCase()}>
+                  {product.name.replace(/_/g, " ")} - ₦{product.selling_price}
+                </option>
+              ))}
             </datalist>
           </div>
 
@@ -182,8 +197,8 @@ export default function SaleForm({
             type="number"
             min="1"
             max={selectedProductData?.current_stock || 999}
-            value={quantity}
-            onChange={handleQuantityChange}
+            value={quantity || ""}
+            onChange={handleQuantity}
             className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               isDarkMode
                 ? "bg-slate-700 border-slate-600 text-slate-100"
