@@ -47,7 +47,7 @@ export default function SaleForm({
 
   // ✅ Quantity handler: remove leading zeros
   const handleQuantity = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/^0+/, ""); // remove leading zeros
+    const value = e.target.value.replace(/^0+/, "");
     const num = Number(value);
     if (!isNaN(num) && num >= 0) {
       handleQuantityChange({
@@ -77,7 +77,7 @@ export default function SaleForm({
               type="text"
               placeholder="Search product..."
               value={selectedProduct}
-              onChange={(e) => handleProductChange(e)} // ✅ supports input
+              onChange={(e) => handleProductChange(e)}
               list="product-list"
               className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 isDarkMode
@@ -101,7 +101,7 @@ export default function SaleForm({
             <select
               id="productName"
               value={selectedProduct}
-              onChange={(e) => handleProductChange(e)} // ✅ supports select
+              onChange={(e) => handleProductChange(e)}
               className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 isDarkMode
                   ? "bg-slate-700 border-slate-600 text-slate-100"
