@@ -27,7 +27,7 @@ export function PendingSalesFilters({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Search */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 pb-2">
               <Search className="w-4 h-4" /> Search
             </label>
             <input
@@ -51,7 +51,7 @@ export function PendingSalesFilters({
 
           {/* Date Range */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 pb-2">
               <Calendar className="w-4 h-4" /> Period
             </label>
             <select
@@ -78,7 +78,7 @@ export function PendingSalesFilters({
 
           {/* Sort By */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 pb-2">
               <DollarSign className="w-4 h-4" /> Sort By
             </label>
             <select

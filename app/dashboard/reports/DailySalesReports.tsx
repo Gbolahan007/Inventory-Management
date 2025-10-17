@@ -9,7 +9,6 @@ import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import ExpenseForm from "./ExpenseForm";
 
-// ✅ Types
 interface DailySalesRecord {
   date: string;
   drinkSales?: number;
@@ -298,7 +297,7 @@ export default function DailySalesReports() {
         </div>
 
         {/* ✅ Summary Cards (Improved Design) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 ">
           {[
             { label: "Room Sales", value: totals.room },
             { label: "Short Rest", value: totals.shortRest },
@@ -309,12 +308,12 @@ export default function DailySalesReports() {
           ].map((item) => (
             <div
               key={item.label}
-              className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200"
+              className="bg-card border border-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 "
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{item.label}</p>
-                  <p className="text-2xl font-semibold mt-1 tracking-tight">
+                  <p className="text-xl font-semibold mt-1 tracking-tight">
                     {formatCurrency(item.value)}
                   </p>
                 </div>
@@ -332,9 +331,9 @@ export default function DailySalesReports() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-muted">
+              <thead className="bg-muted border border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  ">
                     Date
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase">

@@ -68,7 +68,6 @@ export default function RoomSalesComponent() {
     if (!dateString) return "-";
 
     const utcDate = new Date(dateString);
-    // Convert to Nigeria timezone (Africa/Lagos)
     const datePart = utcDate.toLocaleDateString("en-NG", {
       year: "numeric",
       month: "short",
@@ -87,12 +86,13 @@ export default function RoomSalesComponent() {
   const totalSales = salesData.roomTotal + salesData.shortRestTotal;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 sm:p-6 lg:p-8 text-foreground transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-3 sm:p-4 lg:p-6 text-foreground transition-colors duration-300 ">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+        <div className="mb-7">
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
             Sales Dashboard
           </h1>
+
           <p className="text-sm sm:text-base text-muted-foreground mt-2">
             Overview of your bookings and revenue
           </p>

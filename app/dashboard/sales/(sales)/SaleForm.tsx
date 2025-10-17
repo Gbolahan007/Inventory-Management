@@ -11,7 +11,9 @@ interface SaleFormProps {
   selectedProductData: Product | undefined;
   unitPrice: number;
   totalPrice: number;
-  handleProductChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  handleProductChange: (
+    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
+  ) => void;
   handleQuantityChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSellingPriceChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleAddToCart: () => void;
@@ -49,43 +51,77 @@ export default function SaleForm({
           >
             Product Name *
           </label>
-          <select
-            id="productName"
-            value={selectedProduct}
-            onChange={handleProductChange}
-            className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              isDarkMode
-                ? "bg-slate-700 border-slate-600 text-slate-100"
-                : "bg-gray-50 border-gray-300 text-gray-900"
-            }`}
-          >
-            <option value="">Select a product</option>
-            {groupedProducts &&
-              Object.entries(groupedProducts).map(
-                ([category, categoryProducts]) => {
-                  const categoryInfo =
-                    categoryDisplayNames[category.toLowerCase()] ||
-                    categoryDisplayNames.other;
-                  return (
-                    <optgroup
-                      key={category}
-                      label={`${categoryInfo.emoji} ${categoryInfo.label}`}
-                    >
-                      {categoryProducts.map((product) => (
-                        <option key={product.id} value={product.name}>
-                          {product.name
-                            .replace(/_/g, " ")
-                            .replace(/\b\w/g, (l) => l.toUpperCase())}
-                          {" - ₦"}
-                          {product.selling_price}
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                }
-              )}
-          </select>
+
+          {/* Mobile Searchable Input */}
+          <div className="block lg:hidden">
+            <input
+              type="text"
+              placeholder="Search product..."
+              value={selectedProduct}
+              onChange={handleProductChange}
+              list="product-list"
+              className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                isDarkMode
+                  ? "bg-slate-700 border-slate-600 text-slate-100"
+                  : "bg-gray-50 border-gray-300 text-gray-900"
+              }`}
+            />
+            <datalist id="product-list">
+              {groupedProducts &&
+                Object.entries(groupedProducts).map(([, categoryProducts]) =>
+                  categoryProducts.map((product) => (
+                    <option key={product.id} value={product.name}>
+                      {product.name
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}{" "}
+                      - ₦{product.selling_price}
+                    </option>
+                  ))
+                )}
+            </datalist>
+          </div>
+
+          {/* Desktop Select Dropdown */}
+          <div className="hidden lg:block">
+            <select
+              id="productName"
+              value={selectedProduct}
+              onChange={handleProductChange}
+              className={`w-full px-4 py-3 rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                isDarkMode
+                  ? "bg-slate-700 border-slate-600 text-slate-100"
+                  : "bg-gray-50 border-gray-300 text-gray-900"
+              }`}
+            >
+              <option value="">Select a product</option>
+              {groupedProducts &&
+                Object.entries(groupedProducts).map(
+                  ([category, categoryProducts]) => {
+                    const categoryInfo =
+                      categoryDisplayNames[category.toLowerCase()] ||
+                      categoryDisplayNames.other;
+                    return (
+                      <optgroup
+                        key={category}
+                        label={`${categoryInfo.emoji} ${categoryInfo.label}`}
+                      >
+                        {categoryProducts.map((product) => (
+                          <option key={product.id} value={product.name}>
+                            {product.name
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {" - ₦"}
+                            {product.selling_price}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  }
+                )}
+            </select>
+          </div>
         </div>
+
         {/* Selling Price */}
         <div className="space-y-3">
           <label
@@ -130,6 +166,7 @@ export default function SaleForm({
               </p>
             )}
         </div>
+
         {/* Quantity */}
         <div className="space-y-3">
           <label
@@ -142,6 +179,7 @@ export default function SaleForm({
           </label>
           <input
             id="quantity"
+            type="number"
             min="1"
             max={selectedProductData?.current_stock || 999}
             value={quantity}
@@ -163,7 +201,8 @@ export default function SaleForm({
           )}
         </div>
       </div>
-      {/* Price Information Display */}
+
+      {/* Price Info */}
       {selectedProductData && quantity > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-3">
@@ -194,6 +233,7 @@ export default function SaleForm({
               />
             </div>
           </div>
+
           <div className="space-y-3">
             <label
               className={`block text-sm font-semibold ${
@@ -224,6 +264,7 @@ export default function SaleForm({
           </div>
         </div>
       )}
+
       {/* Add to Cart Button */}
       <div className="flex justify-end">
         <button
