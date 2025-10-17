@@ -105,7 +105,7 @@ export function PendingSalesTable() {
         .from("sales")
         .update({
           is_pending: false,
-          amount_paid: saleData.total_amount, // Mark as fully paid
+          amount_paid: saleData.total_amount,
         })
         .eq("id", saleId);
 
