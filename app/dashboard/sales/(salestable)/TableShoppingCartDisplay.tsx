@@ -101,7 +101,6 @@ export default function TableShoppingCartDisplay({
   checkBarRequestStatus,
   hasBarApprovalItems,
   canFinalizeSale,
-  finalTotal,
 }: TableShoppingCartDisplayProps) {
   const [isSliding, setIsSliding] = useState(false);
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items");
@@ -397,58 +396,6 @@ export default function TableShoppingCartDisplay({
                       updateCartItemQuantity={updateCartItemQuantity}
                       isDarkMode={isDarkMode}
                     />
-
-                    {/* Quick Summary Card */}
-                    <div
-                      className={`mt-4 p-4 rounded-xl border ${
-                        isDarkMode
-                          ? "bg-slate-800 border-slate-700"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`text-sm font-medium ${
-                              isDarkMode ? "text-slate-400" : "text-gray-600"
-                            }`}
-                          >
-                            Cart Subtotal
-                          </span>
-                          <span className="text-lg font-bold">
-                            ₦{cartTotal.toLocaleString()}
-                          </span>
-                        </div>
-                        {currentExpensesTotal > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`text-sm font-medium ${
-                                isDarkMode ? "text-slate-400" : "text-gray-600"
-                              }`}
-                            >
-                              Extra Expenses
-                            </span>
-                            <span className="text-sm font-semibold text-red-500">
-                              +₦{currentExpensesTotal.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        <div
-                          className={`pt-2 border-t flex items-center justify-between ${
-                            isDarkMode ? "border-slate-700" : "border-gray-200"
-                          }`}
-                        >
-                          <span className="text-base font-bold">Total</span>
-                          <span
-                            className={`text-xl font-bold ${
-                              isDarkMode ? "text-blue-400" : "text-blue-600"
-                            }`}
-                          >
-                            ₦{finalTotal.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
                   </>
                 )}
               </div>
