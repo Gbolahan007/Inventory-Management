@@ -69,6 +69,14 @@ interface TableShoppingCartDisplayProps {
 
   hasBarApprovalItems: boolean;
   canFinalizeSale: boolean;
+
+  // Split payment props
+  isSplitPayment: boolean;
+  setIsSplitPayment: (split: boolean) => void;
+  cashAmount: number;
+  setCashAmount: (amount: number) => void;
+  transferAmount: number;
+  setTransferAmount: (amount: number) => void;
 }
 
 export default function TableShoppingCartDisplay({
@@ -101,6 +109,12 @@ export default function TableShoppingCartDisplay({
   checkBarRequestStatus,
   hasBarApprovalItems,
   canFinalizeSale,
+  isSplitPayment,
+  setIsSplitPayment,
+  cashAmount,
+  setCashAmount,
+  transferAmount,
+  setTransferAmount,
 }: TableShoppingCartDisplayProps) {
   const [isSliding, setIsSliding] = useState(false);
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items");
@@ -427,6 +441,12 @@ export default function TableShoppingCartDisplay({
                   checkBarRequestStatus={checkBarRequestStatus}
                   hasBarApprovalItems={hasBarApprovalItems}
                   canFinalizeSale={canFinalizeSale}
+                  isSplitPayment={isSplitPayment}
+                  setIsSplitPayment={setIsSplitPayment}
+                  cashAmount={cashAmount}
+                  setCashAmount={setCashAmount}
+                  transferAmount={transferAmount}
+                  setTransferAmount={setTransferAmount}
                 />
               </div>
             )}
@@ -518,6 +538,12 @@ export default function TableShoppingCartDisplay({
             checkBarRequestStatus={checkBarRequestStatus}
             hasBarApprovalItems={hasBarApprovalItems}
             canFinalizeSale={canFinalizeSale}
+            isSplitPayment={isSplitPayment}
+            setIsSplitPayment={setIsSplitPayment}
+            cashAmount={cashAmount}
+            setCashAmount={setCashAmount}
+            transferAmount={transferAmount}
+            setTransferAmount={setTransferAmount}
           />
         </div>
       </div>

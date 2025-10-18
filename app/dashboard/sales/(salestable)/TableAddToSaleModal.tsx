@@ -87,6 +87,12 @@ export default function TableAddToSaleModal({
     checkBarRequestStatus,
     hasBarApprovalItems,
     canFinalizeSale,
+    isSplitPayment,
+    setIsSplitPayment,
+    cashAmount,
+    setCashAmount,
+    transferAmount,
+    setTransferAmount,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
   const activeTables = getActiveTables();
@@ -258,6 +264,12 @@ export default function TableAddToSaleModal({
                 checkBarRequestStatus={checkBarRequestStatus}
                 hasBarApprovalItems={hasBarApprovalItems}
                 canFinalizeSale={canFinalizeSale}
+                isSplitPayment={isSplitPayment}
+                setIsSplitPayment={setIsSplitPayment}
+                cashAmount={cashAmount}
+                setCashAmount={setCashAmount}
+                transferAmount={transferAmount}
+                setTransferAmount={setTransferAmount}
               />
             </div>
           </div>

@@ -274,6 +274,7 @@ export async function createSalesClient(saleData: any) {
         sales_rep_name: saleData.sales_rep_name,
         is_pending: saleData.is_pending,
         pending_customer_name: saleData.pending_customer_name,
+        payment_details: saleData.payment_details,
       })
       .select()
       .single();

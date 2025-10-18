@@ -13,6 +13,11 @@ interface Sale {
   sales_rep_name?: string;
   payment_method?: string;
   total_amount?: number;
+  payment_details?: {
+    cash_amount?: number;
+    transfer_amount?: number;
+    total_amount?: number;
+  };
 }
 
 interface GroupedByRep {
@@ -49,7 +54,7 @@ export default function CashAndTransferReport() {
     });
   }, [recentSales, filter]);
 
-  // ✅ First group by (date + sales rep)
+  // ✅ Group by (date + sales rep)
   const groupedByRep = useMemo(() => {
     const groups: Record<string, GroupedByRep> = {};
 
@@ -68,19 +73,39 @@ export default function CashAndTransferReport() {
         };
       }
 
-      const amount = sale.total_amount || 0;
       const method = sale.payment_method?.toLowerCase() || "unknown";
+      const saleTotal = sale.total_amount || 0;
 
-      if (method === "cash") groups[key].cash += amount;
-      else if (method === "transfer") groups[key].transfer += amount;
+      if (method === "cash") {
+        groups[key].cash += saleTotal;
+      } else if (method === "transfer") {
+        groups[key].transfer += saleTotal;
+      } else if (method === "split" && sale.payment_details) {
+        const { transfer_amount = 0 } = sale.payment_details;
 
-      groups[key].total += amount;
+        let cash_amount = 0;
+        let transfer = 0;
+
+        if (transfer_amount <= saleTotal) {
+          cash_amount = saleTotal - transfer_amount;
+          transfer = transfer_amount;
+        } else {
+          // 🚨 Handle mismatch: if transfer is greater than total, assume all transfer
+          cash_amount = 0;
+          transfer = saleTotal;
+        }
+
+        groups[key].cash += cash_amount;
+        groups[key].transfer += transfer;
+      }
+
+      groups[key].total += saleTotal;
     });
 
     return Object.values(groups);
   }, [filteredSales]);
 
-  // ✅ Then group by date only (combine reps)
+  // ✅ Group by date only (combine reps)
   const groupedByDate = useMemo(() => {
     const dateGroups: Record<string, GroupedByDate> = {};
 
@@ -96,13 +121,11 @@ export default function CashAndTransferReport() {
           total,
         };
       } else {
-        // Combine sales reps (avoid duplicates)
         const existingNames = dateGroups[date].sales_reps.split(", ");
         if (!existingNames.includes(sales_rep_name)) {
           dateGroups[date].sales_reps += `, ${sales_rep_name}`;
         }
 
-        // Add up totals
         dateGroups[date].cash += cash;
         dateGroups[date].transfer += transfer;
         dateGroups[date].total += total;

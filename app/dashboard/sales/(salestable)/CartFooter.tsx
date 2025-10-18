@@ -56,6 +56,14 @@ interface CartFooterProps {
   checkBarRequestStatus: () => Promise<void>;
   hasBarApprovalItems: boolean;
   canFinalizeSale: boolean;
+
+  // Split payment props
+  isSplitPayment: boolean;
+  setIsSplitPayment: (split: boolean) => void;
+  cashAmount: number;
+  setCashAmount: (amount: number) => void;
+  transferAmount: number;
+  setTransferAmount: (amount: number) => void;
 }
 
 export function CartFooter({
@@ -82,6 +90,12 @@ export function CartFooter({
   checkBarRequestStatus,
   hasBarApprovalItems,
   canFinalizeSale,
+  isSplitPayment,
+  setIsSplitPayment,
+  cashAmount,
+  setCashAmount,
+  transferAmount,
+  setTransferAmount,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -113,6 +127,21 @@ export function CartFooter({
   };
 
   const handleSaleWithTimeout = async () => {
+    // Validate split payment amounts
+    if (isSplitPayment) {
+      const totalPaid = cashAmount + transferAmount;
+      if (Math.abs(totalPaid - finalTotal) > 0.01) {
+        toast.error(
+          `Split payment must equal total: ₦${finalTotal.toFixed(2)}`
+        );
+        return;
+      }
+      if (cashAmount <= 0 && transferAmount <= 0) {
+        toast.error("Please enter valid payment amounts");
+        return;
+      }
+    }
+
     try {
       setIsRetrying(false);
       const timeoutPromise = new Promise((_, reject) =>
@@ -138,9 +167,23 @@ export function CartFooter({
   };
 
   const isProcessing = createSaleMutation.isPending || isRetrying;
-
-  // Can send to bar if there are items that need approval and not already sent
   const canSendToBar = hasBarApprovalItems && tableBarRequestStatus === "none";
+
+  // Auto-calculate remaining amount when split payment is enabled
+  const handleCashAmountChange = (value: number) => {
+    setCashAmount(value);
+    const remaining = finalTotal - value;
+    setTransferAmount(Math.max(0, remaining));
+  };
+
+  const handleTransferAmountChange = (value: number) => {
+    setTransferAmount(value);
+    const remaining = finalTotal - value;
+    setCashAmount(Math.max(0, remaining));
+  };
+
+  const splitPaymentBalance = cashAmount + transferAmount - finalTotal;
+  const isBalanced = Math.abs(splitPaymentBalance) < 0.01;
 
   return (
     <div className="space-y-4">
@@ -245,7 +288,6 @@ export function CartFooter({
                 className="flex justify-between items-center text-sm"
               >
                 <span>{expense.category}</span>
-
                 <div className="flex items-center space-x-2">
                   <span>
                     {new Intl.NumberFormat("en-NG", {
@@ -263,8 +305,6 @@ export function CartFooter({
                 </div>
               </div>
             ))}
-
-            {/* Expenses subtotal */}
             <div className="flex justify-between items-center text-sm font-medium border-t pt-1">
               <span>Expenses Total</span>
               <span>
@@ -339,36 +379,159 @@ export function CartFooter({
       {(cartItems.length > 0 || currentExpenses.length > 0) &&
         (!hasBarApprovalItems || tableBarRequestStatus === "approved") && (
           <div className="space-y-3">
-            <label
-              className={`block text-sm font-medium ${
-                isDarkMode ? "text-slate-300" : "text-gray-700"
-              }`}
-            >
-              Payment Method
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: "transfer", label: "Transfer", icon: CreditCard },
-                { value: "cash", label: "Cash", icon: Banknote },
-              ].map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setPaymentMethod(value)}
-                  className={`p-3 rounded-lg border-2 flex items-center justify-center space-x-2 transition-all ${
-                    paymentMethod === value
-                      ? isDarkMode
-                        ? "border-blue-500 bg-blue-500/20 text-blue-400"
-                        : "border-blue-500 bg-blue-50 text-blue-600"
-                      : isDarkMode
-                      ? "border-slate-600 hover:border-slate-500 text-slate-300"
-                      : "border-gray-300 hover:border-gray-400 text-gray-600"
+            <div className="flex items-center justify-between">
+              <label
+                className={`block text-sm font-medium ${
+                  isDarkMode ? "text-slate-300" : "text-gray-700"
+                }`}
+              >
+                Payment Method
+              </label>
+              <label className="flex items-center space-x-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={isSplitPayment}
+                  onChange={(e) => {
+                    setIsSplitPayment(e.target.checked);
+                    if (e.target.checked) {
+                      // Initialize with half-half split
+                      const half = finalTotal / 2;
+                      setCashAmount(half);
+                      setTransferAmount(half);
+                    } else {
+                      setCashAmount(0);
+                      setTransferAmount(0);
+                    }
+                  }}
+                  className="rounded"
+                />
+                <span
+                  className={isDarkMode ? "text-slate-300" : "text-gray-700"}
+                >
+                  Split Payment
+                </span>
+              </label>
+            </div>
+
+            {!isSplitPayment ? (
+              // Single payment method selection
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "transfer", label: "Transfer", icon: CreditCard },
+                  { value: "cash", label: "Cash", icon: Banknote },
+                ].map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setPaymentMethod(value)}
+                    className={`p-3 rounded-lg border-2 flex items-center justify-center space-x-2 transition-all ${
+                      paymentMethod === value
+                        ? isDarkMode
+                          ? "border-blue-500 bg-blue-500/20 text-blue-400"
+                          : "border-blue-500 bg-blue-50 text-blue-600"
+                        : isDarkMode
+                        ? "border-slate-600 hover:border-slate-500 text-slate-300"
+                        : "border-gray-300 hover:border-gray-400 text-gray-600"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              // Split payment input
+              <div className="space-y-3">
+                <div
+                  className={`p-3 rounded-lg border ${
+                    isDarkMode
+                      ? "bg-slate-800 border-slate-700"
+                      : "bg-gray-50 border-gray-200"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Banknote className="w-4 h-4" />
+                        <label className="text-sm font-medium">Cash</label>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={finalTotal}
+                        value={cashAmount || ""}
+                        onChange={(e) =>
+                          handleCashAmountChange(Number(e.target.value))
+                        }
+                        placeholder="0.00"
+                        className={`w-32 p-2 rounded-md border text-right ${
+                          isDarkMode
+                            ? "bg-slate-700 border-slate-600"
+                            : "bg-white border-gray-300"
+                        }`}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="w-4 h-4" />
+                        <label className="text-sm font-medium">Transfer</label>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={finalTotal}
+                        value={transferAmount || ""}
+                        onChange={(e) =>
+                          handleTransferAmountChange(Number(e.target.value))
+                        }
+                        placeholder="0.00"
+                        className={`w-32 p-2 rounded-md border text-right ${
+                          isDarkMode
+                            ? "bg-slate-700 border-slate-600"
+                            : "bg-white border-gray-300"
+                        }`}
+                      />
+                    </div>
+
+                    <div
+                      className={`flex items-center justify-between text-sm font-medium pt-2 border-t ${
+                        isDarkMode ? "border-slate-600" : "border-gray-300"
+                      }`}
+                    >
+                      <span>Total Paid</span>
+                      <span
+                        className={
+                          isBalanced
+                            ? "text-green-600"
+                            : splitPaymentBalance > 0
+                            ? "text-red-600"
+                            : "text-yellow-600"
+                        }
+                      >
+                        {new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 2,
+                        }).format(cashAmount + transferAmount)}
+                        {!isBalanced && (
+                          <span className="text-xs ml-1">
+                            ({splitPaymentBalance > 0 ? "+" : ""}
+                            {new Intl.NumberFormat("en-NG", {
+                              style: "currency",
+                              currency: "NGN",
+                              minimumFractionDigits: 2,
+                            }).format(splitPaymentBalance)}
+                            )
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -433,9 +596,11 @@ export function CartFooter({
       {/* Complete Sale Button */}
       <button
         onClick={handleSaleWithTimeout}
-        disabled={!canFinalizeSale || isProcessing}
+        disabled={
+          !canFinalizeSale || isProcessing || (isSplitPayment && !isBalanced)
+        }
         className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-          !canFinalizeSale || isProcessing
+          !canFinalizeSale || isProcessing || (isSplitPayment && !isBalanced)
             ? isDarkMode
               ? "bg-slate-700 text-slate-400 cursor-not-allowed"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
