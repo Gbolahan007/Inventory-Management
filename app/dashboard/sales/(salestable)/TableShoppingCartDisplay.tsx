@@ -70,13 +70,17 @@ interface TableShoppingCartDisplayProps {
   hasBarApprovalItems: boolean;
   canFinalizeSale: boolean;
 
-  // Split payment props
   isSplitPayment: boolean;
   setIsSplitPayment: (split: boolean) => void;
   cashAmount: number;
   setCashAmount: (amount: number) => void;
   transferAmount: number;
   setTransferAmount: (amount: number) => void;
+
+  currentUserId?: string;
+  currentUser?: {
+    name: string;
+  };
 }
 
 export default function TableShoppingCartDisplay({
@@ -115,6 +119,9 @@ export default function TableShoppingCartDisplay({
   setCashAmount,
   transferAmount,
   setTransferAmount,
+  currentUserId,
+  currentUser,
+  products,
 }: TableShoppingCartDisplayProps) {
   const [isSliding, setIsSliding] = useState(false);
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items");
@@ -447,6 +454,11 @@ export default function TableShoppingCartDisplay({
                   setCashAmount={setCashAmount}
                   transferAmount={transferAmount}
                   setTransferAmount={setTransferAmount}
+                  selectedTable={selectedTable}
+                  currentUserId={currentUserId}
+                  currentUser={currentUser}
+                  products={products}
+                  onModificationRequested={() => checkBarRequestStatus()}
                 />
               </div>
             )}
@@ -544,6 +556,10 @@ export default function TableShoppingCartDisplay({
             setCashAmount={setCashAmount}
             transferAmount={transferAmount}
             setTransferAmount={setTransferAmount}
+            selectedTable={selectedTable}
+            currentUserId={currentUserId}
+            currentUser={currentUser}
+            products={products}
           />
         </div>
       </div>

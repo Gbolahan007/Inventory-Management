@@ -10,13 +10,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
-import type { SaleItem } from "../(sales)/types";
+import type { Product, SaleItem } from "../(sales)/types";
 import type {
   QueryObserverResult,
   RefetchOptions,
   UseMutationResult,
 } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { ModificationRequest } from "./ModificationRequest";
 
 interface Expense {
   category: string;
@@ -64,6 +65,16 @@ interface CartFooterProps {
   setCashAmount: (amount: number) => void;
   transferAmount: number;
   setTransferAmount: (amount: number) => void;
+
+  selectedTable: number | null;
+  currentUserId?: string;
+  currentUser?: {
+    name: string;
+  };
+  currentCart?: any;
+  onModificationRequested?: () => void;
+
+  products?: Product[];
 }
 
 export function CartFooter({
@@ -96,6 +107,11 @@ export function CartFooter({
   setCashAmount,
   transferAmount,
   setTransferAmount,
+  selectedTable,
+  currentUserId,
+  currentUser,
+  products,
+  onModificationRequested,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -591,6 +607,19 @@ export function CartFooter({
             </div>
           )}
         </button>
+      )}
+      {/* ✅ ModificationRequest appears after Send to Bar when approved */}
+      {tableBarRequestStatus === "approved" && hasBarApprovalItems && (
+        <ModificationRequest
+          cartItems={cartItems}
+          selectedTable={selectedTable}
+          currentUserId={currentUserId}
+          currentUser={currentUser}
+          products={products}
+          onModificationRequested={
+            onModificationRequested || checkBarRequestStatus
+          }
+        />
       )}
 
       {/* Complete Sale Button */}

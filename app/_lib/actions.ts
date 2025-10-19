@@ -8,6 +8,7 @@ import type { BarRequest } from "../dashboard/sales/(sales)/types";
 import { supabaseServer } from "@/app/_lib/supabaseServer";
 
 // ---------------- TYPES ----------------
+
 interface SaleData {
   sale_number: string;
   total_amount: number;
@@ -35,6 +36,38 @@ export interface BarRequestItem {
   sales_rep_id: string;
   sales_rep_name: string;
   status: "completed" | "pending";
+}
+
+interface BarFulfillmentItem {
+  table_id: number;
+  sales_rep_id: string;
+  sales_rep_name: string;
+  product_id: string | null;
+  product_name: string;
+  quantity_approved: number;
+  unit_price: number;
+}
+
+interface FulfillmentUpdate {
+  quantity_fulfilled?: number;
+  quantity_returned?: number;
+  status?: string;
+  fulfilled_at?: string;
+  notes?: string;
+}
+
+interface BarModification {
+  table_id: number;
+  sales_rep_id: string;
+  sales_rep_name: string;
+  modification_type: string;
+  original_product_id?: string;
+  original_product_name?: string;
+  original_quantity?: number;
+  new_product_id?: string;
+  new_product_name?: string;
+  new_quantity?: number;
+  reason?: string;
 }
 
 // ---------------- PRODUCT ACTIONS ----------------
@@ -216,6 +249,8 @@ export async function updateMultipleBarRequestsStatus(
   return { success: true };
 }
 
+// ---------------- EXPENSES ----------------
+
 export async function addExpense(formData: FormData) {
   const supabase = await supabaseServer();
 
@@ -237,4 +272,106 @@ export async function addExpense(formData: FormData) {
   if (error) throw new Error("Could not add expense");
 
   return data;
+}
+
+// ---------------- BAR FULFILLMENTS ----------------
+
+export async function createBarFulfillmentRecords(
+  barRequestId: string,
+  items: BarFulfillmentItem[]
+) {
+  const supabase = await supabaseServer();
+
+  try {
+    const fulfillments = items.map((item) => ({
+      bar_request_id: barRequestId,
+      table_id: item.table_id,
+      sales_rep_id: item.sales_rep_id,
+      sales_rep_name: item.sales_rep_name,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity_approved: item.quantity_approved,
+      quantity_fulfilled: 0,
+      unit_price: item.unit_price,
+      total_amount: item.quantity_approved * item.unit_price,
+      status: "pending",
+    }));
+
+    const { data, error } = await supabase
+      .from("bar_fulfillments")
+      .insert(fulfillments)
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateFulfillmentStatus(
+  fulfillmentId: string,
+  updates: FulfillmentUpdate
+) {
+  const supabase = await supabaseServer();
+
+  try {
+    const { data, error } = await supabase
+      .from("bar_fulfillments")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", fulfillmentId)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ---------------- BAR MODIFICATIONS ----------------
+
+export async function createBarModification(modification: BarModification) {
+  const supabase = await supabaseServer();
+
+  try {
+    const { data, error } = await supabase
+      .from("bar_modifications")
+      .insert({ ...modification, status: "pending" })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function processBarModification(
+  modificationId: string,
+  action: "approve" | "reject",
+  processedBy: string
+) {
+  const supabase = await supabaseServer();
+
+  try {
+    const status = action === "approve" ? "approved" : "rejected";
+    const { data, error } = await supabase
+      .from("bar_modifications")
+      .update({
+        status,
+        processed_at: new Date().toISOString(),
+        processed_by: processedBy,
+      })
+      .eq("id", modificationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }

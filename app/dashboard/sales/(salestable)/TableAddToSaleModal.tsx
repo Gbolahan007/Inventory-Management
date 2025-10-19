@@ -140,7 +140,7 @@ export default function TableAddToSaleModal({
       />
       <div className="min-h-full flex items-start sm:items-center justify-center p-0 sm:p-4">
         <div
-          className={`relative w-full max-w-7xl flex flex-col min-h-screen sm:min-h-0 sm:max-h-[90vh] sm:my-8 sm:rounded-lg shadow-2xl transition-all border ${
+          className={`relative w-full max-w-7xl flex flex-col min-h-[100dvh] sm:min-h-0 sm:max-h-[90vh] sm:my-8 sm:rounded-lg shadow-2xl transition-all border ${
             isDarkMode
               ? "bg-slate-800 text-slate-100 border-slate-700"
               : "bg-white text-gray-900 border-gray-200"
@@ -270,6 +270,8 @@ export default function TableAddToSaleModal({
                 setCashAmount={setCashAmount}
                 transferAmount={transferAmount}
                 setTransferAmount={setTransferAmount}
+                currentUserId={currentUserId}
+                currentUser={currentUser}
               />
             </div>
           </div>

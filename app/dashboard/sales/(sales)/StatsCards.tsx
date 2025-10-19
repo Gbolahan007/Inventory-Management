@@ -69,7 +69,7 @@ export function StatsCards({ stats, isDarkMode, salesItems }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className={valueClass}>
-            ₦{(totalrevenue || 0).toLocaleString()}
+            {"*".repeat(String(FormatCurrency(totalrevenue)).length)}
           </div>
           <p className={descriptionClass}>Total earnings</p>
         </CardContent>

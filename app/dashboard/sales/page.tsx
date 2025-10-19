@@ -5,7 +5,13 @@ import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
 import { useStats } from "@/app/components/queryhooks/useStats";
 import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
 import type { RootState } from "@/app/store";
-import { ShoppingCart, Users, BarChart3, Package } from "lucide-react";
+import {
+  ShoppingCart,
+  Users,
+  BarChart3,
+  Package,
+  CheckCircle2,
+} from "lucide-react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { LoadingSpinner } from "./(sales)/LoadingSpinner";
@@ -17,6 +23,7 @@ import { useTableCartStore } from "@/app/(store)/useTableCartStore";
 import BarRequestsPage from "./(barRequests)/BarRequestsPage";
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
 import { PendingSalesTable } from "./(pendingsales)/PendingSalesTable";
+import BarmanFulfillmentPage from "./(barapprovals)/BarmanFulfillmentPage";
 
 type SaleItem = {
   id?: string;
@@ -39,7 +46,7 @@ export default function SalesPage() {
   const { userData } = useAuth();
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "bar-requests" | "pending-sales"
+    "dashboard" | "bar-requests" | "bar-approvals" | "pending-sales"
   >("dashboard");
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
   const { getActiveTables, getTableCart, getTableTotal } = useTableCartStore();
@@ -49,7 +56,7 @@ export default function SalesPage() {
     0
   );
 
-  // Use React Query hooks
+  // React Query hooks
   const {
     products = [],
     isLoading: productsLoading,
@@ -199,6 +206,7 @@ export default function SalesPage() {
               <BarChart3 className="w-5 h-5" />
               Sales Dashboard
             </button>
+
             <button
               onClick={() => setActiveTab("bar-requests")}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -210,6 +218,19 @@ export default function SalesPage() {
               <Package className="w-5 h-5" />
               Bar Requests
             </button>
+
+            <button
+              onClick={() => setActiveTab("bar-approvals")}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === "bar-approvals"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Bar Approvals
+            </button>
+
             <button
               onClick={() => setActiveTab("pending-sales")}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -224,6 +245,7 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {/* TAB CONTENTS */}
         {activeTab === "dashboard" ? (
           <>
             <StatsCards
@@ -245,6 +267,8 @@ export default function SalesPage() {
           </>
         ) : activeTab === "bar-requests" ? (
           <BarRequestsPage />
+        ) : activeTab === "bar-approvals" ? (
+          <BarmanFulfillmentPage />
         ) : (
           <PendingSalesTable />
         )}

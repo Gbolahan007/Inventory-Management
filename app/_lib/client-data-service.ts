@@ -451,3 +451,67 @@ export function subscribeToTable(
 
   return channel;
 }
+
+export const getBarFulfillmentsClient = (filters?: {
+  tableId?: number;
+  salesRepId?: string;
+  status?: string;
+  dateRange?: { start: string; end: string };
+}) =>
+  withClientErrorHandling(
+    async () => {
+      let query = supabase
+        .from("bar_fulfillments")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (filters?.tableId) query = query.eq("table_id", filters.tableId);
+      if (filters?.salesRepId)
+        query = query.eq("sales_rep_id", filters.salesRepId);
+      if (filters?.status) query = query.eq("status", filters.status);
+      if (filters?.dateRange) {
+        const startDate = new Date(filters.dateRange.start);
+        const endDate = new Date(filters.dateRange.end);
+
+        endDate.setHours(23, 59, 59, 999);
+
+        query = query
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString());
+      }
+
+      return await query;
+    },
+    "Could not fetch bar fulfillments",
+    "Get Bar Fulfillments"
+  );
+
+export const getBarModificationsClient = (filters?: {
+  tableId?: number;
+  status?: string;
+  dateRange?: { start: string; end: string };
+}) =>
+  withClientErrorHandling(
+    async () => {
+      let query = supabase
+        .from("bar_modifications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (filters?.tableId) query = query.eq("table_id", filters.tableId);
+      if (filters?.status) query = query.eq("status", filters.status);
+      if (filters?.dateRange) {
+        const startDate = new Date(filters.dateRange.start);
+        const endDate = new Date(filters.dateRange.end);
+
+        endDate.setHours(23, 59, 59, 999);
+
+        query = query
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString());
+      }
+      return await query;
+    },
+    "Could not fetch bar modifications",
+    "Get Bar Modifications"
+  );

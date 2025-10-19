@@ -13,6 +13,7 @@ import { useRecentSales } from "@/app/components/queryhooks/useRecentSales";
 import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSellingProducts";
 import { supabase } from "@/app/_lib/supabase";
 import toast from "react-hot-toast";
+import { createBarFulfillmentRecords } from "@/app/_lib/actions";
 
 type SaleItem = {
   id?: string;
@@ -119,6 +120,7 @@ export default function BarRequestsPage() {
     setProcessingRequests((prev) => new Set([...prev, key]));
 
     try {
+      // 1. Update bar_requests status
       const { error } = await supabase
         .from("bar_requests")
         .update({ status: "accepted" })
@@ -126,7 +128,30 @@ export default function BarRequestsPage() {
 
       if (error) throw error;
 
-      toast.success(`Request for Table ${tableId} approved!`);
+      // 2. Create fulfillment records immediately
+      const barRequestId = items[0].id;
+      const fulfillmentItems = items.map((item) => ({
+        table_id: tableId,
+        sales_rep_id: salesRepId,
+        sales_rep_name: item.sales_rep_name,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity_approved: item.quantity,
+        unit_price: item.product_price || 0,
+      }));
+
+      const fulfillmentResult = await createBarFulfillmentRecords(
+        barRequestId,
+        fulfillmentItems
+      );
+
+      if (!fulfillmentResult.success) {
+        throw new Error(fulfillmentResult.error);
+      }
+
+      toast.success(
+        `Request for Table ${tableId} approved! Fulfillment tracking started.`
+      );
       await refetch();
     } catch (error: any) {
       console.error("Error approving request:", error);

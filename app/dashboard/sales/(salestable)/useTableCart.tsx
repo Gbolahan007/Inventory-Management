@@ -10,7 +10,11 @@ import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
 import { supabase } from "@/app/_lib/supabase";
 import toast from "react-hot-toast";
 import type { Product } from "../(sales)/types";
-import { BarRequestItem, createBarRequestRecords } from "@/app/_lib/actions";
+import {
+  BarRequestItem,
+  createBarRequestRecords,
+  updateFulfillmentStatus,
+} from "@/app/_lib/actions";
 import { subscribeToTable } from "@/app/_lib/client-data-service";
 
 interface UseTableCartLogicProps {
@@ -430,7 +434,47 @@ export function useTableCartLogic({
         tableId: exp.tableId || selectedTable,
       }));
 
-      // Determine payment method and amounts
+      // 🟡 NEW LOGIC: Update fulfillment records before creating sale
+      if (hasBarApprovalItems && pendingBarRequestId) {
+        const { data: fulfillments, error: fulfillErr } = await supabase
+          .from("bar_fulfillments")
+          .select("*")
+          .eq("table_id", selectedTable)
+          .in("status", ["pending", "partial"]);
+
+        if (fulfillErr) {
+          console.error("Error fetching fulfillments:", fulfillErr);
+        }
+
+        if (fulfillments && fulfillments.length > 0) {
+          for (const fulfillment of fulfillments) {
+            const cartItem = currentCart.find(
+              (item) => item.product_id === fulfillment.product_id
+            );
+
+            if (cartItem) {
+              await updateFulfillmentStatus(fulfillment.id, {
+                quantity_fulfilled: cartItem.quantity,
+                status:
+                  cartItem.quantity === fulfillment.quantity_approved
+                    ? "fulfilled"
+                    : "partial",
+                fulfilled_at: new Date().toISOString(),
+              });
+            } else {
+              // Item was removed from cart - mark as returned
+              await updateFulfillmentStatus(fulfillment.id, {
+                quantity_returned: fulfillment.quantity_approved,
+                status: "returned",
+                fulfilled_at: new Date().toISOString(),
+                notes: "Item removed from cart before sale completion",
+              });
+            }
+          }
+        }
+      }
+
+      // 🟢 Proceed to sale creation after updating fulfillments
       let finalPaymentMethod = paymentMethod;
       let paymentDetails: any = {};
 
@@ -462,6 +506,7 @@ export function useTableCartLogic({
 
       await createSaleMutation.mutateAsync(saleData);
 
+      // Update bar request status to completed
       if (hasBarApprovalItems && pendingBarRequestId) {
         await supabase
           .from("bar_requests")
@@ -698,7 +743,6 @@ export function useTableCartLogic({
     checkBarRequestStatus,
     hasBarApprovalItems,
     barApprovalItems,
-    // Split payment exports
     isSplitPayment,
     setIsSplitPayment,
     cashAmount,
