@@ -1,6 +1,5 @@
 import { createSalesClient } from "@/app/_lib/client-data-service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 
 interface SaleItem {
   product_id: string;
@@ -33,19 +32,17 @@ export function useCreateSale() {
 
   return useMutation({
     mutationFn: (saleData: SaleData) => createSalesClient(saleData),
+    retry: false,
+    gcTime: 0,
     onSuccess: () => {
-      // Invalidate ALL sales-related queries
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       queryClient.invalidateQueries({ queryKey: ["sale_items"] });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
-
-      toast.success("Sale completed successfully!");
     },
     onError: (error: Error) => {
       console.error("Sale error:", error);
-      toast.error("Failed to complete sale");
     },
   });
 }

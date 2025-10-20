@@ -403,6 +403,10 @@ export function useTableCartLogic({
 
   // ---------- FINALIZE SALE ----------
   const handleFinalizeSale = async () => {
+    if (createSaleMutation.isPending) {
+      toast.error("Sale is already being processed. Please wait...");
+      return;
+    }
     const hasCartItems = currentCart.length > 0;
     const hasExpenses = currentExpenses.length > 0;
 
@@ -501,8 +505,6 @@ export function useTableCartLogic({
         is_pending: isPending,
         pending_customer_name: isPending ? pendingCustomer : null,
       };
-
-      console.log("SALE DATA RECEIVED:", saleData);
 
       await createSaleMutation.mutateAsync(saleData);
 

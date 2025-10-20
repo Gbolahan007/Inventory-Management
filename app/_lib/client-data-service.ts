@@ -260,6 +260,21 @@ export const getStatsClient = async () => {
 // ---------- SALES CREATION ----------
 export async function createSalesClient(saleData: any) {
   let saleId: string | null = null;
+  const DUPLICATE_CHECK_WINDOW = 5000; // 5 seconds
+  const lastSaleAttempt = { timestamp: 0, data: null as any };
+
+  // Check for duplicate within 5 seconds
+  if (
+    Date.now() - lastSaleAttempt.timestamp < DUPLICATE_CHECK_WINDOW &&
+    JSON.stringify(lastSaleAttempt.data) === JSON.stringify(saleData)
+  ) {
+    console.log("🚫 Duplicate sale detected - returning existing sale");
+    return lastSaleAttempt.data;
+  }
+
+  // Store this attempt
+  lastSaleAttempt.timestamp = Date.now();
+  lastSaleAttempt.data = saleData;
 
   try {
     // Create the main sale record

@@ -143,6 +143,12 @@ export function CartFooter({
   };
 
   const handleSaleWithTimeout = async () => {
+    // ✅ Guard 1: Check if already processing
+    if (createSaleMutation.isPending) {
+      toast.error("Sale is already being processed");
+      return;
+    }
+
     // Validate split payment amounts
     if (isSplitPayment) {
       const totalPaid = cashAmount + transferAmount;
@@ -160,28 +166,33 @@ export function CartFooter({
 
     try {
       setIsRetrying(false);
+
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Request timeout")), 15000)
       );
 
       await Promise.race([handleFinalizeSale(), timeoutPromise]);
-    } catch (error) {
-      console.log(error);
-      setIsRetrying(true);
-      setTimeout(async () => {
-        try {
-          await handleFinalizeSale();
-          setIsRetrying(false);
-        } catch {
-          setIsRetrying(false);
-          toast.error(
-            "Sale failed. Please check your connection and try again."
-          );
-        }
-      }, 2000);
+    } catch (error: any) {
+      if (error.message === "Request timeout") {
+        console.log("⏱️ Timeout detected, retrying once...");
+        setIsRetrying(true);
+
+        setTimeout(async () => {
+          try {
+            await handleFinalizeSale();
+            setIsRetrying(false);
+          } catch {
+            setIsRetrying(false);
+            toast.error(
+              "Sale failed. Please check your connection and try again."
+            );
+          }
+        }, 2000);
+      } else {
+        toast.error(`Failed to complete sale: ${error.message}`);
+      }
     }
   };
-
   const isProcessing = createSaleMutation.isPending || isRetrying;
   const canSendToBar = hasBarApprovalItems && tableBarRequestStatus === "none";
 
@@ -626,7 +637,10 @@ export function CartFooter({
       <button
         onClick={handleSaleWithTimeout}
         disabled={
-          !canFinalizeSale || isProcessing || (isSplitPayment && !isBalanced)
+          !canFinalizeSale ||
+          isProcessing ||
+          (isSplitPayment && !isBalanced) ||
+          createSaleMutation.isPending
         }
         className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
           !canFinalizeSale || isProcessing || (isSplitPayment && !isBalanced)

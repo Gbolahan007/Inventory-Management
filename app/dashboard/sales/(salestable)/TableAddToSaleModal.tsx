@@ -98,8 +98,6 @@ export default function TableAddToSaleModal({
   const activeTables = getActiveTables();
   const filteredProducts = products?.filter((item) => item.current_stock !== 0);
 
-  console.log(currentCart);
-
   const groupedProducts = filteredProducts?.reduce((groups, product) => {
     const category = product.category || "Other";
     if (!groups[category]) {
