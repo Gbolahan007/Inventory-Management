@@ -24,7 +24,7 @@ import { X } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { Sale } from "./types";
 import { getDataGridStyles } from "./getDataGridStyles";
-import { compareDesc, parseISO } from "date-fns";
+import { compareDesc, parseISO, isSameDay } from "date-fns";
 
 // ---------- TYPES ----------
 type Expense = {
@@ -79,17 +79,25 @@ export function RecentSalesTable({
     return Array.from(uniqueNames).sort();
   }, [sales]);
 
-  // Sort + filter
+  // Sort + filter (ONLY today's sales)
   function getFilteredSales(sales?: Sale[]): Sale[] {
     if (!sales?.length) return [];
 
-    let filtered = [...sales];
+    const today = new Date();
+
+    // Filter to only today's sales
+    let filtered = sales.filter((sale) =>
+      isSameDay(parseISO(sale.created_at || sale.sale_date), today)
+    );
+
+    // Filter by Sales Rep
     if (selectedSalesRep !== "all") {
       filtered = filtered.filter(
         (sale) => sale.sales_rep_name === selectedSalesRep
       );
     }
 
+    // Sort newest first
     return filtered.sort((a, b) =>
       compareDesc(
         parseISO(a.created_at || a.sale_date),
@@ -254,12 +262,12 @@ export function RecentSalesTable({
               <CardTitle
                 className={isDarkMode ? "text-white" : "text-gray-900"}
               >
-                Recent Sales
+                Today’s Sales
               </CardTitle>
               <CardDescription
                 className={isDarkMode ? "text-gray-400" : "text-gray-500"}
               >
-                Latest transactions - Click on a row to view details
+                Only sales made today - Click a row to view details
               </CardDescription>
             </div>
 
