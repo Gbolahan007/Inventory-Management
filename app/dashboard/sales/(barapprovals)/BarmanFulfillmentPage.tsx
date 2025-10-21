@@ -640,7 +640,6 @@ function ModificationsTab({
   );
 }
 
-// History Tab Component
 function HistoryTab({
   fulfillments,
   isLoading,

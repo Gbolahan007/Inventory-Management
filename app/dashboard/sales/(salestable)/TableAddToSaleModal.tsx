@@ -133,7 +133,7 @@ export default function TableAddToSaleModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto ">
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 transition-opacity"
         onClick={handleCloseModal}
       />
       <div className="min-h-full flex items-start sm:items-center justify-center p-0 sm:p-4">
