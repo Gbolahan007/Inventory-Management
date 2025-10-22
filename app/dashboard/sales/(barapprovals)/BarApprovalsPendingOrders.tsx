@@ -162,9 +162,6 @@ export default function BarApprovalsPendingOrders({
                       >
                         Partial/Return
                       </button>
-                      <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm sm:text-base min-h-[44px]">
-                        Cancel
-                      </button>
                     </div>
                   </div>
                 )}

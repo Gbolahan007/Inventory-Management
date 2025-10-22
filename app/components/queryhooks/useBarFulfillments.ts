@@ -21,8 +21,7 @@ export function useBarFulfillments(filters?: {
     queryFn: () => getBarFulfillmentsClient(filters),
 
     staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60, // 1 hour
-
+    gcTime: 1000 * 60 * 60,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,

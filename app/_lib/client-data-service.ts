@@ -488,11 +488,15 @@ export const getBarFulfillmentsClient = (filters?: {
         const startDate = new Date(filters.dateRange.start);
         const endDate = new Date(filters.dateRange.end);
 
+        // ✅ Set hours according to *local time* not UTC
+        startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
 
-        query = query
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+        // ✅ Use toISOString AFTER setting hours
+        const startISO = startDate.toISOString();
+        const endISO = endDate.toISOString();
+
+        query = query.gte("created_at", startISO).lte("created_at", endISO);
       }
 
       return await query;
