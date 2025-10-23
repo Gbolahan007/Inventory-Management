@@ -20,12 +20,10 @@ export function useBarFulfillments(filters?: {
     queryKey: ["bar_fulfillments", filters],
     queryFn: () => getBarFulfillmentsClient(filters),
 
-    staleTime: 1000 * 60 * 30,
-    gcTime: 1000 * 60 * 60,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    refetchOnMount: false,
-    refetchInterval: false,
+    refetchOnReconnect: true, // can be useful
 
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),

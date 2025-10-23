@@ -1,23 +1,24 @@
+"use client";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  CreditCard,
-  Banknote,
-  Plus,
-  Trash2,
-  Send,
-  CheckCircle,
-  Clock,
-  RefreshCw,
-} from "lucide-react";
-import { useState } from "react";
-import type { Product, SaleItem } from "../(sales)/types";
 import type {
   QueryObserverResult,
   RefetchOptions,
   UseMutationResult,
 } from "@tanstack/react-query";
+import {
+  Banknote,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Plus,
+  RefreshCw,
+  Send,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 import toast from "react-hot-toast";
-import { ModificationRequest } from "./ModificationRequest";
+import type { Product, SaleItem } from "../(sales)/types";
 
 interface Expense {
   category: string;
@@ -107,11 +108,6 @@ export function CartFooter({
   setCashAmount,
   transferAmount,
   setTransferAmount,
-  selectedTable,
-  currentUserId,
-  currentUser,
-  products,
-  onModificationRequested,
 }: CartFooterProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -127,7 +123,7 @@ export function CartFooter({
       return;
     }
 
-    const amount = parseFloat(expenseAmount);
+    const amount = Number.parseFloat(expenseAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error("Please enter a valid amount");
       return;
@@ -143,7 +139,6 @@ export function CartFooter({
   };
 
   const handleSaleWithTimeout = async () => {
-    // ✅ Guard 1: Check if already processing
     if (createSaleMutation.isPending) {
       toast.error("Sale is already being processed");
       return;
@@ -618,19 +613,6 @@ export function CartFooter({
             </div>
           )}
         </button>
-      )}
-      {/* ✅ ModificationRequest appears after Send to Bar when approved */}
-      {tableBarRequestStatus === "approved" && hasBarApprovalItems && (
-        <ModificationRequest
-          cartItems={cartItems}
-          selectedTable={selectedTable}
-          currentUserId={currentUserId}
-          currentUser={currentUser}
-          products={products}
-          onModificationRequested={
-            onModificationRequested || checkBarRequestStatus
-          }
-        />
       )}
 
       {/* Complete Sale Button */}

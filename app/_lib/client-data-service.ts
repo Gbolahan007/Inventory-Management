@@ -463,7 +463,6 @@ export function subscribeToTable(
       (payload) => onChange(payload)
     )
     .subscribe();
-
   return channel;
 }
 
@@ -513,23 +512,44 @@ export const getBarModificationsClient = (filters?: {
   withClientErrorHandling(
     async () => {
       let query = supabase
-        .from("bar_modifications")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .from("bar_fulfillments")
+        .select(
+          `
+          *,
+          bar_requests!inner(sales_rep_name, sales_rep_id)
+        `
+        )
+        // ✅ Always get only pending modification records
+        .eq("pending_modification", true)
+        .eq("status", "pending_modification")
+        .order("modification_requested_at", { ascending: true });
 
+      // ✅ Optional filters
       if (filters?.tableId) query = query.eq("table_id", filters.tableId);
       if (filters?.status) query = query.eq("status", filters.status);
       if (filters?.dateRange) {
         const startDate = new Date(filters.dateRange.start);
         const endDate = new Date(filters.dateRange.end);
-
         endDate.setHours(23, 59, 59, 999);
 
         query = query
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+          .gte("modification_requested_at", startDate.toISOString())
+          .lte("modification_requested_at", endDate.toISOString());
       }
-      return await query;
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // ✅ Return in the required shape
+      return {
+        data: data.map((item) => ({
+          ...item,
+          sales_rep_name: item.bar_requests?.sales_rep_name,
+          sales_rep_id: item.bar_requests?.sales_rep_id,
+        })),
+        error: null,
+      };
     },
     "Could not fetch bar modifications",
     "Get Bar Modifications"

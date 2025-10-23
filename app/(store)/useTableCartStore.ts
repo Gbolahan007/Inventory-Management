@@ -14,6 +14,7 @@ export interface SaleItem {
   selling_price: number;
   sales_rep_id?: string;
   sales_rep_name?: string;
+  fulfillment_id?: string; // Track bar fulfillment
 }
 
 export interface TableCart {
@@ -23,13 +24,18 @@ export interface TableCart {
   updated_at: string;
 }
 
+interface TableState {
+  cart: SaleItem[];
+  barRequestStatus: "none" | "pending" | "approved";
+  pendingBarRequestId: string | null;
+}
+
 interface TableCartState {
-  // State
   carts: Record<number, TableCart>;
+  tables: Record<number, TableState>; // ← Added table states
   selectedTable: number;
   currentUserId?: string;
 
-  // Actions
   setCurrentUser: (userId: string) => void;
   addToTableCart: (tableId: number, item: SaleItem) => void;
   removeFromTableCart: (
@@ -45,8 +51,33 @@ interface TableCartState {
   ) => void;
   clearTableCart: (tableId: number) => void;
   setSelectedTable: (tableId: number) => void;
+  updateTableCartItemFulfillmentId: (
+    tableId: number,
+    productId: string,
+    unitPrice: number,
+    fulfillmentId: string
+  ) => void;
+  syncCartWithBarFulfillment: (
+    tableId: number,
+    fulfillmentId: string,
+    updates: {
+      product_id?: string;
+      product_name?: string;
+      quantity_approved?: number;
+      unit_price?: number;
+      status?: string;
+    }
+  ) => void;
 
-  // Getters
+  // Bar request management
+  setBarRequestStatus: (
+    tableId: number,
+    status: "none" | "pending" | "approved",
+    requestId?: string | null
+  ) => void;
+  getBarRequestStatus: (tableId: number) => "none" | "pending" | "approved";
+  getPendingBarRequestId: (tableId: number) => string | null;
+
   getTableCart: (tableId: number) => SaleItem[];
   getTableTotal: (tableId: number) => number;
   getTableTotalCost: (tableId: number) => number;
@@ -59,17 +90,15 @@ interface TableCartState {
 export const useTableCartStore = create<TableCartState>()(
   persist(
     (set, get) => ({
-      // Initial state
       carts: {},
+      tables: {}, // ← Initialize new table states
       selectedTable: 1,
       currentUserId: undefined,
 
-      // Set current user
       setCurrentUser: (userId: string) => {
         set({ currentUserId: userId });
       },
 
-      // Add item to cart (in-memory only)
       addToTableCart: (tableId: number, item: SaleItem) => {
         const { currentUserId, carts } = get();
         if (!currentUserId) throw new Error("User not authenticated");
@@ -77,7 +106,6 @@ export const useTableCartStore = create<TableCartState>()(
         const now = new Date().toISOString();
         const currentCart = carts[tableId];
 
-        // Find existing item with same product_id and unit_price
         const existingItemIndex = currentCart?.items.findIndex(
           (cartItem) =>
             cartItem.product_id === item.product_id &&
@@ -87,7 +115,6 @@ export const useTableCartStore = create<TableCartState>()(
         let updatedItems: SaleItem[];
 
         if (currentCart && existingItemIndex !== -1) {
-          // Update existing item quantity
           const existingItem = currentCart.items[existingItemIndex];
           const newQuantity = existingItem.quantity + item.quantity;
           const newTotalPrice = item.unit_price * newQuantity;
@@ -103,10 +130,9 @@ export const useTableCartStore = create<TableCartState>()(
             profit_amount: newProfitAmount,
           };
         } else {
-          // Add new item
           const newItem = {
             ...item,
-            id: `local_${Date.now()}_${Math.random()}`, // Local ID
+            id: `local_${Date.now()}_${Math.random()}`,
             sales_rep_id: currentUserId,
           };
           updatedItems = currentCart
@@ -127,7 +153,6 @@ export const useTableCartStore = create<TableCartState>()(
         });
       },
 
-      // Remove item from cart
       removeFromTableCart: (
         tableId: number,
         productId: string,
@@ -144,7 +169,6 @@ export const useTableCartStore = create<TableCartState>()(
         );
 
         if (updatedItems.length === 0) {
-          // Remove entire cart if no items left
           const { [tableId]: _, ...rest } = carts;
           set({ carts: rest });
         } else {
@@ -161,7 +185,6 @@ export const useTableCartStore = create<TableCartState>()(
         }
       },
 
-      // Update cart item quantity
       updateTableCartItemQuantity: (
         tableId: number,
         productId: string,
@@ -175,7 +198,6 @@ export const useTableCartStore = create<TableCartState>()(
 
         const { carts } = get();
         const currentCart = carts[tableId];
-
         if (!currentCart) return;
 
         const updatedItems = currentCart.items.map((item) => {
@@ -207,45 +229,200 @@ export const useTableCartStore = create<TableCartState>()(
         });
       },
 
-      // Clear table cart
       clearTableCart: (tableId: number) => {
         const { carts } = get();
         const { [tableId]: _, ...rest } = carts;
         set({ carts: rest });
       },
 
-      // Set selected table
       setSelectedTable: (tableId: number) => {
         set({ selectedTable: tableId });
       },
 
-      // Getters
-      getTableCart: (tableId: number) => get().carts[tableId]?.items || [],
+      updateTableCartItemFulfillmentId: (
+        tableId: number,
+        productId: string,
+        unitPrice: number,
+        fulfillmentId: string
+      ) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+        if (!currentCart) return;
 
-      getTableTotal: (tableId: number) =>
+        const updatedItems = currentCart.items.map((item) => {
+          if (item.product_id === productId && item.unit_price === unitPrice) {
+            return { ...item, fulfillment_id: fulfillmentId };
+          }
+          return item;
+        });
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: { ...currentCart, items: updatedItems },
+          },
+        });
+      },
+
+      syncCartWithBarFulfillment: (tableId, fulfillmentId, updates) => {
+        const { carts } = get();
+        const currentCart = carts[tableId];
+
+        if (!currentCart) {
+          console.warn(`⚠️ No cart found for table ${tableId}`);
+          return;
+        }
+
+        const now = new Date().toISOString();
+
+        console.log("🔄 Syncing cart with fulfillment:", {
+          tableId,
+          fulfillmentId,
+          updates,
+          currentCartItems: currentCart.items.length,
+        });
+
+        // ✅ Handle removal/cancellation
+        if (
+          updates.status === "cancelled" ||
+          updates.status === "removed" ||
+          updates.quantity_approved === 0
+        ) {
+          const updatedItems = currentCart.items.filter((item) => {
+            const matches = item.fulfillment_id === fulfillmentId;
+            if (matches) {
+              console.log(`🗑️ Removing item from cart:`, item.name);
+            }
+            return !matches;
+          });
+
+          if (updatedItems.length === 0) {
+            const { [tableId]: _, ...rest } = carts;
+            set({ carts: rest });
+            console.log(`✅ Table ${tableId} cart cleared (no items left)`);
+          } else {
+            set({
+              carts: {
+                ...carts,
+                [tableId]: {
+                  ...currentCart,
+                  items: updatedItems,
+                  updated_at: now,
+                },
+              },
+            });
+            console.log(`✅ Item removed from table ${tableId} cart`);
+          }
+          return;
+        }
+
+        // ✅ Handle updates (quantity, price, or exchange)
+        let itemFound = false;
+        const updatedItems = currentCart.items.map((item) => {
+          // Match by fulfillment_id (most reliable)
+          const matches = item.fulfillment_id === fulfillmentId;
+
+          if (matches) {
+            itemFound = true;
+            const newQuantity = updates.quantity_approved ?? item.quantity;
+            const newUnitPrice = updates.unit_price ?? item.unit_price;
+            const newProductId = updates.product_id ?? item.product_id;
+            const newProductName = updates.product_name ?? item.name;
+
+            const newTotalPrice = newQuantity * newUnitPrice;
+            const newTotalCost = newQuantity * item.unit_cost;
+            const newProfitAmount = newTotalPrice - newTotalCost;
+
+            console.log(`🔄 Updating cart item:`, {
+              old: {
+                name: item.name,
+                quantity: item.quantity,
+                price: item.unit_price,
+              },
+              new: {
+                name: newProductName,
+                quantity: newQuantity,
+                price: newUnitPrice,
+              },
+            });
+
+            return {
+              ...item,
+              name: newProductName,
+              product_id: newProductId,
+              quantity: newQuantity,
+              unit_price: newUnitPrice,
+              selling_price: newUnitPrice,
+              total_price: newTotalPrice,
+              total_cost: newTotalCost,
+              profit_amount: newProfitAmount,
+              fulfillment_id: fulfillmentId, // Ensure it's set
+            };
+          }
+          return item;
+        });
+
+        if (!itemFound) {
+          console.warn(
+            `⚠️ No cart item found with fulfillment_id: ${fulfillmentId}`
+          );
+        }
+
+        set({
+          carts: {
+            ...carts,
+            [tableId]: {
+              ...currentCart,
+              items: updatedItems,
+              updated_at: now,
+            },
+          },
+        });
+
+        console.log(`✅ Cart synced for table ${tableId}`);
+      },
+      // 🧠 BAR REQUEST METHODS
+      setBarRequestStatus: (tableId, status, requestId = null) => {
+        set((state) => ({
+          tables: {
+            ...state.tables,
+            [tableId]: {
+              ...(state.tables[tableId] || { cart: [] }),
+              barRequestStatus: status,
+              pendingBarRequestId: requestId,
+            },
+          },
+        }));
+      },
+
+      getBarRequestStatus: (tableId) =>
+        get().tables[tableId]?.barRequestStatus || "none",
+
+      getPendingBarRequestId: (tableId) =>
+        get().tables[tableId]?.pendingBarRequestId || null,
+
+      // Getters
+      getTableCart: (tableId) => get().carts[tableId]?.items || [],
+      getTableTotal: (tableId) =>
         get()
           .getTableCart(tableId)
           .reduce((sum, item) => sum + item.total_price, 0),
-
-      getTableTotalCost: (tableId: number) =>
+      getTableTotalCost: (tableId) =>
         get()
           .getTableCart(tableId)
           .reduce((sum, item) => sum + item.total_cost, 0),
-
-      getTableTotalProfit: (tableId: number) =>
+      getTableTotalProfit: (tableId) =>
         get()
           .getTableCart(tableId)
           .reduce((sum, item) => sum + item.profit_amount, 0),
-
       getActiveTables: () =>
         Object.keys(get().carts)
           .map(Number)
           .filter((id) => get().carts[id]?.items.length > 0)
           .sort((a, b) => a - b),
-
       getAllCartsData: () => get().carts,
 
-      finalizeTableSale: (tableId: number) => {
+      finalizeTableSale: (tableId) => {
         const cart = get().carts[tableId];
         if (!cart || cart.items.length === 0) return null;
 
@@ -259,6 +436,7 @@ export const useTableCartStore = create<TableCartState>()(
       partialize: (state) => ({
         carts: state.carts,
         selectedTable: state.selectedTable,
+        tables: state.tables, // persist bar request states
       }),
     }
   )

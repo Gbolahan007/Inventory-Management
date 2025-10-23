@@ -3,16 +3,14 @@
 
 import { useState } from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
-import {
-  updateFulfillmentStatus,
-  processBarModification,
-} from "@/app/_lib/actions";
+import { updateFulfillmentStatus } from "@/app/_lib/actions";
 import toast from "react-hot-toast";
 import { useBarFulfillments } from "@/app/components/queryhooks/useBarFulfillments";
 import { useBarModificationsQuery } from "@/app/components/queryhooks/useBarModifications";
 import BarApprovalsPendingOrders from "./BarApprovalsPendingOrders";
-import ModificationsTab from "./ModificationsTab";
 import HistoryTab from "./BarApprovalHistoryTab";
+import { useProducts } from "@/app/components/queryhooks/useProducts";
+import BarApprovalsPendingModifications from "./BarApprovalsPendingModifications";
 
 export default function BarmanFulfillmentPage() {
   const [selectedTab, setSelectedTab] = useState<
@@ -25,13 +23,25 @@ export default function BarmanFulfillmentPage() {
     dateRange: getDateRange(dateFilter),
   });
 
+  const { products, isLoading: productsLoading } = useProducts();
+
+  // ✅ Filter to only drinks/cigarettes/cocktails categories
+  const barProducts = products?.filter(
+    (p) =>
+      p.category === "Drinks" ||
+      p.category === "Cigarettes" ||
+      p.category === "Cocktails"
+  );
+
   const {
     modifications,
     isLoading: modsLoading,
     refetch: refetchMods,
   } = useBarModificationsQuery({
-    status: "pending",
+    status: "pending_modification",
   });
+
+  console.log(modifications);
 
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [editingFulfillment, setEditingFulfillment] = useState<string | null>(
@@ -120,33 +130,6 @@ export default function BarmanFulfillmentPage() {
     }
   };
 
-  const handleProcessModification = async (
-    modificationId: string,
-    action: "approve" | "reject",
-    barmanName: string
-  ) => {
-    setProcessingIds((prev) => new Set([...prev, modificationId]));
-    try {
-      const result = await processBarModification(
-        modificationId,
-        action,
-        barmanName
-      );
-      if (!result.success) throw new Error(result.error);
-      toast.success(`Modification ${action}d successfully!`);
-      await refetchMods();
-      await refetch();
-    } catch (error: any) {
-      toast.error(`Failed to process: ${error.message}`);
-    } finally {
-      setProcessingIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(modificationId);
-        return newSet;
-      });
-    }
-  };
-
   const pendingModsCount = modifications
     ? modifications.filter((m) => m.status === "pending").length
     : 0;
@@ -177,13 +160,9 @@ export default function BarmanFulfillmentPage() {
             }`}
           >
             {isFetching ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </>
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-              </>
+              <RefreshCw className="w-4 h-4" />
             )}
           </button>
         </div>
@@ -237,12 +216,10 @@ export default function BarmanFulfillmentPage() {
                       {group.sales_rep_name}
                     </h2>
 
-                    {/* List of tables served */}
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                       Tables Served: {group.tables.join(", ")}
                     </p>
 
-                    {/* Total drinks */}
                     <p className="text-sm font-semibold text-slate-800 dark:text-white">
                       Total Drinks Approved:{" "}
                       <span className="text-green-600 dark:text-green-400">
@@ -254,10 +231,10 @@ export default function BarmanFulfillmentPage() {
               })}
             </div>
 
-            {/* Existing Pending Orders Tab */}
+            {/* ✅ Updated Pending Orders Tab with products + refresh */}
             <BarApprovalsPendingOrders
               groupedArray={groupedArray}
-              isLoading={isLoading}
+              isLoading={isLoading || productsLoading}
               editingFulfillment={editingFulfillment}
               setEditingFulfillment={setEditingFulfillment}
               fulfillmentNotes={fulfillmentNotes}
@@ -265,16 +242,17 @@ export default function BarmanFulfillmentPage() {
               processingIds={processingIds}
               onMarkFulfilled={handleMarkFulfilled}
               onPartialFulfillment={handlePartialFulfillment}
+              products={barProducts} // ✅ added
+              onRefresh={refetch} // ✅ added
             />
           </>
         )}
 
         {selectedTab === "modifications" && (
-          <ModificationsTab
-            modifications={modifications}
+          <BarApprovalsPendingModifications
+            pendingModifications={modifications}
             isLoading={modsLoading}
-            onProcess={handleProcessModification}
-            processingIds={processingIds}
+            onRefresh={refetchMods}
           />
         )}
 

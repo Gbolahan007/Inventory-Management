@@ -2,6 +2,8 @@
 
 "use client";
 
+import type React from "react";
+
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTableCartStore } from "@/app/(store)/useTableCartStore";
@@ -11,7 +13,7 @@ import { supabase } from "@/app/_lib/supabase";
 import toast from "react-hot-toast";
 import type { Product } from "../(sales)/types";
 import {
-  BarRequestItem,
+  type BarRequestItem,
   createBarRequestRecords,
   updateFulfillmentStatus,
 } from "@/app/_lib/actions";
@@ -65,13 +67,6 @@ export function useTableCartLogic({
   const [cashAmount, setCashAmount] = useState(0);
   const [transferAmount, setTransferAmount] = useState(0);
 
-  const [tableBarRequestStatus, setTableBarRequestStatus] = useState<
-    "none" | "pending" | "approved"
-  >("none");
-  const [pendingBarRequestId, setPendingBarRequestId] = useState<string | null>(
-    null
-  );
-
   const createSaleMutation = useCreateSale();
   const queryClient = useQueryClient();
 
@@ -87,6 +82,11 @@ export function useTableCartLogic({
     getTableTotal,
     getTableTotalCost,
     getTableTotalProfit,
+    syncCartWithBarFulfillment,
+    updateTableCartItemFulfillmentId,
+    getBarRequestStatus,
+    getPendingBarRequestId,
+    setBarRequestStatus,
   } = useTableCartStore();
 
   const {
@@ -96,6 +96,10 @@ export function useTableCartLogic({
     getExpenses,
     getTotalExpenses,
   } = useExpensesStore();
+
+  // Get bar request status from store instead of local state
+  const tableBarRequestStatus = getBarRequestStatus(selectedTable);
+  const pendingBarRequestId = getPendingBarRequestId(selectedTable);
 
   // ---------- CURRENT TABLE DATA ----------
   const currentCart = getTableCart(selectedTable);
@@ -145,11 +149,17 @@ export function useTableCartLogic({
     if (currentUserId) setCurrentUser(currentUserId);
   }, [currentUserId, setCurrentUser]);
 
+  // ---------- CHECK BAR REQUEST STATUS ON MOUNT/TABLE CHANGE ----------
+  useEffect(() => {
+    if (selectedTable && barApprovalItems.length > 0) {
+      checkBarRequestStatus();
+    }
+  }, [selectedTable]); // Only run when table changes
+
   // ---------- CHECK BAR REQUEST STATUS ----------
   const checkBarRequestStatus = useCallback(async () => {
     if (!selectedTable || barApprovalItems.length === 0) {
-      setTableBarRequestStatus("none");
-      setPendingBarRequestId(null);
+      setBarRequestStatus(selectedTable, "none", null);
       return;
     }
 
@@ -170,56 +180,210 @@ export function useTableCartLogic({
 
       if (data) {
         if (data.status === "accepted") {
-          setTableBarRequestStatus("approved");
-          setPendingBarRequestId(data.id);
+          setBarRequestStatus(selectedTable, "approved", data.id);
         } else if (data.status === "pending") {
-          setTableBarRequestStatus("pending");
-          setPendingBarRequestId(data.id);
+          setBarRequestStatus(selectedTable, "pending", data.id);
         }
       } else {
-        setTableBarRequestStatus("none");
-        setPendingBarRequestId(null);
+        setBarRequestStatus(selectedTable, "none", null);
       }
     } catch (error) {
       console.error("Error checking bar request status:", error);
     }
-  }, [selectedTable, barApprovalItems.length]);
+  }, [selectedTable, setBarRequestStatus, barApprovalItems.length]);
 
+  // ---------- BROADCAST LISTENER (for bar modifications from other users) ----------
   useEffect(() => {
-    checkBarRequestStatus();
-  }, [checkBarRequestStatus]);
+    const broadcastChannel = supabase
+      .channel("bar-modifications")
+      .on("broadcast", { event: "fulfillment-modified" }, (payload) => {
+        console.log("📻 Broadcast received:", payload);
+        console.log("inside");
+        const { tableId, fulfillmentId, updatedData } = payload.payload;
 
-  // ---------- REALTIME UPDATES ----------
+        console.log("🔍 Broadcast tableId check:", {
+          broadcastTableId: tableId,
+          selectedTable: selectedTable,
+          matches: tableId === selectedTable,
+          types: {
+            broadcastTableId: typeof tableId,
+            selectedTable: typeof selectedTable,
+          },
+        });
+
+        // ✅ Ensure type consistency - convert both to numbers for comparison
+        if (Number(tableId) === Number(selectedTable)) {
+          try {
+            syncCartWithBarFulfillment(selectedTable, fulfillmentId, {
+              product_id: updatedData.product_id,
+              product_name: updatedData.product_name,
+              quantity_approved: updatedData.quantity_approved,
+              unit_price: updatedData.unit_price,
+              status: updatedData.status,
+            });
+
+            toast("🔄 Bar modified your order — cart updated!", {
+              icon: "🔁",
+            });
+
+            queryClient.invalidateQueries({ queryKey: ["bar_fulfillments"] });
+          } catch (error) {
+            console.error("❌ Error processing broadcast:", error);
+          }
+        } else {
+          console.log("❌ Table mismatch - ignoring broadcast");
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(broadcastChannel);
+    };
+  }, [selectedTable, queryClient]);
+
+  // ---------- REAL-TIME SUBSCRIPTIONS ----------
   useEffect(() => {
-    const tables = ["sales", "products", "expenses", "bar_requests"];
+    const tables = [
+      "sales",
+      "products",
+      "expenses",
+      "bar_requests",
+      "bar_fulfillments",
+    ];
 
     const channels = tables.map((table) => {
       const channel = subscribeToTable(table, async (payload) => {
+        console.log(`📡 Real-time event from ${table}:`, {
+          eventType: payload.eventType,
+          table: table,
+          new: payload.new,
+          old: payload.old,
+        });
+
+        // Invalidate queries for all table events
         await queryClient.invalidateQueries({ queryKey: [table] });
 
-        if (table === "bar_requests") {
+        // Handle bar-specific events
+        if (["bar_requests", "bar_fulfillments"].includes(table)) {
           const data = payload.new || payload.old;
 
-          if (data && data.table_id === selectedTable) {
-            await checkBarRequestStatus();
+          console.log("🔍 Checking table match:", {
+            eventTableId: data?.table_id,
+            selectedTable: selectedTable,
+            matches: data && Number(data.table_id) === Number(selectedTable),
+          });
 
-            if (payload.eventType === "UPDATE" && payload.new) {
+          // ✅ Ensure type consistency
+          if (data && Number(data.table_id) === Number(selectedTable)) {
+            console.log("✅ Event matches selected table!");
+
+            // Handle bar request status changes
+            if (
+              table === "bar_requests" &&
+              payload.eventType === "UPDATE" &&
+              payload.new
+            ) {
               if (payload.new.status === "accepted") {
                 toast.success("✅ Bar has approved your request!");
+                setBarRequestStatus(selectedTable, "approved", payload.new.id);
               } else if (payload.new.status === "rejected") {
                 toast.error("❌ Bar rejected your request");
+                setBarRequestStatus(selectedTable, "none", null);
               }
             }
+
+            // ✅ Handle bar fulfillment updates (quantity/price changes from database)
+            // Note: Broadcast handles modifications from other users
+
+            if (
+              table === "bar_fulfillments" &&
+              payload.eventType === "UPDATE"
+            ) {
+              const fulfillment = payload.new;
+
+              console.log("🔄 Bar fulfillment UPDATE detected (DB event):", {
+                fulfillmentId: fulfillment.id,
+                productId: fulfillment.product_id,
+                productName: fulfillment.product_name,
+                oldQuantity: payload.old?.quantity_approved,
+                newQuantity: fulfillment.quantity_approved,
+                oldPrice: payload.old?.unit_price,
+                newPrice: fulfillment.unit_price,
+                status: fulfillment.status,
+              });
+
+              // Only sync if there's an actual change
+              const hasQuantityChange =
+                payload.old?.quantity_approved !==
+                fulfillment.quantity_approved;
+              const hasPriceChange =
+                payload.old?.unit_price !== fulfillment.unit_price;
+              const hasProductChange =
+                payload.old?.product_id !== fulfillment.product_id;
+
+              if (hasQuantityChange || hasPriceChange || hasProductChange) {
+                console.log("🔄 Syncing cart with database changes...");
+
+                try {
+                  syncCartWithBarFulfillment(selectedTable, fulfillment.id, {
+                    product_id: fulfillment.product_id,
+                    product_name: fulfillment.product_name,
+                    quantity_approved: fulfillment.quantity_approved,
+                    unit_price: fulfillment.unit_price,
+                    status: fulfillment.status,
+                  });
+
+                  console.log("✅ Cart synced with database changes");
+                } catch (error) {
+                  console.error("❌ Error syncing cart:", error);
+                }
+              }
+            }
+          } else {
+            console.log("❌ Event table mismatch - ignoring");
           }
         }
       });
+
       return channel;
     });
 
     return () => {
       channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [queryClient, selectedTable, checkBarRequestStatus]);
+  }, [
+    queryClient,
+    selectedTable,
+    barApprovalItems.length,
+    setBarRequestStatus,
+  ]);
+
+  // ✅ Listen for bar modifications broadcast
+  useEffect(() => {
+    console.log("📡 Listening for bar-modifications broadcasts...");
+
+    const channel = supabase
+      .channel("bar-modifications")
+      .on("broadcast", { event: "fulfillment-modified" }, (payload) => {
+        console.log("🔄 Fulfillment modified broadcast received:", payload);
+
+        const { tableId, fulfillmentId, updatedData } = payload.payload;
+
+        // ✅ Sync the cart for this table
+        if (tableId && fulfillmentId && updatedData) {
+          console.log("🧩 Syncing cart with bar fulfillment changes...");
+          syncCartWithBarFulfillment(tableId, fulfillmentId, updatedData);
+        } else {
+          console.warn("⚠️ Incomplete broadcast payload:", payload);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      console.log("🧹 Unsubscribing from bar-modifications channel...");
+      supabase.removeChannel(channel);
+    };
+  }, [syncCartWithBarFulfillment]);
 
   // ---------- HANDLERS ----------
   const handleAddToCart = async () => {
@@ -265,12 +429,13 @@ export function useTableCartLogic({
     };
 
     try {
-      addToTableCart(selectedTable, newItem);
-
       const isBarItem = needsBarApproval(
         newItem.name,
         selectedProductData.category
       );
+
+      // Add to cart first
+      addToTableCart(selectedTable, newItem);
 
       toast.success(
         `${newItem.name} added to cart!${
@@ -278,28 +443,37 @@ export function useTableCartLogic({
         }`
       );
 
+      // Reset form
       setSelectedProduct("");
       setQuantity(1);
       setCustomSellingPrice(0);
 
-      if (
-        isBarItem &&
-        (tableBarRequestStatus === "approved" ||
-          tableBarRequestStatus === "pending")
-      ) {
-        if (pendingBarRequestId) {
-          await supabase
-            .from("bar_requests")
-            .update({ status: "cancelled" })
-            .eq("table_id", selectedTable)
-            .in("status", ["pending", "accepted"]);
-        }
+      if (isBarItem) {
+        if (
+          tableBarRequestStatus === "approved" ||
+          tableBarRequestStatus === "pending"
+        ) {
+          // Cancel existing request since cart was modified
+          if (pendingBarRequestId) {
+            await supabase
+              .from("bar_requests")
+              .update({ status: "cancelled" })
+              .eq("table_id", selectedTable)
+              .in("status", ["pending", "accepted"]);
+          }
 
-        setTableBarRequestStatus("none");
-        setPendingBarRequestId(null);
-        toast("⚠️ Cart modified. Please send to bar again for approval.", {
-          icon: "⚠️",
-        });
+          setBarRequestStatus(selectedTable, "none", null);
+          toast("⚠️ Cart modified. Please send to bar again for approval.", {
+            icon: "⚠️",
+          });
+        } else if (tableBarRequestStatus === "none") {
+          toast.error("Sending to bar for approval...", { duration: 2000 });
+
+          // Small delay to ensure cart state is updated
+          setTimeout(async () => {
+            await handleSendToBar();
+          }, 300);
+        }
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
@@ -357,12 +531,14 @@ export function useTableCartLogic({
     setIsSendingToBar(true);
 
     try {
+      // ✅ Step 1: Cancel any existing pending/accepted bar requests for this table
       await supabase
         .from("bar_requests")
         .update({ status: "cancelled" })
         .eq("table_id", selectedTable)
         .in("status", ["pending", "accepted"]);
 
+      // ✅ Step 2: Prepare new bar request items
       const barRequestItems: BarRequestItem[] = barApprovalItems.map(
         (item) => ({
           table_id: selectedTable,
@@ -376,21 +552,66 @@ export function useTableCartLogic({
         })
       );
 
+      // ✅ Step 3: Create bar request records
       const result = await createBarRequestRecords(barRequestItems);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to send request to bar");
       }
 
-      setTableBarRequestStatus("pending");
+      // ✅ Step 4: Update request status locally
+      setBarRequestStatus(selectedTable, "pending", null);
+
+      // ✅ Step 5: If records were created, get the request ID
       if (result.data && result.data.length > 0) {
-        setPendingBarRequestId(result.data[0].id);
+        const requestId = result.data[0].id;
+        setBarRequestStatus(selectedTable, "pending", requestId);
+
+        // ✅ Step 6: Fetch related bar_fulfillment records
+        const { data: fulfillments, error: fulfillErr } = await supabase
+          .from("bar_fulfillments")
+          .select("*")
+          .eq("request_id", requestId);
+
+        if (fulfillErr) {
+          console.error("❌ Error fetching fulfillments:", fulfillErr);
+        } else if (fulfillments && fulfillments.length > 0) {
+          console.log(
+            "📋 Mapping fulfillment IDs to cart items:",
+            fulfillments
+          );
+
+          // ✅ Step 7: Match fulfillments to items in the current cart
+          fulfillments.forEach((fulfillment) => {
+            const cartItem = currentCart.find(
+              (item) =>
+                item.product_id === fulfillment.product_id &&
+                item.unit_price === fulfillment.unit_price
+            );
+
+            if (cartItem) {
+              console.log(
+                `✅ Mapping fulfillment ${fulfillment.id} to cart item ${cartItem.product_id}`
+              );
+
+              // ✅ Use your Zustand store helper
+              updateTableCartItemFulfillmentId(
+                selectedTable,
+                cartItem.product_id,
+                cartItem.unit_price,
+                fulfillment.id
+              );
+            }
+          });
+        }
       }
 
+      // ✅ Step 8: Notify user
       toast.success(
         `${barApprovalItems.length} drink/cigarette item(s) sent to bar for Table ${selectedTable}. Waiting for approval...`
       );
 
+      // ✅ Step 9: Refresh bar requests + recheck status
       await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
       setTimeout(() => checkBarRequestStatus(), 500);
     } catch (error: any) {
@@ -438,7 +659,7 @@ export function useTableCartLogic({
         tableId: exp.tableId || selectedTable,
       }));
 
-      // 🟡 NEW LOGIC: Update fulfillment records before creating sale
+      // Update fulfillment records before creating sale
       if (hasBarApprovalItems && pendingBarRequestId) {
         const { data: fulfillments, error: fulfillErr } = await supabase
           .from("bar_fulfillments")
@@ -478,7 +699,7 @@ export function useTableCartLogic({
         }
       }
 
-      // 🟢 Proceed to sale creation after updating fulfillments
+      // Proceed to sale creation after updating fulfillments
       let finalPaymentMethod = paymentMethod;
       let paymentDetails: any = {};
 
@@ -518,8 +739,7 @@ export function useTableCartLogic({
 
       clearTableCart(selectedTable);
       clearExpenses(selectedTable);
-      setTableBarRequestStatus("none");
-      setPendingBarRequestId(null);
+      setBarRequestStatus(selectedTable, "none", null);
       setIsSplitPayment(false);
       setCashAmount(0);
       setTransferAmount(0);
@@ -573,8 +793,7 @@ export function useTableCartLogic({
             .eq("table_id", selectedTable)
             .in("status", ["pending", "accepted"]);
 
-          setTableBarRequestStatus("none");
-          setPendingBarRequestId(null);
+          setBarRequestStatus(selectedTable, "none", null);
           toast("⚠️ Cart modified. Please send to bar again for approval.", {
             icon: "⚠️",
           });
@@ -640,8 +859,7 @@ export function useTableCartLogic({
             .eq("table_id", selectedTable)
             .in("status", ["pending", "accepted"]);
 
-          setTableBarRequestStatus("none");
-          setPendingBarRequestId(null);
+          setBarRequestStatus(selectedTable, "none", null);
           toast("⚠️ Cart modified. Please send to bar again for approval.", {
             icon: "⚠️",
           });
@@ -661,9 +879,8 @@ export function useTableCartLogic({
   const totalPrice = unitPrice * quantity;
 
   const canFinalizeSale =
-    (hasBarApprovalItems && tableBarRequestStatus === "approved") ||
-    (!hasBarApprovalItems &&
-      (currentCart.length > 0 || currentExpenses.length > 0));
+    (currentCart.length > 0 || currentExpenses.length > 0) &&
+    (!hasBarApprovalItems || tableBarRequestStatus === "approved");
 
   const handleProductChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>

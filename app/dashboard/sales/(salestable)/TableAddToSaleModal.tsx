@@ -9,11 +9,11 @@ import { useState } from "react";
 import SaleForm from "../(sales)/SaleForm";
 import TableShoppingCartDisplay from "./TableShoppingCartDisplay";
 
+import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 import type { Product } from "../(sales)/types";
 import ModalHeader from "./ModalHeader";
 import TableSelector from "./TableSelector";
 import { useTableCartLogic } from "./useTableCart";
-import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 
 interface TableAddToSaleModalProps {
   isOpen: boolean;
