@@ -729,16 +729,12 @@ export function useTableCartLogic({
         })
       );
 
-      console.log("📤 Creating bar request with items:", barRequestItems);
-
       // ✅ Step 3: Create bar request records
       const result = await createBarRequestRecords(barRequestItems);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to send request to bar");
       }
-
-      console.log("✅ Bar request created successfully:", result.data);
 
       // ✅ Step 4: Update request status locally
       setBarRequestStatus(selectedTable, "pending", null);

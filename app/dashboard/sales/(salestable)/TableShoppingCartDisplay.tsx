@@ -1,6 +1,8 @@
+"use client";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Expense } from "@/app/(store)/useExpensesStore";
+import type { Expense } from "@/app/(store)/useExpensesStore";
 import type {
   QueryObserverResult,
   RefetchOptions,
@@ -14,9 +16,12 @@ import {
   Send,
   ShoppingCart,
   X,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import type { Product, SaleItem, TableCart } from "../(sales)/types";
 import { CartContent } from "./CartContent";
 import { CartFooter } from "./CartFooter";
@@ -125,6 +130,10 @@ export default function TableShoppingCartDisplay({
 }: TableShoppingCartDisplayProps) {
   const [isSliding, setIsSliding] = useState(false);
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+
+  const categories = ["Kitchen", "Cigarette", "Asun", "Suya"];
 
   useEffect(() => {
     if (isOpen) {
@@ -143,6 +152,29 @@ export default function TableShoppingCartDisplay({
     setIsSliding(false);
     setTimeout(onClose, 300);
   };
+
+  const addExpense = () => {
+    if (!selectedCategory || !expenseAmount) {
+      toast.error("Please select a category and enter an amount");
+      return;
+    }
+
+    const amount = Number.parseFloat(expenseAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    handleAddExpense(selectedCategory, amount);
+    setSelectedCategory("");
+    setExpenseAmount("");
+  };
+
+  const removeExpense = (expenseId: string) => {
+    handleRemoveExpense(expenseId);
+  };
+
+  const canSendToBar = hasBarApprovalItems && tableBarRequestStatus === "none";
 
   if (isOpen) {
     return (
@@ -267,8 +299,8 @@ export default function TableShoppingCartDisplay({
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto">
             {activeTab === "items" ? (
-              /* CART ITEMS TAB */
-              <div className="p-4">
+              /* CART ITEMS TAB - WITH EXPENSES AND SEND TO BAR */
+              <div className="p-4 space-y-4">
                 {cartItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16">
                     <div
@@ -302,7 +334,7 @@ export default function TableShoppingCartDisplay({
                     {/* Bar Approval Status */}
                     {hasBarApprovalItems && (
                       <div
-                        className={`mb-4 p-3 rounded-lg border ${
+                        className={`p-3 rounded-lg border ${
                           tableBarRequestStatus === "approved"
                             ? isDarkMode
                               ? "bg-green-900/20 border-green-700"
@@ -320,7 +352,7 @@ export default function TableShoppingCartDisplay({
                           {tableBarRequestStatus === "pending" ? (
                             <>
                               <Clock
-                                className={`w-5 h-5 ${
+                                className={`w-5 h-5 flex-shrink-0 ${
                                   isDarkMode
                                     ? "text-yellow-400"
                                     : "text-yellow-600"
@@ -350,7 +382,7 @@ export default function TableShoppingCartDisplay({
                           ) : tableBarRequestStatus === "approved" ? (
                             <>
                               <CheckCircle
-                                className={`w-5 h-5 ${
+                                className={`w-5 h-5 flex-shrink-0 ${
                                   isDarkMode
                                     ? "text-green-400"
                                     : "text-green-600"
@@ -380,7 +412,7 @@ export default function TableShoppingCartDisplay({
                           ) : (
                             <>
                               <Send
-                                className={`w-5 h-5 ${
+                                className={`w-5 h-5 flex-shrink-0 ${
                                   isDarkMode ? "text-blue-400" : "text-blue-600"
                                 }`}
                               />
@@ -417,11 +449,169 @@ export default function TableShoppingCartDisplay({
                       updateCartItemQuantity={updateCartItemQuantity}
                       isDarkMode={isDarkMode}
                     />
+
+                    <div
+                      className={`p-4 rounded-lg border-2 ${
+                        isDarkMode
+                          ? "bg-slate-800 border-slate-700"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <h4
+                        className={`text-sm font-semibold mb-3 ${
+                          isDarkMode ? "text-slate-200" : "text-gray-700"
+                        }`}
+                      >
+                        Add Extra Expenses
+                      </h4>
+
+                      {/* Expense Input Form */}
+                      <div className="space-y-2 mb-3">
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => setSelectedCategory(e.target.value)}
+                          className={`w-full p-2.5 rounded-lg border text-sm ${
+                            isDarkMode
+                              ? "bg-slate-700 border-slate-600 text-slate-100"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                        >
+                          <option value="">Select Expense Type</option>
+                          {categories.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={expenseAmount}
+                            onChange={(e) => setExpenseAmount(e.target.value)}
+                            placeholder="Amount (₦)"
+                            className={`flex-1 p-2.5 rounded-lg border text-sm ${
+                              isDarkMode
+                                ? "bg-slate-700 border-slate-600 text-slate-100"
+                                : "bg-white border-gray-300 text-gray-900"
+                            }`}
+                          />
+                          <button
+                            onClick={addExpense}
+                            disabled={!selectedCategory || !expenseAmount}
+                            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+                              !selectedCategory || !expenseAmount
+                                ? isDarkMode
+                                  ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : isDarkMode
+                                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                : "bg-blue-500 hover:bg-blue-600 text-white"
+                            }`}
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Add</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expenses List */}
+                      {currentExpenses.length > 0 && (
+                        <div
+                          className={`space-y-2 pt-3 border-t ${
+                            isDarkMode ? "border-slate-700" : "border-gray-200"
+                          }`}
+                        >
+                          <p
+                            className={`text-xs font-medium ${
+                              isDarkMode ? "text-slate-400" : "text-gray-500"
+                            }`}
+                          >
+                            Added Expenses:
+                          </p>
+                          {currentExpenses.map((expense) => (
+                            <div
+                              key={expense.id}
+                              className={`flex items-center justify-between p-2 rounded-md ${
+                                isDarkMode ? "bg-slate-700" : "bg-white"
+                              }`}
+                            >
+                              <div className="flex-1">
+                                <p
+                                  className={`text-sm font-medium ${
+                                    isDarkMode
+                                      ? "text-slate-200"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {expense.category}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-sm font-semibold ${
+                                    isDarkMode
+                                      ? "text-blue-400"
+                                      : "text-blue-600"
+                                  }`}
+                                >
+                                  {new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    minimumFractionDigits: 2,
+                                  }).format(expense.amount)}
+                                </span>
+                                <button
+                                  onClick={() => removeExpense(expense.id)}
+                                  className={`p-1.5 rounded-md transition ${
+                                    isDarkMode
+                                      ? "hover:bg-red-900/30 text-red-400"
+                                      : "hover:bg-red-50 text-red-600"
+                                  }`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {canSendToBar && (
+                      <button
+                        onClick={handleSendToBar}
+                        disabled={isSendingToBar}
+                        className={`w-full py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                          isSendingToBar
+                            ? isDarkMode
+                              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : isDarkMode
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                            : "bg-blue-500 hover:bg-blue-600 text-white shadow-lg"
+                        }`}
+                      >
+                        {isSendingToBar ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Sending to Bar...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4" />
+                            <span>Send Drinks/Cigarettes to Bar</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </>
                 )}
               </div>
             ) : (
-              /* PAYMENT TAB */
+              /* PAYMENT TAB - ONLY TOTALS AND COMPLETE SALE */
               <div className="p-4">
                 <CartFooter
                   cartTotal={cartTotal}
@@ -459,6 +649,7 @@ export default function TableShoppingCartDisplay({
                   currentUser={currentUser}
                   products={products}
                   onModificationRequested={() => checkBarRequestStatus()}
+                  isMobilePaymentTab={true}
                 />
               </div>
             )}
