@@ -15,14 +15,7 @@ const debugLog = (
   data?: any
 ) => {
   const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] ${message}`;
-  const styles = {
-    info: "color: blue; font-weight: bold",
-    error: "color: red; font-weight: bold",
-    warning: "color: orange; font-weight: bold",
-    success: "color: green; font-weight: bold",
-  };
-  console.log(`%c${logMessage}`, styles[type], data || "");
+
   try {
     const logs = JSON.parse(sessionStorage.getItem("debugLogs") || "[]");
     logs.push({ type, message, data, timestamp });

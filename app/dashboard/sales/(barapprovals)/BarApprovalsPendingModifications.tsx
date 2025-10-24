@@ -18,6 +18,7 @@ export default function BarApprovalsPendingModifications({
   isLoading,
   onRefresh,
 }: PendingModificationsTabProps) {
+  console.log(pendingModifications);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   // Group by table and sales rep

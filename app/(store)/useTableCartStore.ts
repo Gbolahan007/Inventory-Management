@@ -35,6 +35,7 @@ interface TableCartState {
   tables: Record<number, TableState>; // ← Added table states
   selectedTable: number;
   currentUserId?: string;
+  getStore: () => TableCartState;
 
   setCurrentUser: (userId: string) => void;
   addToTableCart: (tableId: number, item: SaleItem) => void;
@@ -264,6 +265,8 @@ export const useTableCartStore = create<TableCartState>()(
         });
       },
 
+      // Enhanced version for useTableCartStore.ts
+
       syncCartWithBarFulfillment: (tableId, fulfillmentId, updates) => {
         const { carts } = get();
         const currentCart = carts[tableId];
@@ -430,13 +433,14 @@ export const useTableCartStore = create<TableCartState>()(
         get().clearTableCart(tableId);
         return saleItems;
       },
+      getStore: () => get(),
     }),
     {
       name: "table-cart-storage",
       partialize: (state) => ({
         carts: state.carts,
         selectedTable: state.selectedTable,
-        tables: state.tables, // persist bar request states
+        tables: state.tables,
       }),
     }
   )

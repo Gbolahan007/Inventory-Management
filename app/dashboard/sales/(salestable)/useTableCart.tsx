@@ -386,6 +386,8 @@ export function useTableCartLogic({
   }, [syncCartWithBarFulfillment]);
 
   // ---------- HANDLERS ----------
+  // Replace the handleAddToCart function in useTableCartLogic.tsx
+
   const handleAddToCart = async () => {
     if (!selectedProduct || quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity");
@@ -395,6 +397,7 @@ export function useTableCartLogic({
     const selectedProductData = products?.find(
       (p) => p.name === selectedProduct
     );
+
     if (!selectedProductData) {
       toast.error("Product not found");
       return;
@@ -434,7 +437,7 @@ export function useTableCartLogic({
         selectedProductData.category
       );
 
-      // Add to cart first
+      // ✅ 1. Add to cart first
       addToTableCart(selectedTable, newItem);
 
       toast.success(
@@ -443,41 +446,172 @@ export function useTableCartLogic({
         }`
       );
 
-      // Reset form
+      // ✅ 2. Reset input fields
       setSelectedProduct("");
       setQuantity(1);
       setCustomSellingPrice(0);
 
-      if (isBarItem) {
-        if (
-          tableBarRequestStatus === "approved" ||
-          tableBarRequestStatus === "pending"
-        ) {
-          // Cancel existing request since cart was modified
-          if (pendingBarRequestId) {
-            await supabase
-              .from("bar_requests")
-              .update({ status: "cancelled" })
-              .eq("table_id", selectedTable)
-              .in("status", ["pending", "accepted"]);
+      // ✅ 3. Handle bar approval logic ONLY if it's a bar item
+      if (!isBarItem) {
+        return; // Exit early for non-bar items
+      }
+
+      // ✅ 4. Check current bar request status
+      if (
+        tableBarRequestStatus === "approved" ||
+        tableBarRequestStatus === "pending"
+      ) {
+        // Cancel existing request since cart was modified
+        if (pendingBarRequestId) {
+          await supabase
+            .from("bar_requests")
+            .update({ status: "cancelled" })
+            .eq("table_id", selectedTable)
+            .in("status", ["pending", "accepted"]);
+        }
+
+        setBarRequestStatus(selectedTable, "none", null);
+
+        toast("⚠️ Cart modified. Please send to bar again for approval.", {
+          icon: "⚠️",
+        });
+        return; // Don't auto-send
+      }
+
+      // ✅ 5. Only auto-send if status is "none"
+      if (tableBarRequestStatus === "none") {
+        // Wait for Zustand store to commit the state change
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        // Show loading toast
+        const sendingToast = toast.loading("Sending to bar for approval...");
+
+        try {
+          // ✅ Read the latest cart state directly from the store
+          const latestStore = useTableCartStore.getState();
+          const latestCart = latestStore.carts[selectedTable]?.items || [];
+
+          console.log("🔍 Latest cart before sending to bar:", {
+            itemCount: latestCart.length,
+            items: latestCart.map((i) => ({ name: i.name, qty: i.quantity })),
+          });
+
+          // ✅ Filter bar items from the latest cart state
+          const latestBarItems = latestCart.filter((item) => {
+            const product = products?.find((p) => p.id === item.product_id);
+            return needsBarApproval(item.name, product?.category);
+          });
+
+          if (latestBarItems.length === 0) {
+            toast.dismiss(sendingToast);
+            toast.error("No bar items found to send");
+            return;
           }
 
-          setBarRequestStatus(selectedTable, "none", null);
-          toast("⚠️ Cart modified. Please send to bar again for approval.", {
-            icon: "⚠️",
-          });
-        } else if (tableBarRequestStatus === "none") {
-          toast.error("Sending to bar for approval...", { duration: 2000 });
+          console.log("📤 Sending bar items:", latestBarItems);
 
-          // Small delay to ensure cart state is updated
-          setTimeout(async () => {
-            await handleSendToBar();
-          }, 300);
+          // ✅ Send to bar with the latest cart state
+          await handleSendToBarWithItems(latestBarItems);
+
+          toast.dismiss(sendingToast);
+          toast.success("Request sent to bar!");
+        } catch (err: any) {
+          toast.dismiss(sendingToast);
+          console.error("Error sending to bar:", err);
+          toast.error("Failed to send updated cart to bar");
         }
       }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
       toast.error(`Failed to add item: ${error.message}`);
+    }
+  };
+
+  // ✅ NEW HELPER FUNCTION: Send specific items to bar
+  const handleSendToBarWithItems = async (itemsToSend: any[]) => {
+    if (!currentUser || !currentUserId) {
+      throw new Error("User information not available");
+    }
+
+    try {
+      // Cancel any existing pending/accepted bar requests for this table
+      await supabase
+        .from("bar_requests")
+        .update({ status: "cancelled" })
+        .eq("table_id", selectedTable)
+        .in("status", ["pending", "accepted"]);
+
+      // Prepare bar request items from the provided items
+      const barRequestItems: BarRequestItem[] = itemsToSend.map((item) => ({
+        table_id: selectedTable,
+        product_id: item.product_id,
+        product_name: item.name,
+        quantity: item.quantity,
+        product_price: item.unit_price,
+        sales_rep_id: currentUserId,
+        sales_rep_name: currentUser.name,
+        status: "pending",
+      }));
+
+      console.log("📤 Creating bar request with items:", barRequestItems);
+
+      // Create bar request records
+      const result = await createBarRequestRecords(barRequestItems);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to send request to bar");
+      }
+
+      // Update request status locally
+      if (result.data && result.data.length > 0) {
+        const requestId = result.data[0].id;
+        setBarRequestStatus(selectedTable, "pending", requestId);
+
+        // Fetch and map fulfillment IDs
+        const { data: fulfillments, error: fulfillErr } = await supabase
+          .from("bar_fulfillments")
+          .select("*")
+          .eq("request_id", requestId);
+
+        if (fulfillErr) {
+          console.error("❌ Error fetching fulfillments:", fulfillErr);
+        } else if (fulfillments && fulfillments.length > 0) {
+          console.log("📋 Mapping fulfillment IDs:", fulfillments);
+
+          // Get the absolute latest cart state again
+          const currentStore = useTableCartStore.getState();
+          const currentCartItems =
+            currentStore.carts[selectedTable]?.items || [];
+
+          fulfillments.forEach((fulfillment) => {
+            const cartItem = currentCartItems.find(
+              (item) =>
+                item.product_id === fulfillment.product_id &&
+                item.unit_price === fulfillment.unit_price
+            );
+
+            if (cartItem) {
+              console.log(
+                `✅ Mapping fulfillment ${fulfillment.id} to cart item ${cartItem.product_id}`
+              );
+
+              updateTableCartItemFulfillmentId(
+                selectedTable,
+                cartItem.product_id,
+                cartItem.unit_price,
+                fulfillment.id
+              );
+            }
+          });
+        }
+      }
+
+      // Refresh bar requests
+      await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
+      setTimeout(() => checkBarRequestStatus(), 300);
+    } catch (error: any) {
+      console.error("❌ Error in handleSendToBarWithItems:", error);
+      throw error;
     }
   };
 
@@ -507,8 +641,47 @@ export function useTableCartLogic({
   };
 
   // ---------- SEND TO BAR ----------
+
   const handleSendToBar = async () => {
-    if (barApprovalItems.length === 0) {
+    // Read the absolute latest cart state from the store
+    const latestStore = useTableCartStore.getState();
+    const latestCart = latestStore.carts[selectedTable]?.items || [];
+
+    //  Get latest expenses state
+    const latestExpensesStore = useExpensesStore.getState();
+    const latestExpenses = latestExpensesStore.getExpenses(selectedTable);
+
+    //  Calculate bar approval items from the LATEST state
+    const latestBarApprovalItems = [
+      ...latestCart.filter((item) => {
+        const product = products?.find((p) => p.id === item.product_id);
+        return needsBarApproval(item.name, product?.category);
+      }),
+
+      ...latestExpenses
+        .filter((exp) => exp.category?.toLowerCase().trim() === "cigarette")
+        .map((exp) => ({
+          id: exp.id,
+          name: exp.category,
+          quantity: 1,
+          unit_price: exp.amount,
+          selling_price: exp.amount,
+          total_price: exp.amount,
+          product_id: null,
+          table_id: exp.tableId,
+        })),
+    ];
+
+    console.log("🔍 Latest bar approval items from store:", {
+      count: latestBarApprovalItems.length,
+      items: latestBarApprovalItems.map((i) => ({
+        name: i.name,
+        qty: i.quantity,
+        price: i.unit_price || i.selling_price,
+      })),
+    });
+
+    if (latestBarApprovalItems.length === 0) {
       toast.error("No drinks or cigarettes to send to bar.");
       return;
     }
@@ -532,25 +705,31 @@ export function useTableCartLogic({
 
     try {
       // ✅ Step 1: Cancel any existing pending/accepted bar requests for this table
+      console.log(
+        "🗑️ Cancelling existing bar requests for table",
+        selectedTable
+      );
       await supabase
         .from("bar_requests")
         .update({ status: "cancelled" })
         .eq("table_id", selectedTable)
         .in("status", ["pending", "accepted"]);
 
-      // ✅ Step 2: Prepare new bar request items
-      const barRequestItems: BarRequestItem[] = barApprovalItems.map(
+      // ✅ Step 2: Prepare new bar request items from LATEST state
+      const barRequestItems: BarRequestItem[] = latestBarApprovalItems.map(
         (item) => ({
           table_id: selectedTable,
           product_id: item.product_id,
           product_name: item.name,
           quantity: item.quantity,
-          product_price: item.selling_price,
+          product_price: item.unit_price || item.selling_price,
           sales_rep_id: currentUserId,
           sales_rep_name: currentUser.name,
           status: "pending",
         })
       );
+
+      console.log("📤 Creating bar request with items:", barRequestItems);
 
       // ✅ Step 3: Create bar request records
       const result = await createBarRequestRecords(barRequestItems);
@@ -559,6 +738,8 @@ export function useTableCartLogic({
         throw new Error(result.error || "Failed to send request to bar");
       }
 
+      console.log("✅ Bar request created successfully:", result.data);
+
       // ✅ Step 4: Update request status locally
       setBarRequestStatus(selectedTable, "pending", null);
 
@@ -566,6 +747,8 @@ export function useTableCartLogic({
       if (result.data && result.data.length > 0) {
         const requestId = result.data[0].id;
         setBarRequestStatus(selectedTable, "pending", requestId);
+
+        console.log("🆔 Bar request ID:", requestId);
 
         // ✅ Step 6: Fetch related bar_fulfillment records
         const { data: fulfillments, error: fulfillErr } = await supabase
@@ -578,12 +761,28 @@ export function useTableCartLogic({
         } else if (fulfillments && fulfillments.length > 0) {
           console.log(
             "📋 Mapping fulfillment IDs to cart items:",
-            fulfillments
+            fulfillments.length,
+            "fulfillments found"
           );
 
-          // ✅ Step 7: Match fulfillments to items in the current cart
+          // ✅ Step 7: Match fulfillments to items in the LATEST cart state
+          // Read the store again to ensure we have the absolute latest state
+          const currentStoreState = useTableCartStore.getState();
+          const currentCartItems =
+            currentStoreState.carts[selectedTable]?.items || [];
+
+          console.log("🔍 Current cart items for mapping:", {
+            count: currentCartItems.length,
+            items: currentCartItems.map((i) => ({
+              product_id: i.product_id,
+              name: i.name,
+              qty: i.quantity,
+              price: i.unit_price,
+            })),
+          });
+
           fulfillments.forEach((fulfillment) => {
-            const cartItem = currentCart.find(
+            const cartItem = currentCartItems.find(
               (item) =>
                 item.product_id === fulfillment.product_id &&
                 item.unit_price === fulfillment.unit_price
@@ -591,7 +790,12 @@ export function useTableCartLogic({
 
             if (cartItem) {
               console.log(
-                `✅ Mapping fulfillment ${fulfillment.id} to cart item ${cartItem.product_id}`
+                `✅ Mapping fulfillment ${fulfillment.id} to cart item:`,
+                {
+                  product_id: cartItem.product_id,
+                  name: cartItem.name,
+                  quantity: cartItem.quantity,
+                }
               );
 
               // ✅ Use your Zustand store helper
@@ -601,27 +805,38 @@ export function useTableCartLogic({
                 cartItem.unit_price,
                 fulfillment.id
               );
+            } else {
+              console.warn(
+                `⚠️ No matching cart item found for fulfillment ${fulfillment.id}:`,
+                {
+                  product_id: fulfillment.product_id,
+                  product_name: fulfillment.product_name,
+                  unit_price: fulfillment.unit_price,
+                }
+              );
             }
           });
+
+          console.log("✅ All fulfillment IDs mapped to cart items");
         }
       }
 
       // ✅ Step 8: Notify user
       toast.success(
-        `${barApprovalItems.length} drink/cigarette item(s) sent to bar for Table ${selectedTable}. Waiting for approval...`
+        `${latestBarApprovalItems.length} drink/cigarette item(s) sent to bar for Table ${selectedTable}. Waiting for approval...`
       );
 
       // ✅ Step 9: Refresh bar requests + recheck status
+      console.log("🔄 Invalidating queries and rechecking status...");
       await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
       setTimeout(() => checkBarRequestStatus(), 500);
     } catch (error: any) {
-      console.error("Error sending to bar:", error);
+      console.error("❌ Error sending to bar:", error);
       toast.error(`Failed to send to bar: ${error.message}`);
     } finally {
       setIsSendingToBar(false);
     }
   };
-
   // ---------- FINALIZE SALE ----------
   const handleFinalizeSale = async () => {
     if (createSaleMutation.isPending) {
