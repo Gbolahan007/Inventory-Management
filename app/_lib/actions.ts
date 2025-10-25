@@ -35,6 +35,7 @@ export interface BarRequestItem {
   product_price: number;
   sales_rep_id: string;
   sales_rep_name: string;
+
   status: "completed" | "pending";
 }
 

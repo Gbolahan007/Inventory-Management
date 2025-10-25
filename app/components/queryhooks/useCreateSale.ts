@@ -1,16 +1,21 @@
 import { createSalesClient } from "@/app/_lib/client-data-service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface SaleItem {
+export interface SaleItem {
+  id?: string;
   product_id: string;
   name: string;
   quantity: number;
-  unit_cost: number;
+  approved_quantity?: number;
   unit_price: number;
-  total_cost: number;
-  selling_price: number;
+  unit_cost: number;
   total_price: number;
+  total_cost: number;
   profit_amount: number;
+  selling_price: number;
+  sales_rep_id?: string;
+  sales_rep_name?: string;
+  fulfillment_id?: string;
 }
 interface Expense {
   category: string;

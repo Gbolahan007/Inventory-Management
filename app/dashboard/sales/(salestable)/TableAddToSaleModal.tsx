@@ -9,11 +9,15 @@ import { useState } from "react";
 import SaleForm from "../(sales)/SaleForm";
 import TableShoppingCartDisplay from "./TableShoppingCartDisplay";
 
-import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
+import type {
+  QueryObserverResult,
+  RefetchOptions,
+} from "@tanstack/react-query";
 import type { Product } from "../(sales)/types";
 import ModalHeader from "./ModalHeader";
 import TableSelector from "./TableSelector";
 import { useTableCartLogic } from "./useTableCart";
+import { BarApprovalIntegration } from "../(barapprovals)/BarApprovalIntegration";
 
 interface TableAddToSaleModalProps {
   isOpen: boolean;
@@ -49,6 +53,7 @@ export default function TableAddToSaleModal({
     getTableCart,
     getTableTotal,
     getActiveTables,
+    getPendingBarRequestId,
   } = useTableCartStore();
 
   // Custom hook for cart logic
@@ -95,6 +100,8 @@ export default function TableAddToSaleModal({
     setTransferAmount,
   } = useTableCartLogic({ products, currentUser, currentUserId });
 
+  const lastApprovedRequestId = getPendingBarRequestId(selectedTable);
+
   const activeTables = getActiveTables();
   const filteredProducts = products?.filter((item) => item.current_stock !== 0);
 
@@ -132,6 +139,13 @@ export default function TableAddToSaleModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto ">
+      <BarApprovalIntegration
+        tableId={selectedTable}
+        tableBarRequestStatus={tableBarRequestStatus}
+        lastApprovedRequestId={lastApprovedRequestId}
+        onSaleComplete={handleFinalizeSale}
+      />
+
       <div
         className="fixed inset-0 transition-opacity"
         onClick={handleCloseModal}

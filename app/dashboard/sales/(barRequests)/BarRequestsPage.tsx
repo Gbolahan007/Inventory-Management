@@ -14,6 +14,7 @@ import { useTopSellingProducts } from "@/app/components/queryhooks/useTopSelling
 import { supabase } from "@/app/_lib/supabase";
 import toast from "react-hot-toast";
 import { createBarFulfillmentRecords } from "@/app/_lib/actions";
+import { handleBarApprovalUpdate } from "../(barapprovals)/utils/handleBarApprovalUpdate";
 
 type SaleItem = {
   id?: string;
@@ -108,7 +109,6 @@ export default function BarRequestsPage() {
 
   const pendingRequestsArray = Object.values(pendingRequests);
 
-  // Handle approve request
   const handleApprove = async (
     tableId: number,
     salesRepId: string,
@@ -148,6 +148,8 @@ export default function BarRequestsPage() {
       if (!fulfillmentResult.success) {
         throw new Error(fulfillmentResult.error);
       }
+
+      await handleBarApprovalUpdate(tableId, items as any);
 
       toast.success(
         `Request for Table ${tableId} approved! Fulfillment tracking started.`
@@ -198,7 +200,6 @@ export default function BarRequestsPage() {
     }
   };
 
-  // Date filter logic
   const getDateRange = (range: string) => {
     const today = new Date();
     const yesterday = new Date(today);
@@ -227,7 +228,6 @@ export default function BarRequestsPage() {
     }
   };
 
-  // Apply filters and search
   const filteredRequests = recentSales.filter((sale) => {
     const matchesSalesRep = filters.salesRep
       ? sale.sales_rep_name === filters.salesRep
@@ -255,7 +255,6 @@ export default function BarRequestsPage() {
     return matchesSalesRep && matchesDate && matchesSearch;
   });
 
-  // Sort requests
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let comparison = 0;
 
@@ -277,13 +276,12 @@ export default function BarRequestsPage() {
 
     return sortOrder === "asc" ? comparison : -comparison;
   });
-  // Build the salesRepSummary for each sales rep
+
   const salesRepSummary = filteredRequests.reduce(
     (acc, sale) => {
       const rep = sale.sales_rep_name || "Unknown";
       const totalAmount = sale.total_amount || 0;
 
-      // Exclude cigarette from totalExpenses
       const totalExpenses = Array.isArray(sale.expenses)
         ? sale.expenses
             .filter(
@@ -318,7 +316,6 @@ export default function BarRequestsPage() {
       acc[rep].totalItems += totalItems;
       acc[rep].orderCount += 1;
 
-      // Collect ALL expense details (including cigarette for display)
       if (Array.isArray(sale.expenses)) {
         acc[rep].expenseDetails.push(
           ...sale.expenses.map((exp: any) => ({
@@ -342,7 +339,6 @@ export default function BarRequestsPage() {
     >
   );
 
-  // Calculate the total expected amount across all sales reps
   const totalExpectedForDay = Object.values(
     salesRepSummary as Record<
       string,
@@ -443,7 +439,7 @@ export default function BarRequestsPage() {
           </div>
         )}
 
-        {/* 🔔 PENDING REQUESTS SECTION */}
+        {/* Pending Requests Section */}
         {pendingRequestsArray.length > 0 && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 border-yellow-300 dark:border-yellow-700 p-6">
             <div className="flex items-center gap-2 mb-4">
