@@ -6,7 +6,7 @@ export interface SaleItem {
   product_id: string;
   name: string;
   quantity: number;
-  approved_quantity?: number; // Track how many units have been approved by bar
+  approved_quantity?: number;
   unit_price: number;
   unit_cost: number;
   total_price: number;
@@ -143,7 +143,7 @@ export const useTableCartStore = create<TableCartState>()(
             ...item,
             id: `local_${Date.now()}_${Math.random()}`,
             sales_rep_id: currentUserId,
-            approved_quantity: 0, // Initialize approved_quantity to 0
+            approved_quantity: 0,
           };
           updatedItems = currentCart
             ? [...currentCart.items, newItem]

@@ -202,8 +202,6 @@ export function useTableCartLogic({
     const broadcastChannel = supabase
       .channel("bar-modifications")
       .on("broadcast", { event: "fulfillment-modified" }, (payload) => {
-        console.log("📻 Broadcast received:", payload);
-        console.log("inside");
         const { tableId, fulfillmentId, updatedData } = payload.payload;
 
         console.log("🔍 Broadcast tableId check:", {
@@ -244,7 +242,7 @@ export function useTableCartLogic({
     return () => {
       supabase.removeChannel(broadcastChannel);
     };
-  }, [selectedTable, queryClient]);
+  }, [selectedTable, queryClient, syncCartWithBarFulfillment]);
 
   // ---------- REAL-TIME SUBSCRIPTIONS ----------
   useEffect(() => {
@@ -287,9 +285,6 @@ export function useTableCartLogic({
                 setBarRequestStatus(selectedTable, "none", null);
               }
             }
-
-            // ✅ Handle bar fulfillment updates (quantity/price changes from database)
-            // Note: Broadcast handles modifications from other users
 
             if (
               table === "bar_fulfillments" &&
@@ -350,6 +345,7 @@ export function useTableCartLogic({
     selectedTable,
     barApprovalItems.length,
     setBarRequestStatus,
+    syncCartWithBarFulfillment,
   ]);
 
   // ✅ Listen for bar modifications broadcast
@@ -377,7 +373,6 @@ export function useTableCartLogic({
   }, [syncCartWithBarFulfillment]);
 
   // ---------- HANDLERS ----------
-  // Replace the handleAddToCart function in useTableCartLogic.tsx
 
   const handleAddToCart = async () => {
     if (!selectedProduct || quantity <= 0) {
