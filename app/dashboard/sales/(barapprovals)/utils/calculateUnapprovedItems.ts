@@ -3,15 +3,8 @@
 import type { SaleItem } from "@/app/(store)/useTableCartStore";
 import { BarRequestItem } from "@/app/_lib/actions";
 
-/**
- * Calculate only unapproved items (difference between current and approved quantities)
- */
-/**
- * Calculate only unapproved items (difference between current and approved quantities)
- */
-/**
- * Calculate only unapproved items (difference between current and approved quantities)
- */
+// Calculate only unapproved items (difference between current and approved quantities)
+
 export function calculateUnapprovedItems(
   cartItems: SaleItem[],
   needsBarApprovalFn: (name: string, category?: string) => boolean,
@@ -26,7 +19,6 @@ export function calculateUnapprovedItems(
       const approvedQty = Number(item.approved_quantity) || 0;
       const pendingQty = Number(item.quantity) - approvedQty;
 
-      // ✅ Ensure all required SaleItem properties are present
       return {
         id: item.id,
         product_id: item.product_id,
@@ -35,9 +27,9 @@ export function calculateUnapprovedItems(
         approved_quantity: item.approved_quantity || 0,
         unit_price: item.unit_price,
         unit_cost: item.unit_cost,
-        total_price: item.unit_price * pendingQty, // Recalculate based on new quantity
-        total_cost: item.unit_cost * pendingQty, // Recalculate based on new quantity
-        profit_amount: (item.unit_price - item.unit_cost) * pendingQty, // Recalculate
+        total_price: item.unit_price * pendingQty,
+        total_cost: item.unit_cost * pendingQty,
+        profit_amount: (item.unit_price - item.unit_cost) * pendingQty,
         selling_price: item.selling_price,
         sales_rep_id: item.sales_rep_id,
         sales_rep_name: item.sales_rep_name,
@@ -57,7 +49,7 @@ export function formatBarRequestItems(
 ): BarRequestItem[] {
   return unapprovedItems.map((item) => ({
     table_id: tableId,
-    product_id: item.product_id,
+    product_id: typeof item.product_id === "number" ? item.product_id : null,
     product_name: item.name,
     quantity: item.quantity,
     product_price: item.unit_price,

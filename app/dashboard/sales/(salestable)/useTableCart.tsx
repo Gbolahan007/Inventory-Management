@@ -6,7 +6,7 @@ import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTableCartStore } from "@/app/(store)/useTableCartStore";
+import { SaleItem, useTableCartStore } from "@/app/(store)/useTableCartStore";
 import { useExpensesStore } from "@/app/(store)/useExpensesStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
 import { supabase } from "@/app/_lib/supabase";
@@ -464,7 +464,7 @@ export function useTableCartLogic({
         return; // Don't auto-send
       }
 
-      // ✅ 5. Only auto-send if status is "none"
+      //  5. Only auto-send if status is "none"
       if (tableBarRequestStatus === "none") {
         // Wait for Zustand store to commit the state change
         await new Promise((resolve) => setTimeout(resolve, 150));
@@ -473,7 +473,7 @@ export function useTableCartLogic({
         const sendingToast = toast.loading("Sending to bar for approval...");
 
         try {
-          // ✅ Read the latest cart state directly from the store
+          //  Read the latest cart state directly from the store
           const latestStore = useTableCartStore.getState();
           const latestCart = latestStore.carts[selectedTable]?.items || [];
 
@@ -482,7 +482,7 @@ export function useTableCartLogic({
             items: latestCart.map((i) => ({ name: i.name, qty: i.quantity })),
           });
 
-          // ✅ Filter bar items from the latest cart state
+          //  Filter bar items from the latest cart state
           const latestBarItems = latestCart.filter((item) => {
             const product = products?.find((p) => p.id === item.product_id);
             return needsBarApproval(item.name, product?.category);
@@ -496,7 +496,7 @@ export function useTableCartLogic({
 
           console.log("📤 Sending bar items:", latestBarItems);
 
-          // ✅ Send to bar with the latest cart state
+          //  Send to bar with the latest cart state
           await handleSendToBarWithItems(latestBarItems);
 
           toast.dismiss(sendingToast);
@@ -643,19 +643,23 @@ export function useTableCartLogic({
 
     const unapprovedExpenses = latestExpenses
       .filter((exp) => exp.category?.toLowerCase().trim() === "cigarette")
-      .map((exp) => ({
-        id: exp.id,
-        product_id: exp.id || `expense-${exp.id}`,
-        name: exp.category,
-        quantity: 1,
-        approved_quantity: 0,
-        unit_price: exp.amount,
-        unit_cost: 0,
-        selling_price: exp.amount,
-        total_price: exp.amount,
-        total_cost: 0,
-        profit_amount: exp.amount,
-      }));
+      .map(
+        (exp) =>
+          ({
+            id: exp.id,
+            product_id: null,
+            name: exp.category || "Cigarette",
+            quantity: 1,
+            approved_quantity: 0,
+            unit_price: exp.amount,
+            unit_cost: 0,
+            selling_price: exp.amount,
+            total_price: exp.amount,
+            total_cost: 0,
+            profit_amount: exp.amount,
+          } as unknown as SaleItem)
+      );
+
     const unapprovedItems = [...unapprovedCartItems, ...unapprovedExpenses];
 
     console.log("Unapproved items to send to bar:", {
@@ -710,9 +714,6 @@ export function useTableCartLogic({
       if (!result.success) {
         throw new Error(result.error || "Failed to send request to bar");
       }
-
-      // ✅ FIXED: Do NOT update approved_quantity here!
-      // We only mark items as "sent for approval" via request status
 
       // Update request status
       if (result.data && result.data.length > 0) {

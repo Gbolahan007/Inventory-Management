@@ -15,7 +15,6 @@ export function BarApprovalIntegration({
   tableBarRequestStatus,
   lastApprovedRequestId,
 }: BarApprovalIntegrationProps) {
-  // Set up listener for bar approvals
   useEffect(() => {
     if (!tableId) return;
 
@@ -29,8 +28,6 @@ export function BarApprovalIntegration({
       if (typeof unsubscribe === "function") unsubscribe();
     };
   }, [tableId, tableBarRequestStatus, lastApprovedRequestId]);
-
-  // ✅ REMOVED the auto-reset effect - it was resetting on every render!
 
   return null;
 }
