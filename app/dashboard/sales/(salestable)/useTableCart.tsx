@@ -628,7 +628,6 @@ export function useTableCartLogic({
       toast.error("Table not selected");
       return;
     }
-    console.log("send to bar");
 
     const latestStore = useTableCartStore.getState();
     const latestCart = latestStore.carts[selectedTable]?.items || [];

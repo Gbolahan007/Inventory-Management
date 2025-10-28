@@ -36,7 +36,6 @@ export async function calculateUnapprovedItems(
         .eq("table_id", tableId)
         .in("status", ["pending", "approved"]);
 
-      console.log(fulfillments);
       if (!error && fulfillments) {
         // Create map of product_id + unit_price -> total quantity_approved
         fulfillments.forEach((f) => {

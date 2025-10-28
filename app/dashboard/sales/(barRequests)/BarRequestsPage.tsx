@@ -400,7 +400,7 @@ export default function BarRequestsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6 lg:space-y-6 flex flex-col lg:block">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
@@ -439,9 +439,24 @@ export default function BarRequestsPage() {
           </div>
         )}
 
-        {/* Pending Requests Section */}
+        {/* RequestFilters - order-3 on mobile (bottom), order-1 on desktop (top) */}
+        <div className="order-3 lg:order-1">
+          <RequestFilters
+            filters={filters}
+            setFilters={setFilters}
+            uniqueSalesReps={uniqueSalesReps}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            setSortBy={setSortBy}
+            setSortOrder={setSortOrder}
+            hasActiveFilters={hasActiveFilters}
+            clearFilters={clearFilters}
+          />
+        </div>
+
+        {/* Pending Requests Section - order-1 on mobile, order-2 on desktop */}
         {pendingRequestsArray.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 border-yellow-300 dark:border-yellow-700 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border-2 border-yellow-300 dark:border-yellow-700 p-6 order-1 lg:order-2">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
@@ -557,33 +572,26 @@ export default function BarRequestsPage() {
           </div>
         )}
 
-        <SalesRepSummary
-          totalExpectedForDay={totalExpectedForDay}
-          salesRepSummary={salesRepSummary}
-        />
+        <div className="order-none lg:order-3">
+          <SalesRepSummary
+            totalExpectedForDay={totalExpectedForDay}
+            salesRepSummary={salesRepSummary}
+          />
+        </div>
 
-        <RequestFilters
-          filters={filters}
-          setFilters={setFilters}
-          uniqueSalesReps={uniqueSalesReps}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          setSortBy={setSortBy}
-          setSortOrder={setSortOrder}
-          hasActiveFilters={hasActiveFilters}
-          clearFilters={clearFilters}
-        />
-
-        <RequestsList
-          isLoading={isLoading}
-          sortedRequests={sortedRequests}
-          hasActiveFilters={hasActiveFilters}
-          clearFilters={clearFilters}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          handleSort={handleSort}
-          salesItems={salesItems}
-        />
+        {/* RequestsList - order-2 on mobile, order-4 on desktop */}
+        <div className="order-2 lg:order-4">
+          <RequestsList
+            isLoading={isLoading}
+            sortedRequests={sortedRequests}
+            hasActiveFilters={hasActiveFilters}
+            clearFilters={clearFilters}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            handleSort={handleSort}
+            salesItems={salesItems}
+          />
+        </div>
       </div>
     </div>
   );
