@@ -893,7 +893,7 @@ export function useTableCartLogic({
 
       await createSaleMutation.mutateAsync(saleData);
 
-      // ✅ NOW reset approved quantities after successful sale
+      //  NOW reset approved quantities after successful sale
       resetApprovedQuantitiesOnSaleCompletion(selectedTable);
 
       // Update bar request status to completed

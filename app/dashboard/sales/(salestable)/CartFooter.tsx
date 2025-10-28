@@ -138,7 +138,6 @@ export function CartFooter({
       // Reset processing state on error
       setIsProcessing(false);
 
-      // Error is already handled in handleFinalizeSale
       console.error("Sale error:", error);
     }
   };

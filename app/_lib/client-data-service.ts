@@ -140,7 +140,19 @@ export const getRecentSalesClient = () =>
 
 export const getPendingSalesClient = () =>
   withClientErrorHandling(
-    async () => await supabase.from("sales").select("*").eq("is_pending", true),
+    async () =>
+      await supabase
+        .from("sales")
+        .select(
+          `
+          *,
+          sale_items (
+            *,
+            products (*)
+          )
+        `
+        )
+        .eq("is_pending", true),
     "Sales could not be loaded",
     "Get Recent Sales"
   );

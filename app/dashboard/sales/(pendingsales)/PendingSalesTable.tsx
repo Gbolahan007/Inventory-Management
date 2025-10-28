@@ -6,7 +6,7 @@ import { supabase } from "@/app/_lib/supabase";
 import { usePendingSales } from "@/app/components/queryhooks/usePendingSales";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Package, RefreshCw } from "lucide-react";
+import { Loader2, Package, RefreshCw, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { PendingSalesFilters } from "./PendingSalesFilters";
@@ -21,6 +21,7 @@ export function PendingSalesTable() {
     isFetching,
   } = usePendingSales();
   const queryClient = useQueryClient();
+  console.log(pendingSales);
 
   const [filters, setFilters] = useState({
     searchTerm: "",
@@ -34,6 +35,10 @@ export function PendingSalesTable() {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>(
     {}
   );
+
+  // Modal state
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add partial payment mutation
   const addPartialPayment = useMutation({
@@ -176,6 +181,17 @@ export function PendingSalesTable() {
     setExpandedCards((prev) => ({ ...prev, [saleId]: !prev[saleId] }));
   };
 
+  // Modal handlers
+  const openProductModal = (sale: any) => {
+    setSelectedSale(sale);
+    setIsModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsModalOpen(false);
+    setSelectedSale(null);
+  };
+
   // Filtering
   const filteredSales = pendingSales.filter((sale: any) => {
     const matchesSearch = filters.searchTerm
@@ -295,6 +311,7 @@ export function PendingSalesTable() {
               }
               onPartialPayment={handlePartialPayment}
               onMarkAsPaid={(saleId) => markAsPaid.mutate(saleId)}
+              onViewProducts={openProductModal}
               isAddingPayment={addPartialPayment.isPending}
               isMarkingPaid={markAsPaid.isPending}
             />
@@ -315,6 +332,7 @@ export function PendingSalesTable() {
                     handlePartialPayment(sale.id, sale.total_amount)
                   }
                   onMarkAsPaid={() => markAsPaid.mutate(sale.id)}
+                  onViewProducts={() => openProductModal(sale)}
                   isAddingPayment={addPartialPayment.isPending}
                   isMarkingPaid={markAsPaid.isPending}
                 />
@@ -323,6 +341,128 @@ export function PendingSalesTable() {
           </>
         )}
       </div>
+
+      {/* Product Details Modal */}
+      {isModalOpen && selectedSale && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={closeProductModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <ShoppingBag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    Products Purchased
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Sale #{selectedSale.sale_number}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeProductModal}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Customer Info */}
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div>
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Customer:
+                  </span>
+                  <span className="ml-2 font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedSale.pending_customer_name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Sales Rep:
+                  </span>
+                  <span className="ml-2 font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedSale.sales_rep_name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Products List */}
+            <div className="overflow-y-auto max-h-[50vh]">
+              <table className="w-full">
+                <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      Product
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      Qty
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      Unit Price
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {selectedSale.sale_items?.map((item: any) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {item.products?.name
+                            ?.replace(/_/g, " ")
+                            .replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center text-slate-700 dark:text-slate-300">
+                        {item.quantity}
+                      </td>
+                      <td className="px-6 py-4 text-right text-slate-700 dark:text-slate-300">
+                        ₦{item.unit_price?.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold text-slate-900 dark:text-slate-100">
+                        ₦{item.total_price?.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  {selectedSale.sale_items?.length || 0} item(s)
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                    Total Amount
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    ₦{selectedSale.total_amount?.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

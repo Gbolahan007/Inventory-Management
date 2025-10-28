@@ -1,6 +1,6 @@
 "use client";
 
-import { User, CreditCard, CheckCircle } from "lucide-react";
+import { User, CreditCard, CheckCircle, Package } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Sale {
@@ -21,6 +21,7 @@ interface SalesMobileCardProps {
   onPaymentInputChange: (value: string) => void;
   onPartialPayment: () => void;
   onMarkAsPaid: () => void;
+  onViewProducts: () => void;
   isAddingPayment: boolean;
   isMarkingPaid: boolean;
 }
@@ -31,6 +32,7 @@ export function PendingSalesMobileCard({
   paymentInput,
   onToggleExpand,
   onPaymentInputChange,
+  onViewProducts,
   isAddingPayment,
   isMarkingPaid,
 }: SalesMobileCardProps) {
@@ -104,6 +106,14 @@ export function PendingSalesMobileCard({
         {/* Payment Actions */}
         {isExpanded && (
           <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+            <button
+              onClick={onViewProducts}
+              className="w-full px-3 py-2 rounded-lg bg-slate-600 text-white hover:bg-slate-700 text-sm flex items-center justify-center gap-2"
+            >
+              <Package className="w-4 h-4" />
+              View Products
+            </button>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Partial Payment</label>
               <div className="flex gap-2">

@@ -299,7 +299,6 @@ export default function TableShoppingCartDisplay({
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto">
             {activeTab === "items" ? (
-              /* CART ITEMS TAB - WITH EXPENSES AND SEND TO BAR */
               <div className="p-4 space-y-4">
                 {/* Bar Approval Status */}
                 {hasBarApprovalItems && (
