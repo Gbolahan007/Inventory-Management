@@ -461,7 +461,7 @@ export default function TableShoppingCartDisplay({
                     <select
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className={`w-full p-2.5 rounded-lg border text-sm ${
+                      className={`w-full p-2.5 rounded-lg border text-base ${
                         isDarkMode
                           ? "bg-slate-700 border-slate-600 text-slate-100"
                           : "bg-white border-gray-300 text-gray-900"
@@ -483,16 +483,16 @@ export default function TableShoppingCartDisplay({
                         value={expenseAmount}
                         onChange={(e) => setExpenseAmount(e.target.value)}
                         placeholder="Amount (₦)"
-                        className={`flex-1 p-2.5 rounded-lg border text-sm ${
+                        className={`flex-1 p-2.5 rounded-lg border text-base ${
                           isDarkMode
-                            ? "bg-slate-700 border-slate-600 text-slate-100"
-                            : "bg-white border-gray-300 text-gray-900"
+                            ? "bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-400"
+                            : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
                         }`}
                       />
                       <button
                         onClick={addExpense}
                         disabled={!selectedCategory || !expenseAmount}
-                        className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+                        className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 flex-shrink-0 ${
                           !selectedCategory || !expenseAmount
                             ? isDarkMode
                               ? "bg-slate-700 text-slate-500 cursor-not-allowed"
