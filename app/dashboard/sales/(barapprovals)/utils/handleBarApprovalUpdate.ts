@@ -73,15 +73,14 @@ export function setupBarApprovalListener(
 }
 
 /**
- * Fetch approved items from bar_fulfillments or bar_requests
+ * Fetch approved items from bar_fulfillments
  */
 async function fetchApprovedItems(tableId: number, requestId: string) {
   try {
-    // ✅ Use correct table - adjust based on your schema
     const { data, error } = await supabase
-      .from("bar_fulfillments") // or "bar_requests" depending on structure
+      .from("bar_fulfillments")
       .select("product_id, unit_price, quantity_approved")
-      .eq("request_id", requestId)
+      .eq("bar_request_id", requestId)
       .eq("status", "approved");
 
     if (error) throw error;
@@ -90,7 +89,7 @@ async function fetchApprovedItems(tableId: number, requestId: string) {
       const approvedItems = data.map((item) => ({
         product_id: item.product_id,
         product_price: item.unit_price,
-        quantity: item.quantity_approved, // Only the approved quantity for THIS request
+        quantity: item.quantity_approved,
       }));
 
       await handleBarApprovalUpdate(tableId, approvedItems);

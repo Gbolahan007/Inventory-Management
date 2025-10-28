@@ -555,7 +555,7 @@ export function useTableCartLogic({
         const { data: fulfillments, error: fulfillErr } = await supabase
           .from("bar_fulfillments")
           .select("*")
-          .eq("request_id", requestId);
+          .eq("bar_request_id", requestId);
 
         if (fulfillErr) {
           console.error("❌ Error fetching fulfillments:", fulfillErr);
@@ -628,6 +628,7 @@ export function useTableCartLogic({
       toast.error("Table not selected");
       return;
     }
+    console.log("send to bar");
 
     const latestStore = useTableCartStore.getState();
     const latestCart = latestStore.carts[selectedTable]?.items || [];
@@ -635,12 +636,14 @@ export function useTableCartLogic({
     const latestExpensesStore = useExpensesStore.getState();
     const latestExpenses = latestExpensesStore.getExpenses(selectedTable);
 
-    const unapprovedCartItems = calculateUnapprovedItems(
+    // UPDATED: Now async to fetch approved quantities from database
+    const unapprovedCartItems = await calculateUnapprovedItems(
       latestCart,
       needsBarApproval,
-      products
+      products,
+      selectedTable
     );
-
+    console.log(unapprovedCartItems);
     const unapprovedExpenses = latestExpenses
       .filter((exp) => exp.category?.toLowerCase().trim() === "cigarette")
       .map(
@@ -715,7 +718,7 @@ export function useTableCartLogic({
         throw new Error(result.error || "Failed to send request to bar");
       }
 
-      // Update request status
+      // ✅ UPDATED: Update fulfillments with total cart quantities
       if (result.data && result.data.length > 0) {
         const requestId = result.data[0].id;
         setBarRequestStatus(selectedTable, "pending", requestId);
@@ -724,7 +727,7 @@ export function useTableCartLogic({
         const { data: fulfillments, error: fulfillErr } = await supabase
           .from("bar_fulfillments")
           .select("*")
-          .eq("request_id", requestId);
+          .eq("bar_request_id", requestId);
 
         if (fulfillErr) {
           console.error("Error fetching fulfillments:", fulfillErr);
@@ -733,7 +736,8 @@ export function useTableCartLogic({
           const currentCartItems =
             currentStoreState.carts[selectedTable]?.items || [];
 
-          fulfillments.forEach((fulfillment) => {
+          //  Update each fulfillment with total quantity from cart
+          for (const fulfillment of fulfillments) {
             const cartItem = currentCartItems.find(
               (item) =>
                 item.product_id === fulfillment.product_id &&
@@ -741,6 +745,23 @@ export function useTableCartLogic({
             );
 
             if (cartItem) {
+              // Store TOTAL quantity in database (for cross-device sync)
+              const { error: updateErr } = await supabase
+                .from("bar_fulfillments")
+                .update({
+                  quantity_total: cartItem.quantity, // Total quantity in cart
+                  // Keep existing quantity_approved unchanged
+                })
+                .eq("id", fulfillment.id);
+
+              if (updateErr) {
+                console.error(
+                  "Error updating fulfillment quantity_total:",
+                  updateErr
+                );
+              }
+
+              // Link fulfillment ID to cart item
               updateTableCartItemFulfillmentId(
                 selectedTable,
                 cartItem.product_id,
@@ -748,7 +769,7 @@ export function useTableCartLogic({
                 fulfillment.id
               );
             }
-          });
+          }
         }
       }
 
