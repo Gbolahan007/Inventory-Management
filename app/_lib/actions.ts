@@ -203,7 +203,6 @@ export async function createSaleItems(saleItems: SaleItem[]) {
 
 export async function addRoomBooking(formData: FormData) {
   const supabase = await supabaseServer();
-  console.log(formData);
   const category = formData.get("category") as string;
   const customer_type = formData.get("customer_type") as string;
   const room_type = formData.get("room_type") as string;
@@ -899,4 +898,28 @@ export async function rejectModification(fulfillmentId: string) {
     console.error("❌ Error rejecting modification:", error);
     return { success: false, error: error.message };
   }
+}
+
+export async function addRoomExpense(formData: FormData) {
+  const supabase = await supabaseServer();
+
+  const booking_id = formData.get("booking_id") as string;
+  const expense_type = formData.get("expense_type") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+
+  if (!booking_id || !expense_type || !amount) {
+    throw new Error("All fields are required");
+  }
+
+  const { error } = await supabase.from("room_expenses").insert([
+    {
+      booking_id,
+      expense_type,
+      amount,
+    },
+  ]);
+
+  if (error) throw new Error(error.message);
+
+  return { success: true };
 }

@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { BedDouble, ClipboardList, Search } from "lucide-react";
+import { BedDouble, ClipboardList, Search, Beer } from "lucide-react";
 import RoomBookingForm from "./RoomBookingForm";
-import RoomSalesComponent from "./RoomSalesComponent ";
 import CustomerSearchBooking from "./CustomerSearchBooking";
+import RoomDrinkSales from "./RoomDrinkSales";
+import RoomSalesComponent from "./RoomSalesComponent ";
 
 export default function RoomManagementPage() {
-  // ✅ Now includes "search"
-  const [activeTab, setActiveTab] = useState<"bookings" | "sales" | "search">(
-    "bookings"
-  );
+  // ✅ Added "drinks" to the tab type
+  const [activeTab, setActiveTab] = useState<
+    "bookings" | "sales" | "search" | "drinks"
+  >("bookings");
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -21,10 +22,9 @@ export default function RoomManagementPage() {
             Room Management
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage bookings and room sales easily
+            Manage bookings, sales, and drink expenses easily
           </p>
         </div>
-
         {/* Tabs */}
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
           <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
@@ -54,7 +54,20 @@ export default function RoomManagementPage() {
               Room Sales
             </button>
 
-            {/* ✅ Customer Search Tab */}
+            {/* Drinks Tab ✅ */}
+            <button
+              onClick={() => setActiveTab("drinks")}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === "drinks"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Beer className="w-5 h-5" />
+              Room Drinks
+            </button>
+
+            {/* Customer Search Tab */}
             <button
               onClick={() => setActiveTab("search")}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
@@ -68,10 +81,11 @@ export default function RoomManagementPage() {
             </button>
           </div>
         </div>
-
-        {/* ✅ Tab Content */}
+        {/* Tab Content */}
         {activeTab === "bookings" && <RoomBookingForm />}
         {activeTab === "sales" && <RoomSalesComponent />}
+        {activeTab === "drinks" && <RoomDrinkSales />}{" "}
+        {/* ✅ new tab content */}
         {activeTab === "search" && <CustomerSearchBooking />}
       </div>
     </div>

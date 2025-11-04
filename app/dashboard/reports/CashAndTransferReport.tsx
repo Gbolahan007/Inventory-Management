@@ -90,7 +90,7 @@ export default function CashAndTransferReport() {
           cash_amount = saleTotal - transfer_amount;
           transfer = transfer_amount;
         } else {
-          // 🚨 Handle mismatch: if transfer is greater than total, assume all transfer
+          //  Handle mismatch: if transfer is greater than total, assume all transfer
           cash_amount = 0;
           transfer = saleTotal;
         }
@@ -105,7 +105,7 @@ export default function CashAndTransferReport() {
     return Object.values(groups);
   }, [filteredSales]);
 
-  // ✅ Group by date only (combine reps)
+  //  Group by date only (combine reps)
   const groupedByDate = useMemo(() => {
     const dateGroups: Record<string, GroupedByDate> = {};
 

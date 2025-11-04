@@ -24,6 +24,7 @@ import BarRequestsPage from "./(barRequests)/BarRequestsPage";
 import { useAuth } from "@/app/(auth)/hooks/useAuth";
 import { PendingSalesTable } from "./(pendingsales)/PendingSalesTable";
 import BarmanFulfillmentPage from "./(barapprovals)/BarmanFulfillmentPage";
+import { DailyCategorySales } from "./(salestable)/DailyCategorySales";
 
 type SaleItem = {
   id?: string;
@@ -46,17 +47,20 @@ export default function SalesPage() {
   const { userData } = useAuth();
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "bar-requests" | "bar-approvals" | "pending-sales"
+    | "dashboard"
+    | "bar-requests"
+    | "bar-approvals"
+    | "pending-sales"
+    | "daily-category-sales"
   >("dashboard");
   const isDarkMode = useSelector((state: RootState) => state.global.theme);
-  const { getActiveTables, getTableCart, getTableTotal } = useTableCartStore();
+  const { getActiveTables, getTableCart } = useTableCartStore();
   const activeTables = getActiveTables();
   const totalActiveItems = activeTables.reduce(
     (sum, tableId) => sum + getTableCart(tableId).length,
     0
   );
 
-  // React Query hooks
   const {
     products = [],
     isLoading: productsLoading,
@@ -67,7 +71,6 @@ export default function SalesPage() {
   const { stats, isLoading: statsLoading } = useStats();
   const { topSellingProducts: rawSalesItems } = useTopSellingProducts();
 
-  // Transform the data to match SaleItem type
   const salesItems: SaleItem[] | undefined = rawSalesItems?.map(
     (item: any) => ({
       id: item.id,
@@ -118,7 +121,6 @@ export default function SalesPage() {
                 </p>
               </div>
 
-              {/* Table Status Summary */}
               {activeTables.length > 0 && (
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20">
@@ -158,41 +160,10 @@ export default function SalesPage() {
                 Manage Table Orders
               </button>
             </div>
-
-            {/* Active Tables Quick View */}
-            {activeTables.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-medium mb-3 text-muted-foreground">
-                  Active Table Orders
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                  {activeTables.map((tableId) => {
-                    const tableItems = getTableCart(tableId);
-                    const tableTotal = getTableTotal(tableId);
-                    return (
-                      <div
-                        key={tableId}
-                        className="p-3 rounded-lg border border-border bg-card text-center"
-                      >
-                        <div className="text-xs font-medium text-muted-foreground">
-                          Table {tableId}
-                        </div>
-                        <div className="text-lg font-bold text-foreground">
-                          {tableItems.length}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ₦{tableTotal.toFixed(0)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tabs */}
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-x-hidden">
           <div className="flex border-b border-border overflow-x-auto scrollbar-hide">
             <button
@@ -242,10 +213,23 @@ export default function SalesPage() {
               <ShoppingCart className="w-5 h-5" />
               Pending Sales
             </button>
+
+            {/* ✅ New Tab Button */}
+            <button
+              onClick={() => setActiveTab("daily-category-sales")}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                activeTab === "daily-category-sales"
+                  ? "text-primary border-b-2 border-primary bg-muted/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              Daily Category Sales
+            </button>
           </div>
         </div>
 
-        {/* TAB CONTENTS */}
+        {/* ✅ Tab Contents */}
         {activeTab === "dashboard" ? (
           <>
             <StatsCards
@@ -269,8 +253,10 @@ export default function SalesPage() {
           <BarRequestsPage />
         ) : activeTab === "bar-approvals" ? (
           <BarmanFulfillmentPage />
-        ) : (
+        ) : activeTab === "pending-sales" ? (
           <PendingSalesTable />
+        ) : (
+          <DailyCategorySales />
         )}
       </div>
 

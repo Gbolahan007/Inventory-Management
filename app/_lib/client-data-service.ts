@@ -559,3 +559,26 @@ export const getBarModificationsClient = (filters?: {
     "Could not fetch bar modifications",
     "Get Bar Modifications"
   );
+
+export const getBookingExpenses = (bookingId: string | number) =>
+  withClientErrorHandling(
+    async () =>
+      await supabase
+        .from("room_expenses")
+        .select("*")
+        .eq("booking_id", bookingId)
+        .order("created_at", { ascending: false }),
+    "Could not fetch booking expenses",
+    "Get Booking Expenses"
+  );
+
+export const getAllExpensesWithBookings = () =>
+  withClientErrorHandling(
+    async () =>
+      await supabase
+        .from("room_expenses")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    "Could not fetch all room expenses",
+    "Get All Room Expenses"
+  );

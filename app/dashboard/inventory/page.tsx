@@ -42,7 +42,7 @@ export default function Inventory() {
   const [selectedProductForDelete, setSelectedProductForDelete] =
     useState<Product | null>(null);
 
-  // ✅ Fixed row click handler
+  //  Fixed row click handler
   const handleRowClick = (params: any) => {
     const product = products?.find((p) => p.id === params.row.id);
     if (product) {
@@ -50,19 +50,19 @@ export default function Inventory() {
     }
   };
 
-  // ✅ Handle opening delete modal
+  //  Handle opening delete modal
   const handleOpenDeleteModal = (product: Product) => {
     setSelectedProductForDelete(product);
     setIsDeleteModalOpen(true);
   };
 
-  // ✅ Handle closing delete modal
+  //  Handle closing delete modal
   const handleCloseDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setSelectedProductForDelete(null);
   };
 
-  // ✅ Handle delete product through modal
+  //  Handle delete product through modal
   const handleDeleteProduct = async (productId: number) => {
     return new Promise<void>((resolve, reject) => {
       deleteProduct(productId, {
@@ -221,7 +221,7 @@ export default function Inventory() {
     },
   ];
 
-  // ✅ Show loading spinner only for auth loading (middleware handles auth checks)
+  //  Show loading spinner only for auth loading (middleware handles auth checks)
   if (loading) {
     return (
       <div className="flex flex-col">
@@ -233,7 +233,7 @@ export default function Inventory() {
     );
   }
 
-  // ✅ Show loading for products data
+  //  Show loading for products data
   if (isLoading) {
     return (
       <div className="flex flex-col">
@@ -245,7 +245,7 @@ export default function Inventory() {
     );
   }
 
-  // ✅ Show error state
+  //  Show error state
   if (error || !products) {
     return (
       <div className="flex flex-col">
@@ -257,7 +257,7 @@ export default function Inventory() {
     );
   }
 
-  // ✅ Process products data
+  //  Process products data
   const filteredProducts = products.filter((item) => item.current_stock !== 0);
   const processedProducts = filteredProducts
     .map((product, index) => ({
@@ -281,7 +281,7 @@ export default function Inventory() {
     <div className="flex flex-col">
       {/* <HeaderInventory name="Inventory" /> */}
 
-      {/* ✅ Add Product Button */}
+      {/*  Add Product Button */}
       <div className="flex justify-end mb-4 p-5">
         <button
           onClick={() => setIsAddProductModalOpen(true)}
@@ -382,14 +382,14 @@ export default function Inventory() {
         }}
       />
 
-      {/* ✅ Add Product Modal */}
+      {/*  Add Product Modal */}
       <AddProductModal
         isOpen={isAddProductModalOpen}
         onClose={() => setIsAddProductModalOpen(false)}
         isDarkMode={isDarkMode}
       />
 
-      {/* ✅ Delete Product Modal */}
+      {/*  Delete Product Modal */}
       <DeleteProductInverntoryModal
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
