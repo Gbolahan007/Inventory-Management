@@ -1,7 +1,7 @@
 "use client";
 
-import { User, CreditCard, CheckCircle, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ShoppingBag, User } from "lucide-react";
 
 interface Sale {
   id: string;
@@ -26,13 +26,7 @@ interface SalesTableViewProps {
 
 export function PendingSalesTableView({
   sales,
-  paymentInputs,
-  onPaymentInputChange,
-  onPartialPayment,
-  onMarkAsPaid,
   onViewProducts,
-  isAddingPayment,
-  isMarkingPaid,
 }: SalesTableViewProps) {
   const getRemainingBalance = (sale: Sale) => {
     const amountPaid = sale.amount_paid || 0;
@@ -123,41 +117,6 @@ export function PendingSalesTableView({
                       >
                         <ShoppingBag className="w-3 h-3" />
                         View Products
-                      </button>
-
-                      {/* Payment Input and Button */}
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          placeholder={`Max: ₦${remainingBalance.toLocaleString()}`}
-                          value={paymentInputs[sale.id] || ""}
-                          onChange={(e) =>
-                            onPaymentInputChange(sale.id, e.target.value)
-                          }
-                          className="w-24 px-2 py-1 text-xs border rounded focus:ring-1 focus:ring-blue-500
-                            bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600
-                            text-slate-900 dark:text-slate-100"
-                        />
-                        <button
-                          onClick={() =>
-                            onPartialPayment(sale.id, sale.total_amount)
-                          }
-                          disabled={isAddingPayment || !paymentInputs[sale.id]}
-                          className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
-                        >
-                          <CreditCard className="w-3 h-3" />
-                          {isAddingPayment ? "..." : "Add"}
-                        </button>
-                      </div>
-
-                      {/* Mark as Paid Button */}
-                      <button
-                        onClick={() => onMarkAsPaid(sale.id)}
-                        disabled={isMarkingPaid}
-                        className="w-full px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
-                      >
-                        <CheckCircle className="w-3 h-3" />
-                        {isMarkingPaid ? "Updating..." : "Mark Paid"}
                       </button>
                     </div>
                   </td>

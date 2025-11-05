@@ -1,6 +1,6 @@
 "use client";
 
-import { User, CreditCard, CheckCircle } from "lucide-react";
+import { User, CreditCard, CheckCircle, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Sale {
@@ -20,6 +20,7 @@ interface SalesTableViewProps {
   onPartialPayment: (saleId: string, totalAmount: number) => void;
   onMarkAsPaid: (saleId: string) => void;
   isAddingPayment: boolean;
+  onViewProducts: (sale: Sale) => void;
   isMarkingPaid: boolean;
 }
 
@@ -29,6 +30,7 @@ export function PendingSalesTablePayment({
   onPaymentInputChange,
   onPartialPayment,
   onMarkAsPaid,
+  onViewProducts,
   isAddingPayment,
   isMarkingPaid,
 }: SalesTableViewProps) {
@@ -114,6 +116,16 @@ export function PendingSalesTablePayment({
                   </td>
                   <td className="p-4">
                     <div className="space-y-2">
+                      {/* View Products Button */}
+                      <button
+                        onClick={() => onViewProducts(sale)}
+                        className="w-full px-2 py-1 text-xs rounded bg-slate-600 text-white hover:bg-slate-700 flex items-center justify-center gap-1"
+                      >
+                        <ShoppingBag className="w-3 h-3" />
+                        View Products
+                      </button>
+
+                      {/* Payment Input and Button */}
                       <div className="flex gap-2">
                         <input
                           type="number"
@@ -137,6 +149,8 @@ export function PendingSalesTablePayment({
                           {isAddingPayment ? "..." : "Add"}
                         </button>
                       </div>
+
+                      {/* Mark as Paid Button */}
                       <button
                         onClick={() => onMarkAsPaid(sale.id)}
                         disabled={isMarkingPaid}

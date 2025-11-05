@@ -309,6 +309,7 @@ export function PendingSalesPayment() {
               }
               onPartialPayment={handlePartialPayment}
               onMarkAsPaid={(saleId) => markAsPaid.mutate(saleId)}
+              onViewProducts={openProductModal}
               isAddingPayment={addPartialPayment.isPending}
               isMarkingPaid={markAsPaid.isPending}
             />

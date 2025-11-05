@@ -21,7 +21,6 @@ export function PendingSalesTable() {
     isFetching,
   } = usePendingSales();
   const queryClient = useQueryClient();
-  console.log(pendingSales);
 
   const [filters, setFilters] = useState({
     searchTerm: "",
@@ -184,6 +183,7 @@ export function PendingSalesTable() {
   // Modal handlers
   const openProductModal = (sale: any) => {
     setSelectedSale(sale);
+
     setIsModalOpen(true);
   };
 

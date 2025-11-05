@@ -57,27 +57,30 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  //  Get the user session
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   const { pathname } = request.nextUrl;
-  // Public routes that don't need authentication
+
+  //  Public routes (accessible without login)
   const publicRoutes = ["/login"];
   const isPublicRoute = publicRoutes.includes(pathname);
 
-  // If no session and trying to access protected route
+  //  If user is not logged in and tries to access protected route
   if (!session && !isPublicRoute) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If user is authenticated
+  // If user is logged in
   if (session) {
     let userRole =
       session.user.user_metadata?.role || session.user.app_metadata?.role;
 
+    // If role not found in auth metadata, get it from the "users" table
     if (!userRole) {
       try {
         const { data: userData } = await supabase
@@ -89,6 +92,7 @@ export async function middleware(request: NextRequest) {
         if (userData?.role) {
           userRole = userData.role;
 
+          // Cache role in user metadata
           supabase.auth
             .updateUser({
               data: { role: userData.role },
@@ -97,52 +101,62 @@ export async function middleware(request: NextRequest) {
               console.error("Error updating user metadata:", err)
             );
         } else {
-          // Only redirect to login if we really can't find a role
-          console.error("[v0] No role found for user:", session.user.id);
+          console.error("No role found for user:", session.user.id);
           await supabase.auth.signOut();
           return NextResponse.redirect(new URL("/login", request.url));
         }
       } catch (error) {
-        console.error(" Error fetching user role:", error);
+        console.error("Error fetching user role:", error);
         userRole = "unknown";
       }
     }
 
-    // Handle redirect after login - but ONLY if we have a role
+    //  Redirect users to their dashboard after login based on role
     if (pathname === "/login" && userRole && userRole !== "unknown") {
       if (userRole === "salesrep") {
         return NextResponse.redirect(new URL("/dashboard/sales", request.url));
       } else if (userRole === "admin") {
         return NextResponse.redirect(new URL("/dashboard", request.url));
+      } else if (userRole === "secretary") {
+        return NextResponse.redirect(new URL("/dashboard/room", request.url));
       }
-      // If role is neither admin nor salesrep, stay on login page
       return response;
     }
 
-    // Don't enforce role-based protection if role is unknown (prevents loops)
+    //  Role-based route access control
     if (userRole && userRole !== "unknown") {
-      // Role-based route protection
+      // Define route groups
       const adminOnlyRoutes = [
         "/dashboard/inventory",
         "/dashboard/reports",
-        "/dashboard/room",
         "/admin",
       ];
-      const salesrepRoutes = ["/dashboard/sales"];
 
-      // Check admin routes
+      const salesrepRoutes = ["/dashboard/sales"];
+      const secretaryRoutes = ["/dashboard/room"];
+
+      // --- Admin route protection ---
       if (adminOnlyRoutes.some((route) => pathname.startsWith(route))) {
         if (userRole !== "admin") {
-          const redirectPath =
-            userRole === "salesrep" ? "/dashboard/sales" : "/login";
+          let redirectPath = "/login";
+
+          if (userRole === "salesrep") redirectPath = "/dashboard/sales";
+          else if (userRole === "secretary") redirectPath = "/dashboard/room";
 
           return NextResponse.redirect(new URL(redirectPath, request.url));
         }
       }
 
-      // Check salesrep routes
+      // --- Salesrep route protection ---
       if (salesrepRoutes.some((route) => pathname.startsWith(route))) {
         if (userRole !== "salesrep" && userRole !== "admin") {
+          return NextResponse.redirect(new URL("/login", request.url));
+        }
+      }
+
+      // --- Secretary route protection ---
+      if (secretaryRoutes.some((route) => pathname.startsWith(route))) {
+        if (userRole !== "secretary" && userRole !== "admin") {
           return NextResponse.redirect(new URL("/login", request.url));
         }
       }
@@ -152,7 +166,7 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-// More restrictive matcher - only run on protected routes
+//  Middleware will only run on protected routes
 export const config = {
   matcher: ["/dashboard/:path*", "/admin/:path*", "/login"],
 };
