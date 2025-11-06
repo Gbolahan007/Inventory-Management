@@ -216,8 +216,6 @@ export async function updateMultipleBarRequestsStatus(
   return { success: true };
 }
 
-// Add this to your server actions file
-
 export async function handleLogin(formData: FormData) {
   const supabase = await supabaseServer();
 
