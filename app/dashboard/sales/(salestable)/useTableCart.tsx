@@ -786,12 +786,13 @@ export function useTableCartLogic({
     }
   };
 
-  // ---------- FINALIZE SALE ----------
+  // ---------- OPTIMIZED FINALIZE SALE ----------
   const handleFinalizeSale = async () => {
     if (createSaleMutation.isPending) {
       toast.error("Sale is already being processed. Please wait...");
       return;
     }
+
     const hasCartItems = currentCart.length > 0;
     const hasExpenses = currentExpenses.length > 0;
 
@@ -813,6 +814,7 @@ export function useTableCartLogic({
     }
 
     try {
+      // ---------- Format Expenses ----------
       const formattedExpenses = currentExpenses.map((exp) => ({
         amount: exp.amount,
         category: exp.category,
@@ -823,47 +825,7 @@ export function useTableCartLogic({
         tableId: exp.tableId || selectedTable,
       }));
 
-      // Update fulfillment records before creating sale
-      if (hasBarApprovalItems && pendingBarRequestId) {
-        const { data: fulfillments, error: fulfillErr } = await supabase
-          .from("bar_fulfillments")
-          .select("*")
-          .eq("table_id", selectedTable)
-          .in("status", ["pending", "partial"]);
-
-        if (fulfillErr) {
-          console.error("Error fetching fulfillments:", fulfillErr);
-        }
-
-        if (fulfillments && fulfillments.length > 0) {
-          for (const fulfillment of fulfillments) {
-            const cartItem = currentCart.find(
-              (item) => item.product_id === fulfillment.product_id
-            );
-
-            if (cartItem) {
-              await updateFulfillmentStatus(fulfillment.id, {
-                quantity_fulfilled: cartItem.quantity,
-                status:
-                  cartItem.quantity === fulfillment.quantity_approved
-                    ? "fulfilled"
-                    : "partial",
-                fulfilled_at: new Date().toISOString(),
-              });
-            } else {
-              // Item was removed from cart - mark as returned
-              await updateFulfillmentStatus(fulfillment.id, {
-                quantity_returned: fulfillment.quantity_approved,
-                status: "returned",
-                fulfilled_at: new Date().toISOString(),
-                notes: "Item removed from cart before sale completion",
-              });
-            }
-          }
-        }
-      }
-
-      // Proceed to sale creation after updating fulfillments
+      // ---------- Payment Handling ----------
       let finalPaymentMethod = paymentMethod;
       let paymentDetails: any = {};
 
@@ -876,6 +838,7 @@ export function useTableCartLogic({
         };
       }
 
+      // ---------- Prepare Sale Data ----------
       const saleData = {
         total_amount: finalTotal,
         cart_total: currentTotal,
@@ -891,19 +854,79 @@ export function useTableCartLogic({
         pending_customer_name: isPending ? pendingCustomer : null,
       };
 
-      await createSaleMutation.mutateAsync(saleData);
+      // ---------- PARALLEL OPERATIONS ----------
+      const parallelUpdates: Promise<any>[] = [];
 
-      //  NOW reset approved quantities after successful sale
-      resetApprovedQuantitiesOnSaleCompletion(selectedTable);
-
-      // Update bar request status to completed
+      // --- Handle bar fulfillments and bar request updates ---
       if (hasBarApprovalItems && pendingBarRequestId) {
-        await supabase
-          .from("bar_requests")
-          .update({ status: "completed" })
-          .eq("id", pendingBarRequestId);
+        const fulfillmentPromise = (async () => {
+          const { data: fulfillments, error: fulfillErr } = await supabase
+            .from("bar_fulfillments")
+            .select("*")
+            .eq("table_id", selectedTable)
+            .in("status", ["pending", "partial"]);
+
+          if (fulfillErr) {
+            console.error("Error fetching fulfillments:", fulfillErr);
+            return;
+          }
+
+          if (fulfillments && fulfillments.length > 0) {
+            const updates = fulfillments.map((fulfillment) => {
+              const cartItem = currentCart.find(
+                (item) => item.product_id === fulfillment.product_id
+              );
+
+              if (cartItem) {
+                return updateFulfillmentStatus(fulfillment.id, {
+                  quantity_fulfilled: cartItem.quantity,
+                  status:
+                    cartItem.quantity === fulfillment.quantity_approved
+                      ? "fulfilled"
+                      : "partial",
+                  fulfilled_at: new Date().toISOString(),
+                });
+              } else {
+                // Item removed — mark as returned
+                return updateFulfillmentStatus(fulfillment.id, {
+                  quantity_returned: fulfillment.quantity_approved,
+                  status: "returned",
+                  fulfilled_at: new Date().toISOString(),
+                  notes: "Item removed from cart before sale completion",
+                });
+              }
+            });
+
+            // Execute all updates concurrently
+            await Promise.all(updates);
+          }
+        })();
+
+        parallelUpdates.push(fulfillmentPromise);
+
+        // --- Update bar request status ---
+        const barRequestPromise = (async () => {
+          const { error: barReqErr } = await supabase
+            .from("bar_requests")
+            .update({ status: "completed" })
+            .eq("id", pendingBarRequestId);
+
+          if (barReqErr) {
+            console.error("Error updating bar request:", barReqErr);
+          }
+        })();
+
+        parallelUpdates.push(barRequestPromise);
       }
 
+      // Wait for all parallel updates
+      await Promise.all(parallelUpdates);
+
+      // ---------- Create the Sale ----------
+      await createSaleMutation.mutateAsync(saleData);
+
+      // ---------- Post-Sale Cleanup ----------
+      resetApprovedQuantitiesOnSaleCompletion(selectedTable);
       clearTableCart(selectedTable);
       clearExpenses(selectedTable);
       setBarRequestStatus(selectedTable, "none", null);
@@ -911,6 +934,7 @@ export function useTableCartLogic({
       setCashAmount(0);
       setTransferAmount(0);
 
+      // ---------- Toast Message ----------
       toast.success(
         isPending
           ? `Pending sale recorded for ${pendingCustomer || "Customer"}`
@@ -924,9 +948,12 @@ export function useTableCartLogic({
       setIsPending(false);
       setPendingCustomer("");
 
-      await queryClient.invalidateQueries({ queryKey: ["sales"] });
-      await queryClient.invalidateQueries({ queryKey: ["products"] });
-      await queryClient.invalidateQueries({ queryKey: ["bar_requests"] });
+      // ---------- Invalidate Cached Queries ----------
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["bar_requests"] }),
+      ]);
     } catch (error: any) {
       console.error("Error finalizing sale:", error);
       toast.error(`Failed to complete sale: ${error.message}`);
