@@ -6,7 +6,10 @@ import type React from "react";
 
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { SaleItem, useTableCartStore } from "@/app/(store)/useTableCartStore";
+import {
+  type SaleItem,
+  useTableCartStore,
+} from "@/app/(store)/useTableCartStore";
 import { useExpensesStore } from "@/app/(store)/useExpensesStore";
 import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
 import { supabase } from "@/app/_lib/supabase";
@@ -423,7 +426,7 @@ export function useTableCartLogic({
         selectedProductData.category
       );
 
-      // ✅ 1. Add to cart first
+      // Add to cart
       addToTableCart(selectedTable, newItem);
 
       toast.success(
@@ -432,81 +435,10 @@ export function useTableCartLogic({
         }`
       );
 
-      // ✅ 2. Reset input fields
+      // Reset input fields
       setSelectedProduct("");
       setQuantity(1);
       setCustomSellingPrice(0);
-
-      // ✅ 3. Handle bar approval logic ONLY if it's a bar item
-      if (!isBarItem) {
-        return; // Exit early for non-bar items
-      }
-
-      // ✅ 4. Check current bar request status
-      if (
-        tableBarRequestStatus === "approved" ||
-        tableBarRequestStatus === "pending"
-      ) {
-        // Cancel existing request since cart was modified
-        if (pendingBarRequestId) {
-          await supabase
-            .from("bar_requests")
-            .update({ status: "cancelled" })
-            .eq("table_id", selectedTable)
-            .in("status", ["pending", "accepted"]);
-        }
-
-        setBarRequestStatus(selectedTable, "none", null);
-
-        toast("⚠️ Cart modified. Please send to bar again for approval.", {
-          icon: "⚠️",
-        });
-        return; // Don't auto-send
-      }
-
-      //  5. Only auto-send if status is "none"
-      if (tableBarRequestStatus === "none") {
-        // Wait for Zustand store to commit the state change
-        await new Promise((resolve) => setTimeout(resolve, 150));
-
-        // Show loading toast
-        const sendingToast = toast.loading("Sending to bar for approval...");
-
-        try {
-          //  Read the latest cart state directly from the store
-          const latestStore = useTableCartStore.getState();
-          const latestCart = latestStore.carts[selectedTable]?.items || [];
-
-          console.log("🔍 Latest cart before sending to bar:", {
-            itemCount: latestCart.length,
-            items: latestCart.map((i) => ({ name: i.name, qty: i.quantity })),
-          });
-
-          //  Filter bar items from the latest cart state
-          const latestBarItems = latestCart.filter((item) => {
-            const product = products?.find((p) => p.id === item.product_id);
-            return needsBarApproval(item.name, product?.category);
-          });
-
-          if (latestBarItems.length === 0) {
-            toast.dismiss(sendingToast);
-            toast.error("No bar items found to send");
-            return;
-          }
-
-          console.log("📤 Sending bar items:", latestBarItems);
-
-          //  Send to bar with the latest cart state
-          await handleSendToBarWithItems(latestBarItems);
-
-          toast.dismiss(sendingToast);
-          toast.success("Request sent to bar!");
-        } catch (err: any) {
-          toast.dismiss(sendingToast);
-          console.error("Error sending to bar:", err);
-          toast.error("Failed to send updated cart to bar");
-        }
-      }
     } catch (error: any) {
       console.error("Error adding to cart:", error);
       toast.error(`Failed to add item: ${error.message}`);
@@ -619,6 +551,7 @@ export function useTableCartLogic({
       toast.error(`Failed to remove expense: ${error.message}`);
     }
   };
+  console.log(handleSendToBarWithItems);
 
   // ============================================
   // handleSendToBar
@@ -635,14 +568,12 @@ export function useTableCartLogic({
     const latestExpensesStore = useExpensesStore.getState();
     const latestExpenses = latestExpensesStore.getExpenses(selectedTable);
 
-    // UPDATED: Now async to fetch approved quantities from database
     const unapprovedCartItems = await calculateUnapprovedItems(
       latestCart,
       needsBarApproval,
       products,
       selectedTable
     );
-    console.log(unapprovedCartItems);
     const unapprovedExpenses = latestExpenses
       .filter((exp) => exp.category?.toLowerCase().trim() === "cigarette")
       .map(
@@ -663,6 +594,23 @@ export function useTableCartLogic({
       );
 
     const unapprovedItems = [...unapprovedCartItems, ...unapprovedExpenses];
+
+    console.log("[v0] BEFORE sending to bar:", {
+      cartItemsCount: latestCart.length,
+      cartItems: latestCart.map((i) => ({
+        name: i.name,
+        qty: i.quantity,
+        productId: i.product_id,
+        unitPrice: i.unit_price,
+      })),
+      unapprovedItemsCount: unapprovedCartItems.length,
+      unapprovedItems: unapprovedCartItems.map((i) => ({
+        name: i.name,
+        qty: i.quantity,
+        productId: i.product_id,
+        unitPrice: i.unit_price,
+      })),
+    });
 
     console.log("Unapproved items to send to bar:", {
       count: unapprovedItems.length,
@@ -709,6 +657,14 @@ export function useTableCartLogic({
         currentUserId,
         currentUser.name
       );
+
+      console.log("[v0] Bar request items being created:", {
+        count: barRequestItems.length,
+        items: barRequestItems.map((i) => ({
+          name: i.product_name,
+          qty: i.quantity,
+        })),
+      });
 
       // Create bar request records
       const result = await createBarRequestRecords(barRequestItems);

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { SaleItem } from "@/app/(store)/useTableCartStore";
-import { BarRequestItem } from "@/app/_lib/actions";
+import type { BarRequestItem } from "@/app/_lib/actions";
 import { supabase } from "@/app/_lib/supabase";
 
 // ============================================
@@ -29,12 +29,11 @@ export async function calculateUnapprovedItems(
 
   if (tableId) {
     try {
-      // Get all active fulfillments for this table from database
       const { data: fulfillments, error } = await supabase
         .from("bar_fulfillments")
         .select("product_id, unit_price, quantity_approved, status")
         .eq("table_id", tableId)
-        .in("status", ["pending", "approved"]);
+        .eq("status", "approved");
 
       if (!error && fulfillments) {
         // Create map of product_id + unit_price -> total quantity_approved
@@ -55,7 +54,7 @@ export async function calculateUnapprovedItems(
   }
 
   // Calculate pending quantities (cart quantity - database approved quantity)
-  return itemsNeedingApproval
+  const mappedItems = itemsNeedingApproval
     .map((item) => {
       // Check database first, fallback to local state
       const key = `${item.product_id}-${item.unit_price}`;
@@ -65,12 +64,21 @@ export async function calculateUnapprovedItems(
 
       const pendingQty = Number(item.quantity) - approvedQty;
 
+      console.log("[v0] Item calculation:", {
+        itemName: item.name,
+        key,
+        cartQty: Number(item.quantity),
+        approvedQty,
+        pendingQty,
+        willBeFiltered: pendingQty <= 0,
+      });
+
       return {
         id: item.id,
         product_id: item.product_id,
         name: item.name,
-        quantity: pendingQty, // Only unapproved quantity
-        approved_quantity: approvedQty, // Track what's already approved
+        quantity: pendingQty,
+        approved_quantity: approvedQty,
         unit_price: item.unit_price,
         unit_cost: item.unit_cost,
         total_price: item.unit_price * pendingQty,
@@ -82,7 +90,20 @@ export async function calculateUnapprovedItems(
         fulfillment_id: item.fulfillment_id,
       } as SaleItem;
     })
-    .filter((item) => item.quantity > 0);
+    .filter((item) => {
+      const willFilter = item.quantity <= 0;
+      if (willFilter) {
+        console.log(
+          "[v0] FILTERED OUT item:",
+          item.name,
+          "with pending qty:",
+          item.quantity
+        );
+      }
+      return !willFilter;
+    });
+
+  return mappedItems;
 }
 
 /**
