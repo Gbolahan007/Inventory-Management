@@ -4,28 +4,27 @@
 
 import type React from "react";
 
-import { useState, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useExpensesStore } from "@/app/(store)/useExpensesStore";
 import {
   type SaleItem,
   useTableCartStore,
 } from "@/app/(store)/useTableCartStore";
-import { useExpensesStore } from "@/app/(store)/useExpensesStore";
-import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
-import { supabase } from "@/app/_lib/supabase";
-import toast from "react-hot-toast";
-import type { Product } from "../(sales)/types";
 import {
   type BarRequestItem,
   createBarRequestRecords,
-  updateFulfillmentStatus,
 } from "@/app/_lib/actions";
 import { subscribeToTable } from "@/app/_lib/client-data-service";
+import { supabase } from "@/app/_lib/supabase";
+import { useCreateSale } from "@/app/components/queryhooks/useCreateSale";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   calculateUnapprovedItems,
   formatBarRequestItems,
 } from "../(barapprovals)/utils/calculateUnapprovedItems";
 import { resetApprovedQuantitiesOnSaleCompletion } from "../(barapprovals)/utils/handleBarApprovalUpdate";
+import type { Product } from "../(sales)/types";
 
 interface UseTableCartLogicProps {
   products?: Product[];
@@ -741,7 +740,6 @@ export function useTableCartLogic({
       setIsSendingToBar(false);
     }
   };
-
   // ---------- OPTIMIZED FINALIZE SALE ----------
   const handleFinalizeSale = async () => {
     if (createSaleMutation.isPending) {
@@ -810,78 +808,91 @@ export function useTableCartLogic({
         pending_customer_name: isPending ? pendingCustomer : null,
       };
 
-      // ---------- PARALLEL OPERATIONS ----------
-      const parallelUpdates: Promise<any>[] = [];
+      // ---------- OPTIMIZED PARALLEL OPERATIONS ----------
+      const operations: Promise<any>[] = [];
 
-      // --- Handle bar fulfillments and bar request updates ---
+      // Add sale creation as first operation
+      operations.push(createSaleMutation.mutateAsync(saleData));
+
+      // --- Handle bar fulfillments (OPTIMIZED) ---
       if (hasBarApprovalItems && pendingBarRequestId) {
-        const fulfillmentPromise = (async () => {
+        // Fetch and process fulfillments in parallel with sale creation
+        const fulfillmentOperation = (async () => {
           const { data: fulfillments, error: fulfillErr } = await supabase
             .from("bar_fulfillments")
-            .select("*")
+            .select("id, product_id, quantity_approved")
             .eq("table_id", selectedTable)
             .in("status", ["pending", "partial"]);
 
-          if (fulfillErr) {
+          if (fulfillErr || !fulfillments?.length) {
             console.error("Error fetching fulfillments:", fulfillErr);
             return;
           }
 
-          if (fulfillments && fulfillments.length > 0) {
-            const updates = fulfillments.map((fulfillment) => {
-              const cartItem = currentCart.find(
-                (item) => item.product_id === fulfillment.product_id
-              );
+          // Create a map for O(1) lookups
+          const cartMap = new Map(
+            currentCart.map((item) => [item.product_id, item.quantity])
+          );
 
-              if (cartItem) {
-                return updateFulfillmentStatus(fulfillment.id, {
-                  quantity_fulfilled: cartItem.quantity,
-                  status:
-                    cartItem.quantity === fulfillment.quantity_approved
-                      ? "fulfilled"
-                      : "partial",
-                  fulfilled_at: new Date().toISOString(),
-                });
-              } else {
-                // Item removed — mark as returned
-                return updateFulfillmentStatus(fulfillment.id, {
-                  quantity_returned: fulfillment.quantity_approved,
-                  status: "returned",
-                  fulfilled_at: new Date().toISOString(),
-                  notes: "Item removed from cart before sale completion",
-                });
-              }
-            });
+          const now = new Date().toISOString();
 
-            // Execute all updates concurrently
-            await Promise.all(updates);
+          // Prepare all updates in a single batch
+          const updates = fulfillments.map((fulfillment) => {
+            const cartQuantity = cartMap.get(fulfillment.product_id);
+
+            if (cartQuantity !== undefined) {
+              // Item exists in cart
+              return {
+                id: fulfillment.id,
+                quantity_fulfilled: cartQuantity,
+                status:
+                  cartQuantity === fulfillment.quantity_approved
+                    ? "fulfilled"
+                    : "partial",
+                fulfilled_at: now,
+              };
+            } else {
+              // Item removed from cart
+              return {
+                id: fulfillment.id,
+                quantity_returned: fulfillment.quantity_approved,
+                status: "returned",
+                fulfilled_at: now,
+                notes: "Item removed from cart before sale completion",
+              };
+            }
+          });
+
+          // Execute single batch update instead of multiple individual updates
+          const { error: batchErr } = await supabase
+            .from("bar_fulfillments")
+            .upsert(updates);
+
+          if (batchErr) {
+            console.error("Error updating fulfillments:", batchErr);
           }
         })();
 
-        parallelUpdates.push(fulfillmentPromise);
+        operations.push(fulfillmentOperation);
 
-        // --- Update bar request status ---
-        const barRequestPromise = (async () => {
-          const { error: barReqErr } = await supabase
+        const barRequestOperation = (async () => {
+          const { error } = await supabase
             .from("bar_requests")
             .update({ status: "completed" })
             .eq("id", pendingBarRequestId);
 
-          if (barReqErr) {
-            console.error("Error updating bar request:", barReqErr);
+          if (error) {
+            console.error("Error updating bar request:", error);
           }
         })();
 
-        parallelUpdates.push(barRequestPromise);
+        operations.push(barRequestOperation);
       }
 
-      // Wait for all parallel updates
-      await Promise.all(parallelUpdates);
+      // Execute ALL operations in parallel (including sale creation)
+      await Promise.all(operations);
 
-      // ---------- Create the Sale ----------
-      await createSaleMutation.mutateAsync(saleData);
-
-      // ---------- Post-Sale Cleanup ----------
+      // ---------- Post-Sale Cleanup (Synchronous - Fast) ----------
       resetApprovedQuantitiesOnSaleCompletion(selectedTable);
       clearTableCart(selectedTable);
       clearExpenses(selectedTable);
@@ -904,12 +915,13 @@ export function useTableCartLogic({
       setIsPending(false);
       setPendingCustomer("");
 
-      // ---------- Invalidate Cached Queries ----------
-      await Promise.all([
+      // ---------- Invalidate Cached Queries (NON-BLOCKING) ----------
+      // Fire and forget - don't await these
+      Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sales"] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
         queryClient.invalidateQueries({ queryKey: ["bar_requests"] }),
-      ]);
+      ]).catch((err) => console.error("Cache invalidation error:", err));
     } catch (error: any) {
       console.error("Error finalizing sale:", error);
       toast.error(`Failed to complete sale: ${error.message}`);
